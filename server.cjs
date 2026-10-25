@@ -735,14 +735,18 @@ function simulation(a,b,depth=120,rngSeed){
   // High-variance direct attack races need stochastic terminal outcomes BEFORE
   // the legacy two-sample 2-turn planner can bias the choice. Keep long-term
   // defense/setup scenarios on the tactical planner below.
-  const openingRace=t<2 && !defensePlanSide(B)?probabilisticRaceSide(B):null;
-  if(openingRace && Date.now()<globalDeadline-12500){
-   const shallow=evalOneTurn(B,t,4,globalDeadline-500);
+  const openingRace=t===0 && !defensePlanSide(B)?probabilisticRaceSide(B):null;
+  if(openingRace && Date.now()<globalDeadline-9500){
+   const shallow=evalOneTurn(B,t,4,globalDeadline-9500);
    if(shallow){
     choice={left:shallow.left,right:shallow.right};
     depthUsed=3;
+    // Two-move attack races get a larger budget. For full four-move
+    // sets, return to the proven basic planner sooner, preserving enough
+    // wall time to actually finish the battle after choosing an opener.
+    const rolloutBudget=openingRace.attacks.length<=2?9000:4100;
     attackAudit=probabilisticAttackSearch(B,choice,t,
-     Math.min(Date.now()+12500,globalDeadline-1600));
+     Math.min(Date.now()+rolloutBudget,globalDeadline-8000));
     if(attackAudit?.chosen){
      const foe=attackAudit.side==='p1'?'right':'left';
      choice[attackAudit.side==='p1'?'left':'right']=attackAudit.chosen;
