@@ -358,7 +358,7 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
- if(process.env.RUN_POLICY_REGRESSION==='1'){
+ if(true){
  try{
   const b={species:'Baxcalibur-Mega',name:'HB메가드닐레이브',item:'Baxcalibrite',nature:'Impish',
     ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',
