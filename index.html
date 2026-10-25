@@ -370,6 +370,16 @@ function renderResult(raw,a,b){
   policy.textContent=(firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
+  if(first.verification?.candidates?.length){
+   const v=first.verification;
+   const candidateSample=v.side==='p1'?a:b;
+   const comparisons=v.candidates.map(c=>
+    decision(candidateSample,c.action)+' '+c.winPct+'% ('+c.n+'회 표본)'
+   ).join(' / ');
+   policy.textContent+=' · 비슷한 공격 수순 추가 검증: '+comparisons+
+    '. 상대 첫 행동을 고정하고 2턴까지 반복한 관측 승리율이야. 실제 확정 승률은 아니야.'
+    +(v.ambiguous?' (차이가 작아 첫 턴 피해를 보조 기준으로 적용)':'');
+  }
  }else{policy.style.display='none'}
  const x=parseBattle(raw.log||[]);
  const w=raw.winner==='Left'?sampleLabel(a):raw.winner==='Right'?sampleLabel(b):raw.winner==='draw'?'무승부':'승패 미확정';
