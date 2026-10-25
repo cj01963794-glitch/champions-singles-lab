@@ -942,7 +942,7 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
- if(true){
+ if(process.env.RUN_PROBABILITY_LIVE_REGRESSION==='1'){
   try{
    const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaAbility:'Intimidate',item:'Salamencite',
     evs:{hp:27,atk:9,spe:30},moves:['Giga Impact','Earthquake']};
