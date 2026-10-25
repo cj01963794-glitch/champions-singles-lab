@@ -249,6 +249,25 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
+ // Poltergeist diagnostic: check whether this is an accuracy miss, missing item,
+ // or simply the same initial PRNG state on every website invocation.
+ try{
+  const mega={species:'Delphox-Mega',name:'메가마폭시',item:'Delphoxite',ability:'Levitate',preMegaAbility:'Blaze',nature:'Bold',evs:{hp:32,def:32,spe:2},moves:['Calm Mind']};
+  const aeg={species:'Aegislash',name:'킬가르도',item:'Leftovers',ability:'Stance Change',nature:'Adamant',evs:{hp:32,atk:32,spe:2},moves:['Poltergeist']};
+  const trials=[];
+  for(let i=0;i<12;i++){
+   const B=battle(mega,aeg);
+   const seed=i===0?null:policySeed(0,i);
+   if(seed)B.resetRNG(seed);
+   B.makeChoices('move 1 mega','move 1');
+   const p=B.getSide('p1').pokemon[0];
+   const rows=B.log.filter(x=>/Poltergeist|\-miss\||\-fail\||\-immune\||\-damage\||\-activate\||\-mega\||\-item\|/.test(x));
+   trials.push({seed:i===0?'default':seed,item:p.item,ability:p.ability,form:p.species.name,rows:rows.slice(-10)});
+  }
+  console.log('[POLTERGEIST-TRIALS]',JSON.stringify(trials));
+ }catch(e){console.error('[POLTERGEIST-TEST-ERROR]',e.stack||e)}
+
+
  try{
    const mega={species:'Garchomp-Mega-Z',item:'Garchompite Z',ability:'Levitate',preMegaAbility:'Rough Skin',nature:'Jolly',moves:['Dragon Claw'],evs:{hp:2,atk:32,spe:32}};
    const foe={species:'Hippowdon',ability:'Sand Stream',nature:'Impish',moves:['Earthquake']};
