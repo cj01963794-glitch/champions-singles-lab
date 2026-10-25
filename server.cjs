@@ -187,6 +187,27 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
+ try{
+   const mega={species:'Garchomp-Mega-Z',item:'Garchompite Z',ability:'Levitate',preMegaAbility:'Rough Skin',nature:'Jolly',moves:['Dragon Claw'],evs:{hp:2,atk:32,spe:32}};
+   const foe={species:'Hippowdon',ability:'Sand Stream',nature:'Impish',moves:['Earthquake']};
+   const beforeSet=validate(mega);
+   const B=battle(mega,foe);
+   const canMega=B.getSide('p1')?.activeRequest?.active?.[0]?.canMegaEvo;
+   B.makeChoices('move 1 mega','move 1');
+   const p=B.getSide('p1').pokemon[0];
+   const actual={translatedSpecies:koName('Pokedex',dex.species.get('Garchomp-Mega-Z')),
+     translatedItem:koName('Items',dex.items.get('Garchompite Z')),
+     preMegaAbility:beforeSet.ability,
+     postMegaAbility:p.getAbility().name,
+     actualSpecies:p.species.name,
+     canMega,
+     log:B.log.filter(x=>x.includes('mega')||x.includes('immune')||x.includes('Earthquake')||x.includes('ability')).slice(-12)};
+   console.log('[MEGA-Z-TEST]',JSON.stringify(actual));
+   if(!canMega||actual.postMegaAbility!=='Levitate'||actual.actualSpecies!=='Garchomp-Mega-Z')
+    console.error('[MEGA-Z-TEST-FAIL] Expected Garchomp-Mega-Z with Levitate');
+ }catch(e){console.error('[MEGA-Z-TEST-ERROR]',e.stack||e)}
+
+
 
  try{
    const prima={species:'Primarina',name:'누리레느 테스트',nature:'Modest',item:'Sitrus Berry',ability:'Torrent',moves:['Moonblast','Sparkling Aria','Aqua Jet','Encore'],evs:{hp:32,spa:32,spe:2}};
