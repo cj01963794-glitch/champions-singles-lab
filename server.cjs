@@ -43,25 +43,49 @@ function score(B){const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0
  const v=p=>p.hp/p.maxhp*150+11*(p.boosts.atk+p.boosts.spa+p.boosts.spe)+6*(p.boosts.def+p.boosts.spd);
  return v(a)-v(b);
 }
-function simulation(a,b,depth=12){
- let B=battle(a,b),log=[],choices=[];
+function simulation(a,b,depth=120){
+ depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
+ const B=battle(a,b),choices=[];
+ const started=Date.now();
+ let stopReason='';
  for(let t=0;t<depth&&!B.ended;t++){
-  const L=legal(B,'p1'),R=legal(B,'p2');if(!L.length||!R.length)break;
+  if(Date.now()-started>18000){stopReason='compute_timeout';break}
+  const L=legal(B,'p1'),R=legal(B,'p2');
+  if(!L.length||!R.length){stopReason='no_available_actions';break}
+  // Clone the live battle state to evaluate this turn. Replaying a long
+  // history for every candidate was quadratic in the number of turns.
+  const snapshot=B.toJSON();
   let bestL=L[0],bestR=R[0],max=-Infinity,min=Infinity;
-  for(const l of L){let worst=Infinity;for(const r of R){const tmp=battle(a,b);
-   for(const [x,y] of choices)tmp.makeChoices(x,y);
-   if(!tmp.ended)tmp.makeChoices(l,r);
-   worst=Math.min(worst,score(tmp));
-  }if(worst>max){max=worst;bestL=l}}
-  for(const r of R){let worst=-Infinity;for(const l of L){const tmp=battle(a,b);
-   for(const [x,y] of choices)tmp.makeChoices(x,y);
-   if(!tmp.ended)tmp.makeChoices(l,r);
-   worst=Math.max(worst,score(tmp));
-  }if(worst<min){min=worst;bestR=r}}
-  B.makeChoices(bestL,bestR);choices.push([bestL,bestR]);
+  const matrix=[];
+  for(let i=0;i<L.length;i++){
+   const row=[];
+   for(let j=0;j<R.length;j++){
+    const tmp=Sim.Battle.fromJSON(snapshot);
+    tmp.makeChoices(L[i],R[j]);
+    row.push(score(tmp));
+   }
+   matrix.push(row);
+  }
+  for(let i=0;i<L.length;i++){
+   const worst=Math.min(...matrix[i]);
+   if(worst>max){max=worst;bestL=L[i]}
+  }
+  for(let j=0;j<R.length;j++){
+   const worst=Math.max(...matrix.map(row=>row[j]));
+   if(worst<min){min=worst;bestR=R[j]}
+  }
+  B.makeChoices(bestL,bestR);
+  choices.push([bestL,bestR]);
  }
- return {winner:B.ended?B.winner||'draw':'unresolved',log:B.log.slice(-100),choices,turns:choices.length};
+ if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
+ return {
+  winner:B.ended?(B.winner||'draw'):'unresolved',
+  stopReason:B.ended?'battle_ended':stopReason,
+  log:B.log, // Keep the complete battle log, including turns 1-9
+  choices,turns:choices.length,maxTurns:depth
+ };
 }
+
 function page(){return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>챔피언즈 싱글 대면 실험실</title><style>body{font-family:system-ui;background:#0c1220;color:#e8eef9;max-width:840px;margin:auto;padding:20px}h1{font-size:25px}section{background:#182238;border:1px solid #34425d;border-radius:16px;padding:18px;margin:16px 0}input,select,button,textarea{box-sizing:border-box;width:100%;background:#10192b;color:#e8eef9;border:1px solid #40516d;border-radius:8px;padding:10px;margin:5px 0}button{background:#426cf2;border:0;font-weight:bold;cursor:pointer}label{font-size:13px;color:#b6c4dc}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}@media(max-width:650px){.grid{grid-template-columns:1fr}}.muted{color:#b6c4dc;font-size:13px}pre{white-space:pre-wrap;overflow:auto}</style></head><body><h1>챔피언즈 1대1 대면 분석기</h1><p class="muted">쇼다운 챔피언즈 싱글 배틀 엔진 · 실험용 자동 행동 정책 (승률/랭킹 정확도 미검증)</p><div class="grid"><section><h2>A 샘플</h2><textarea id="a" rows="13"></textarea></section><section><h2>B 샘플</h2><textarea id="b" rows="13"></textarea></section></div><section><button id="run">1대1 자동 대면 계산</button><pre id="result"></pre><details><summary>지원 데이터 검색</summary><input id="q" placeholder="English Pokémon / Move / Item"><pre id="matches"></pre></details></section><script>
 const examples=${JSON.stringify(samples)};
 document.getElementById('a').value=JSON.stringify(examples[0],null,2);document.getElementById('b').value=JSON.stringify(examples[1],null,2);
@@ -107,7 +131,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod});
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
-  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b))}
+  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120))}
   return respond(res,{error:'Not found',method:req.method,path:pathname},404);
  }catch(e){console.error('[REQUEST_ERROR]',e.stack||e);return respond(res,{error:String(e.message||e)},400)}
 });
