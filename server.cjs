@@ -703,14 +703,14 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
  const selected=rank[0],runner=rank[1],n=selected.n;
  // Use a conservative paired-outcome uncertainty margin, avoiding choices
  // flipped by small samples. If ambiguous, keep the existing planner result.
- const margin=((selected.wins-selected.losses)-(runner.wins-runner.losses))/n;
  const pairedDiffs=selected.trace.map((v,i)=>v-runner.trace[i]);
+ const margin=pairedDiffs.reduce((a,v)=>a+v,0)/n;
  const centered=pairedDiffs.reduce((a,b)=>a+b,0)/n;
  const variance=n>1?pairedDiffs.reduce((a,v)=>a+(v-centered)**2,0)/(n-1):1;
  const pairedStderr=Math.sqrt(variance/n);
  const meaningful=margin>=Math.max(0.012,0.9*pairedStderr);
  const usable=(n>=64&&meaningful);
- const significant=margin>=Math.max(0.04,1.96*pairedStderr);
+ const significant=margin>=Math.max(0.025,1.96*pairedStderr);
 
  return {side,chosen:usable?selected.action:null,ambiguous:!significant,
   pairedStandardErrorPct:Math.round(pairedStderr*1000)/10,
