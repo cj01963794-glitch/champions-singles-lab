@@ -1,6 +1,7 @@
 'use strict';
 const http=require('node:http');
 const sampleLibrary=require('./sample-library.cjs');
+const localized=require('./korean-forms.cjs');
 const {randomBytes}=require('node:crypto');
 const {exactAttackRace}=require('./attack-race.cjs');
 const {sampledRace}=require('./sampled-race.cjs');
@@ -835,7 +836,7 @@ document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await f
 const koData=dex.loadTextData('ko');
 // The source's Korean text may localize "baseSpecies" or "forme" without
 // localizing "name", especially for gendered and regional forms.
-const verifiedKoreanBaseExceptions={floette:'플라엣테',zygarde:'지가르데'};
+const verifiedKoreanBaseExceptions=localized.baseOverrides;
 const nativeBaseName=(english)=>{
  const species=dex.species.get(english);
  const ancestor=dex.species.get(species.baseSpecies||english);
@@ -853,7 +854,7 @@ const megaSuffix=(forme)=>{
 const koName=(type,obj)=>{
  const data=koData[type]?.[obj.id]||{};
  const official=data.name;
- if(official&&official!==obj.name)return official;
+ if(official&&/[가-힣]/.test(official))return official;
  if(type==='Pokedex'&&obj.isMega){
   // Some Korean mega-form labels exist only in the "forme" field, and
   // include important distinctions such as male/female, color, and posture.
@@ -880,6 +881,14 @@ const koName=(type,obj)=>{
    }
   }
  }
+ if(type==='Pokedex'){
+  const base=nativeBaseName(obj.baseSpecies);
+  const generated=localized.fallbackFormName(obj,data,base);
+  if(generated)return generated;
+ }
+ const substitutions={Items:localized.itemOverrides,Moves:localized.moveOverrides,
+  Abilities:localized.abilityOverrides};
+ if(substitutions[type]?.[obj.id])return substitutions[type][obj.id];
  return official||obj.name;
 };
 const abilityList=(s)=>[...new Set(Object.values(s.abilities||{}))].filter(Boolean).map(en=>{
