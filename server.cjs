@@ -318,51 +318,38 @@ server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
  try{
-  const bax={species:'Baxcalibur-Mega',name:'HB메가드닐레이브',item:'Baxcalibrite',nature:'Impish',
-    ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',
-    moves:['Swords Dance','Thunder Fang'],evs:{hp:32,def:32,spe:2}};
-  const prima={species:'Primarina',name:'자뭉누리레느',item:'Sitrus Berry',nature:'Bold',
-    ability:'Torrent',moves:['Moonblast','Sparkling Aria'],evs:{hp:32,def:32,spe:2}};
-  const B=battle(bax,prima);
-  const shallow=evalOneTurn(B,0,8);
-  const deep=evalTwoTurn(B,0,Date.now()+12000);
-  const test={shallow:shallow?.left,deep:deep?.left,opponent:deep?.right,
-    depth:deep?.depth,timing:'2-turn-lookahead',
-    rows:deep?deep.matrix.map((row,i)=>({choice:deep.L[i],worst:Math.min(...row)})):[],
-    species:dex.species.get('Baxcalibur-Mega').name};
-  console.log('[SWORDS-DANCE-REGRESSION]',JSON.stringify(test));
- }catch(e){console.error('[SWORDS-DANCE-TEST-ERROR]',e.stack||e)}
-
-
-
- try{
-   const mega={species:'Garchomp-Mega-Z',item:'Garchompite Z',ability:'Levitate',preMegaAbility:'Rough Skin',nature:'Jolly',moves:['Dragon Claw'],evs:{hp:2,atk:32,spe:32}};
-   const foe={species:'Hippowdon',ability:'Sand Stream',nature:'Impish',moves:['Earthquake']};
-   const beforeSet=validate(mega);
-   const B=battle(mega,foe);
-   const canMega=B.getSide('p1')?.activeRequest?.active?.[0]?.canMegaEvo;
-   B.makeChoices('move 1 mega','move 1');
-   const p=B.getSide('p1').pokemon[0];
-   const actual={translatedSpecies:koName('Pokedex',dex.species.get('Garchomp-Mega-Z')),
-     translatedItem:koName('Items',dex.items.get('Garchompite Z')),
-     preMegaAbility:beforeSet.ability,
-     postMegaAbility:p.getAbility().name,
-     actualSpecies:p.species.name,
-     canMega,
-     log:B.log.filter(x=>x.includes('mega')||x.includes('immune')||x.includes('Earthquake')||x.includes('ability')).slice(-12)};
-   console.log('[MEGA-Z-TEST]',JSON.stringify(actual));
-   if(!canMega||actual.postMegaAbility!=='Levitate'||actual.actualSpecies!=='Garchomp-Mega-Z')
-    console.error('[MEGA-Z-TEST-FAIL] Expected Garchomp-Mega-Z with Levitate');
- }catch(e){console.error('[MEGA-Z-TEST-ERROR]',e.stack||e)}
-
-
-
- try{
-   const prima={species:'Primarina',name:'누리레느 테스트',nature:'Modest',item:'Sitrus Berry',ability:'Torrent',moves:['Moonblast','Sparkling Aria','Aqua Jet','Encore'],evs:{hp:32,spa:32,spe:2}};
-   const cinder={species:'Cinderace',name:'에이스번 테스트',nature:'Jolly',item:'Wide Lens',ability:'Libero',moves:['Gunk Shot','U-turn','Pyro Ball','High Jump Kick'],evs:{hp:2,atk:32,spe:32}};
-   const duel=simulation(prima,cinder,3);
-   console.log('[MOVE-POLICY-TEST]',JSON.stringify({choice:duel.choices[0],events:duel.log.filter(x=>x.startsWith('|move|')||x.startsWith('|-miss|')).slice(0,7),turns:duel.turns}));
- }catch(e){console.error('[MOVE-POLICY-ERROR]',e.stack||e)}
+  const spreads=[
+   {tag:'HB impish',nature:'Impish',evs:{hp:32,def:32,spe:2}},
+   {tag:'HA adamant',nature:'Adamant',evs:{hp:32,atk:32,spe:2}},
+   {tag:'AS adamant',nature:'Adamant',evs:{atk:32,spe:32,hp:2}}
+  ];
+  const prims=[
+   {tag:'HB bold',nature:'Bold',evs:{hp:32,def:32,spe:2}},
+   {tag:'HC modest',nature:'Modest',evs:{hp:32,spa:32,spe:2}}
+  ];
+  const rows=[];
+  for(const b of spreads)for(const p of prims){
+   const bax={species:'Baxcalibur-Mega',name:'메가드닐레이브',item:'Baxcalibrite',nature:b.nature,
+      ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',moves:['Swords Dance','Thunder Fang'],evs:b.evs};
+   const prima={species:'Primarina',name:'누리레느',item:'Sitrus Berry',nature:p.nature,
+      ability:'Torrent',moves:['Moonblast','Sparkling Aria'],evs:p.evs};
+   const outcomes=[];
+   for(const [tag,first] of [['SD','move 1 mega'],['ATTACK','move 2 mega']]){
+     const B=battle(bax,prima);
+     B.makeChoices(first,'move 1');
+     if(!B.ended)B.makeChoices('move 2','move 1');
+     outcomes.push({tag,winner:B.winner||null,ended:B.ended,
+       p1hp:B.getSide('p1').pokemon[0].hp,p2hp:B.getSide('p2').pokemon[0].hp,
+       p2item:B.getSide('p2').pokemon[0].item,
+       moves:B.log.filter(x=>x.startsWith('|move|')).map(x=>x.split('|')[3])});
+   }
+   const root=battle(bax,prima);
+   const deep=evalTwoTurn(root,0,Date.now()+9000);
+   rows.push({b:b.tag,p:p.tag,outcomes,chosen:deep?.left,
+     deepValues:deep?.matrix.map((v,i)=>[deep.L[i],Math.min(...v)])});
+  }
+  console.log('[SWORDS-DANCE-SPREAD-TEST]',JSON.stringify(rows));
+ }catch(e){console.error('[SWORDS-DANCE-SPREAD-ERROR]',e.stack||e)}
 
  const check=(path,method='GET',payload)=>new Promise(resolve=>{
   const req=http.request({hostname:'127.0.0.1',port,path,method,headers:{'content-type':'application/json'}},res=>{
