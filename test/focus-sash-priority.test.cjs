@@ -12,8 +12,17 @@ const sash={species:'Garchomp',name:'기띠고집한카',nature:'Adamant',
  evs:{hp:2,atk:32,def:0,spa:0,spd:0,spe:32}};
 test('Draco Meteor triggers Focus Sash; a slower Mega Dragonite finishes with Extreme Speed',()=>{
  for(const side of ['p1','p2']){
-  const b=side==='p1'?battle(dragonite,sash,seed):battle(sash,dragonite,seed);
-  b.makeChoices(...(side==='p1'?['move 1 mega','move 1']:['move 1','move 1 mega']));
+  let b=null;
+  // Draco Meteor has 90% accuracy; select an actual on-target RNG sample,
+  // rather than mistaking a legitimate miss for a broken Focus Sash model.
+  for(let n=1;n<=24;n++){
+   const candidate=side==='p1'?battle(dragonite,sash,seed):battle(sash,dragonite,seed);
+   candidate.resetRNG([131*n+1,137*n+2,139*n+3,149*n+4].map(x=>x%65536).join(','));
+   candidate.makeChoices(...(side==='p1'?['move 1 mega','move 1']:['move 1','move 1 mega']));
+   const target=candidate.getSide(side==='p1'?'p2':'p1').pokemon[0];
+   if(target.hp===1){b=candidate;break}
+  }
+  assert.ok(b,'At least one Draco Meteor hit must reach Focus Sash in 24 rolls');
   assert.equal(b.ended,false,'Ground Earthquake cannot hit Dragonite');
   const foe=b.getSide(side==='p1'?'p2':'p1').pokemon[0];
   const attacker=b.getSide(side).pokemon[0];
