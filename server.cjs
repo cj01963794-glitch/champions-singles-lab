@@ -726,6 +726,55 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
+ if(process.env.RUN_SALAMENCE_PROBABILITY==='1'){
+  try{
+   const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaAbility:'Intimidate',item:'Salamencite',
+    evs:{hp:27,atk:9,spe:30},moves:['Giga Impact','Earthquake']};
+   const prim={species:'Primarina',nature:'Modest',ability:'Torrent',item:'Sitrus Berry',
+    evs:{hp:32,def:20,spa:14},moves:['Moonblast','Aqua Jet']};
+   const reference=battle(sal,prim);
+   const p=reference.getSide('p1').pokemon[0],q=reference.getSide('p2').pokemon[0];
+   console.log('[SAL-PRIM-STATS]',JSON.stringify({sal:{species:p.species.name,hp:p.hp,atk:p.getStat('atk'),spe:p.getStat('spe'),spd:p.getStat('spd'),ability:p.ability},prim:{hp:q.hp,def:q.getStat('def'),spa:q.getStat('spa'),atk:q.getStat('atk'),spe:q.getStat('spe'),status:q.status},initialLog:reference.log.slice(-10)}));
+   const saved=JSON.stringify(reference.toJSON());
+   const tally={giga:{win:0,lose:0,unresolved:0,firstKO:0,firstMiss:0,firstNonKO:0,gigaFirstDamage:{},moonFirstDamage:{},primAfterFirstItem:{}},
+    quake:{win:0,lose:0,unresolved:0,firstKO:0,firstMiss:0,firstNonKO:0,quakeFirstDamage:{},moonFirstDamage:{},primAfterFirstItem:{}}};
+   const N=2400;
+   const started=Date.now();
+   for(let n=0;n<N;n++){
+    for(const mode of ['giga','quake']){
+     const st=tally[mode],B=Sim.Battle.fromJSON(saved);
+     B.resetRNG(verificationSeed(33,n,47));
+     const salBefore=B.getSide('p1').pokemon[0],primBefore=B.getSide('p2').pokemon[0];
+     B.makeChoices(mode==='giga'?'move 1 mega':'move 2 mega','move 1');
+     const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
+     const label=mode==='giga'?'gigaFirstDamage':'quakeFirstDamage';
+     const d=primBefore.maxhp-b.hp;
+     st[label][d]=(st[label][d]||0)+1;
+     const md=salBefore.maxhp-a.hp;
+     st.moonFirstDamage[md]=(st.moonFirstDamage[md]||0)+1;
+     st.primAfterFirstItem[b.item||'used']=(st.primAfterFirstItem[b.item||'used']||0)+1;
+     if(B.winner==='Left'){st.firstKO++}
+     else if(mode==='giga'&&d===0){st.firstMiss++}
+     else st.firstNonKO++;
+     for(let step=0;step<4&&!B.ended;step++){
+      const pp=B.getSide('p1').pokemon[0], qq=B.getSide('p2').pokemon[0];
+      const recharge=!!pp.volatiles['mustrecharge'];
+      // An uncharged, faster Mega Salamence attacks before Moonblast;
+      // Primarina's only chance to interrupt is priority Aqua Jet.
+      // During recharge, Moonblast is Primarina's best direct attack.
+      const firstMove=recharge?'move 1':'move 1';
+      const secondMove=recharge?'move 1':'move 2';
+      B.makeChoices(firstMove,secondMove);
+     }
+     if(B.winner==='Left')st.win++;
+     else if(B.winner==='Right')st.lose++;
+     else st.unresolved++;
+    }
+   }
+   console.log('[SAL-PRIM-PROBABILITY]',JSON.stringify({N,elapsed:Date.now()-started,tally}));
+  }catch(e){console.error('[SAL-PRIM-ERROR]',e.stack||e)}
+ }
+
 
  if(process.env.RUN_DEFENSIVE_REGRESSION==='1'){
  try{
