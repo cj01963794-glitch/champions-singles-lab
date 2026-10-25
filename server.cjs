@@ -58,8 +58,10 @@ function battle(a,b,seed='1579,3137,6027,8191'){
 function legal(B,k){
  const r=B.getSide(k)?.activeRequest?.active?.[0];
  if(!r)return [];
- const mega=r.canMegaEvo?' mega':'',p=B.getSide(k).pokemon[0];
- const available=(r.moves||[]).map((m,i)=>!m.disabled&&m.pp!==0?'move '+(i+1)+mega:null).filter(Boolean);
+ const mega=!!r.canMegaEvo,p=B.getSide(k).pokemon[0];
+ // Mega evolution is a separate optional action for every usable move.
+ const available=(r.moves||[]).flatMap((m,i)=>!m.disabled&&m.pp!==0?
+  ['move '+(i+1),...(mega?['move '+(i+1)+' mega']:[])]:[]);
  // A full +6 stat cannot be boosted again. Do not waste turns on moves
  // whose only effect is already at its cap (iron defense, swords dance etc).
  const meaningful=available.filter(a=>{
@@ -72,6 +74,9 @@ function legal(B,k){
   return !entries.length||entries.some(([stat,amount])=>amount>0 ? p.boosts[stat]<6 : p.boosts[stat]>-6);
  });
  return meaningful.length?meaningful:available;
+}
+function hasPendingMega(B){
+ return ['p1','p2'].some(side=>!!B.getSide(side)?.activeRequest?.active?.[0]?.canMegaEvo);
 }
 function score(B){const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
  // When both lines win or lose, survival matters: distinguish a loss after
@@ -150,6 +155,19 @@ function followChoiceBeam(B,side,actions,limit=2){
  });
  const attacks=scored.filter(x=>x.attack).sort((a,b)=>b.rank-a.rank);
  const tactical=scored.filter(x=>!x.attack).sort((a,b)=>b.rank-a.rank);
+ // Preserve both base-form and Mega versions of the next turn's useful
+ // attacks and setup moves; otherwise an equal rough score erases Mega.
+ if(actions.some(a=>a.endsWith(' mega'))){
+  const keep=[];
+  for(const mega of [false,true]){
+   const variant=scored.filter(x=>x.action.endsWith(' mega')===mega);
+   const hits=variant.filter(x=>x.attack).sort((a,b)=>b.rank-a.rank);
+   const setup=variant.filter(x=>!x.attack).sort((a,b)=>b.rank-a.rank);
+   if(hits.length)keep.push(hits[0]);
+   if(setup.length)keep.push(setup[0]);
+  }
+  return keep.slice(0,limit).map(x=>x.action);
+ }
  const keep=[];
  if(attacks.length)keep.push(attacks[0]);
  if(tactical.length&&keep.length<limit)keep.push(tactical[0]);
@@ -161,8 +179,10 @@ function followChoiceBeam(B,side,actions,limit=2){
 function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
  if(position.ended)return {value:score(position)};
  const L0=legal(position,'p1'),R0=legal(position,'p2');
- const L=beamLimit?followChoiceBeam(position,'p1',L0,beamLimit):L0;
- const R=beamLimit?followChoiceBeam(position,'p2',R0,beamLimit):R0;
+ const L=beamLimit?followChoiceBeam(position,'p1',L0,
+  L0.some(a=>a.endsWith(' mega'))?Math.max(4,beamLimit):beamLimit):L0;
+ const R=beamLimit?followChoiceBeam(position,'p2',R0,
+  R0.some(a=>a.endsWith(' mega'))?Math.max(4,beamLimit):beamLimit):R0;
  if(!L.length||!R.length)return {value:score(position)};
  const saved=JSON.stringify(position.toJSON());
  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
@@ -603,18 +623,19 @@ function simulation(a,b,depth=120,rngSeed){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
+  const megaPending=hasPendingMega(B);
   let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null,tacticalProbability=null,attackAttempted=false;
   // A certified opening uses all outcome probabilities, not sampled seeds.
   // Unknown suffixes are [0,1] bounds, so only a provable pure equilibrium is
   // allowed to override the existing planner. Other mechanics use the fallback.
-  if(t<4 && Date.now()<globalDeadline-9000){
+  if(!megaPending && t<4 && Date.now()<globalDeadline-9000){
    exactSearch=exactAttackRace(B,{Sim,horizon:3,
     deadline:Math.min(Date.now()+(t===0?5000:2000),globalDeadline-8000)});
    if(exactSearch?.certified){
     choice={left:exactSearch.left,right:exactSearch.right};depthUsed=3;
    }
   }
-  if(!choice && t<4 && Date.now()<globalDeadline-4500){
+  if(!choice && !megaPending && t<4 && Date.now()<globalDeadline-4500){
    tacticalProbability=makeTacticalSearch(B,{Sim,horizon:2,
     deadline:Math.min(Date.now()+(t===0?18000:4000),globalDeadline-3000)});
    if(tacticalProbability?.applicable){
@@ -631,7 +652,7 @@ function simulation(a,b,depth=120,rngSeed){
   // High-variance direct attack races need stochastic terminal outcomes BEFORE
   // the legacy two-sample 2-turn planner can bias the choice. Keep long-term
   // defense/setup scenarios on the tactical planner below.
-  const openingRace=t===0 && !defensePlanSide(B)?probabilisticRaceSide(B):null;
+  const openingRace=t===0 && !megaPending && !defensePlanSide(B)?probabilisticRaceSide(B):null;
   if(!choice && openingRace && Date.now()<globalDeadline-9500){
    const shallow=evalOneTurn(B,t,4,globalDeadline-9500);
    if(shallow){
@@ -652,12 +673,12 @@ function simulation(a,b,depth=120,rngSeed){
 
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
-  if(!choice && t<6 && hasTacticalMove(B) && Date.now()-started<10000){
+  if(!choice && t<6 && (hasTacticalMove(B)||megaPending) && Date.now()-started<10000){
    const deadline=Math.min(Date.now()+6500,globalDeadline-2200);
    const deep=evalTwoTurn(B,t,deadline);
    if(deep){
     choice=deep;depthUsed=2;planned++;
-    if(t<2 && !probabilisticRaceSide(B) && Date.now()<globalDeadline-3500){
+    if(t<2 && !megaPending && !probabilisticRaceSide(B) && Date.now()<globalDeadline-3500){
      verification=verifyChanceOutcomes(B,deep,t,Math.min(Date.now()+6500,globalDeadline-900));
      if(verification?.chosen){
       if(verification.side==='p1')choice.left=verification.chosen;
@@ -698,7 +719,7 @@ function simulation(a,b,depth=120,rngSeed){
   }
   // Search farther in setup-vs-sustain matchups: scarce victory paths can
   // require several defense boosts, recovery and chip, not 2-turn HP gains.
-  const defenseSide=t<6 && Date.now()<globalDeadline-2200?defensePlanSide(B):null;
+  const defenseSide=!megaPending && t<6 && Date.now()<globalDeadline-2200?defensePlanSide(B):null;
   if(defenseSide){
    longPlan=defenseRouteOpportunity(B,defenseSide,t);
    if(!longPlan && extendedSearchCount<1 && Date.now()<globalDeadline-3800){
@@ -713,7 +734,7 @@ function simulation(a,b,depth=120,rngSeed){
   }
   // Probabilistic checks override only well-separated attack choices,
   // leaving the existing tactical planner and defensive setup untouched.
-  if(t===0 && !exactSearch?.certified && !tacticalProbability?.applied && !attackAttempted && !longPlan && Date.now()<globalDeadline-3800){
+  if(t===0 && !megaPending && !exactSearch?.certified && !tacticalProbability?.applied && !attackAttempted && !longPlan && Date.now()<globalDeadline-3800){
    const auditDeadline=Math.min(Date.now()+7500,globalDeadline-900);
    attackAudit=probabilisticAttackSearch(B,choice,t,auditDeadline);
    if(attackAudit?.chosen){
@@ -729,7 +750,7 @@ function simulation(a,b,depth=120,rngSeed){
   }
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
-  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
+  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,megaTimingConsidered:megaPending,
    ...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';

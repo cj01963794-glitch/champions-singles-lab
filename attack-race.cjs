@@ -79,7 +79,10 @@ function supportsMove(move,foeMoves){
  return (move.secondaries||[]).every(s=>harmlessSecondary(s,foeMoves));
 }
 
-function buildModel(B,Sim,deadline,horizon){
+function buildModel(B,Sim,deadline,horizon,assumeImmediateMega=false){
+ // Without a Mega-timing state bit, the exact model is conditional on
+ // immediate evolution, never a full-game answer when evolution is optional.
+ if(!assumeImmediateMega && B.sides.some(s=>s.activeRequest?.active?.[0]?.canMegaEvo))return null;
  if(B.ended||B.field.weather||B.field.terrain||Object.keys(B.field.pseudoWeather).length)return null;
  const trial=Sim.Battle.fromJSON(JSON.stringify(B.toJSON()));
  for(const side of trial.sides){
@@ -158,8 +161,8 @@ function buildModel(B,Sim,deadline,horizon){
  return profiles;
 }
 
-function exactAttackRace(B,{Sim,deadline=Infinity,horizon=3,maxStates=50000}={}){
- const started=Date.now(),profiles=buildModel(B,Sim,deadline,horizon);
+function exactAttackRace(B,{Sim,deadline=Infinity,horizon=3,maxStates=50000,assumeImmediateMega=false}={}){
+ const started=Date.now(),profiles=buildModel(B,Sim,deadline,horizon,assumeImmediateMega);
  if(!profiles)return null;
  const cache=new Map();let states=0;
  // State: left HP, right HP, consumed-item mask, recharge mask.

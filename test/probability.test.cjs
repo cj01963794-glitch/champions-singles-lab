@@ -8,7 +8,8 @@ const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaA
  item:'Salamencite',evs:{hp:27,atk:9,spe:30},moves:['Giga Impact','Earthquake']};
 const prim={species:'Primarina',nature:'Modest',ability:'Torrent',item:'Sitrus Berry',
  evs:{hp:32,def:20,spa:14},moves:['Moonblast','Aqua Jet']};
-const exact=(B,horizon=3)=>exactAttackRace(B,{Sim,horizon,deadline:Date.now()+10000});
+const exact=(B,horizon=3)=>exactAttackRace(B,{Sim,horizon,deadline:Date.now()+10000,
+ assumeImmediateMega:true});
 
 test('simultaneous probability games include mixed strategies',()=>{
  assert.equal(gameValue([[1,0],[0,1]]),0.5);
@@ -84,7 +85,7 @@ test('unsupported mechanics are rejected instead of receiving an exact label',()
 test('Focus Sash prevents all first-hit KOs, and a search budget retains completed bounds',()=>{
  const sash=exact(battle(sal,{...prim,item:'Focus Sash'}),1);
  assert.equal(sash.payoff[0][0].winLowerPct,0);
- const limited=exactAttackRace(battle(sal,prim),{Sim,horizon:3,maxStates:1000,deadline:Date.now()+10000});
+ const limited=exactAttackRace(battle(sal,prim),{Sim,horizon:3,maxStates:1000,deadline:Date.now()+10000,assumeImmediateMega:true});
  assert.equal(limited.horizon,2);assert.equal(limited.certified,true);
  assert.equal(limited.left,'move 2 mega');
 });
@@ -128,7 +129,8 @@ test('actual simulation uses certified actions and preserves seeded replay',()=>
  const first=simulation(sal,prim,8,'1579,3137,6027,8191');
  const second=simulation(sal,prim,8,'1579,3137,6027,8191');
  assert.deepEqual(first.choices[0],['move 2 mega','move 1']);
- assert.equal(first.decisionDetails[0].exactSearch.certified,true);
+ assert.equal(first.decisionDetails[0].megaTimingConsidered,true);
+ assert.equal(first.decisionDetails[0].exactSearch,undefined);
  assert.equal(first.stopReason,'battle_ended');
  assert.equal(first.winner,second.winner);assert.deepEqual(first.choices,second.choices);
  const combatLog=log=>log.filter(line=>!line.startsWith('|t:|'));

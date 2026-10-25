@@ -6,7 +6,8 @@ const prim={species:'Primarina',nature:'Modest',ability:'Torrent',item:'Sitrus B
  evs:{hp:32,def:20,spa:14},moves:['Moonblast','Sparkling Aria','Encore','Aqua Jet']};
 const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaAbility:'Intimidate',
  item:'Salamencite',evs:{hp:27,atk:9,spe:30},moves:['Double-Edge','Giga Impact','Earthquake','Dragon Dance']};
-const search=B=>makeTacticalSearch(B,{Sim,horizon:2,deadline:Date.now()+18000});
+const search=B=>makeTacticalSearch(B,{Sim,horizon:2,deadline:Date.now()+18000,
+ assumeImmediateMega:true});
 
 test('the full submitted sets exclude Aqua Jet by probability bounds, not a species override',()=>{
  const result=search(battle(prim,sal));
@@ -36,7 +37,7 @@ test('side and move order swaps preserve Moonblast and complementary bounds',()=
 });
 
 test('engine-derived damage distributions retain unit mass, including Sparkling Aria',()=>{
- const B=battle(prim,sal),model=createTacticalModel(B,Sim,Infinity,2),ps=model.profiles;
+ const B=battle(prim,sal),model=createTacticalModel(B,Sim,Infinity,2,true),ps=model.profiles;
  const initial=[ps[0].hp,ps[1].hp,0,0,ps[0].boosts,ps[1].boosts,-1,-1,-1,-1,0,0];
  for(const hp of [initial[0],1])for(const side of [0,1])for(let i=0;i<4;i++){
   if(ps[side].moves[i].kind!=='attack')continue;
@@ -61,7 +62,7 @@ test('Encore actually forces Dragon Dance and the solver preserves that forced a
 
 test('simultaneous Double-Edge recoil KOs match the pinned engine winner rule',()=>{
  const B=battle({...prim,item:''},sal);B.p1.pokemon[0].hp=1;B.p2.pokemon[0].hp=1;
- const result=makeTacticalSearch(B,{Sim,horizon:1,deadline:Date.now()+10000});
+ const result=makeTacticalSearch(B,{Sim,horizon:1,deadline:Date.now()+10000,assumeImmediateMega:true});
  assert.equal(result.payoff[0][0].winLowerPct,0);
  assert.equal(result.payoff[0][0].winUpperPct,0);
  B.makeChoices('move 1','move 1 mega');
@@ -73,7 +74,8 @@ test('the actual four-move simulation chooses Moonblast and keeps seeded replay'
  const a=simulation(prim,sal,8,'1579,3137,6027,8191');
  const b=simulation(prim,sal,8,'1579,3137,6027,8191');
  assert.equal(a.choices[0][0],'move 1');
- assert.equal(a.decisionDetails[0].tacticalProbability.applied,true);
+ assert.equal(a.decisionDetails[0].megaTimingConsidered,true);
+ assert.equal(a.decisionDetails[0].tacticalProbability,undefined);
  assert.deepEqual(a.choices,b.choices);assert.equal(a.winner,b.winner);
  assert.equal(a.stopReason,'battle_ended');
 });

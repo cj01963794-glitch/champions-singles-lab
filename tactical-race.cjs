@@ -33,7 +33,9 @@ function moveKind(move,foeMoves){
  return supportsMove(shape,foeMoves.filter(m=>m.category!=='Status'))?'attack':null;
 }
 
-function createTacticalModel(B,Sim,deadline,horizon){
+function createTacticalModel(B,Sim,deadline,horizon,assumeImmediateMega=false){
+ // Pre-evolving every combatant cannot represent delayed Mega timing.
+ if(!assumeImmediateMega && B.sides.some(s=>s.activeRequest?.active?.[0]?.canMegaEvo))return null;
  if(B.ended||B.field.weather||B.field.terrain||Object.keys(B.field.pseudoWeather).length)return null;
  const trial=Sim.Battle.fromJSON(JSON.stringify(B.toJSON()));
  for(const side of trial.sides){
@@ -112,8 +114,8 @@ function createTacticalModel(B,Sim,deadline,horizon){
  return {profiles,distribution};
 }
 
-function makeTacticalSearch(B,{Sim,deadline=Infinity,horizon=2,maxStates=30000}={}){
- const started=Date.now(),model=createTacticalModel(B,Sim,deadline,horizon);
+function makeTacticalSearch(B,{Sim,deadline=Infinity,horizon=2,maxStates=30000,assumeImmediateMega=false}={}){
+ const started=Date.now(),model=createTacticalModel(B,Sim,deadline,horizon,assumeImmediateMega);
  if(!model)return null;
  const {profiles,distribution}=model,cache=new Map(),terminalCache=new Map();let states=0;
  // HPs, used item mask, recharge mask, boost codes, last moves, encore moves,

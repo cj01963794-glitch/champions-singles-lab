@@ -364,11 +364,13 @@ function renderResult(raw,a,b){
  if(first){
   const decision=(sample,token)=>{
    const idx=Number(String(token).match(/move (\d+)/)?.[1]||0)-1;
-   return idx>=0?(korean('moves',sample.moves[idx])||sample.moves[idx]||'알 수 없음'):'알 수 없음';
+   return idx>=0?(korean('moves',sample.moves[idx])||sample.moves[idx]||'알 수 없음')+
+    (String(token).endsWith(' mega')?' (메가진화)':''):'알 수 없음';
   };
   const firstIsPlanned=first.depth>=2;
   policy.style.display='block';
-  policy.textContent=(first.tacticalProbability?.applied?'첫 턴은 반동·랭크업·앙코르를 포함해 확률을 합산하고, 승률 하한을 기준으로 선택했어.':first.tacticalProbability&&!first.tacticalProbability.applicable?'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어.':first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?.applied?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
+  policy.textContent=(first.megaTimingConsidered?'메가진화 즉시 실행과 보류를 별도 행동으로 비교했어. ':'')+
+   (first.tacticalProbability?.applied?'첫 턴은 반동·랭크업·앙코르를 포함해 확률을 합산하고, 승률 하한을 기준으로 선택했어.':first.tacticalProbability&&!first.tacticalProbability.applicable?'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어.':first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?.applied?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
   if(first.verification?.candidates?.length){
@@ -430,14 +432,16 @@ function renderResult(raw,a,b){
  }else matrixBox.textContent='';
  function decisionLabel(sample,action){
   const i=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
-  return korean('moves',sample.moves[i])||sample.moves[i]||action;
+  return (korean('moves',sample.moves[i])||sample.moves[i]||action)+
+   (String(action).endsWith(' mega')?' (메가진화)':'');
  }
 
  const cfInfo=document.getElementById('counterfactual-info');
  const cfLines=document.getElementById('counterfactual-lines');
  const moveLabel=(sample,action)=>{
   const ix=Number(String(action||'').match(/move (\d+)/)?.[1]||0)-1;
-  return ix>=0?(korean('moves',sample.moves[ix])||sample.moves[ix]||'기술 미상'):'기술 미상';
+  return ix>=0?(korean('moves',sample.moves[ix])||sample.moves[ix]||'기술 미상')+
+    (String(action).endsWith(' mega')?' (메가진화)':''):'기술 미상';
  };
  const reviews=(raw.decisionDetails||[]).filter(d=>d.counterfactual);
  if(reviews.length){
