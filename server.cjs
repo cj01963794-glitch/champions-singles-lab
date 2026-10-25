@@ -508,6 +508,31 @@ function continuationMove(B,side){
  // Terminal progress outranks indiscriminate repeat boosting. In the old
  // sampled continuation, Leaf Blade -> Swords Dance and Swords Dance ->
  // Swords Dance incorrectly erased legitimate 2HKO/setup->KO lines.
+ // A Focus Sash survival (or any near-KO) is often decided by priority:
+ // a slower attacker can finish with a priority move before a faster foe
+ // lands its second hit. A large projected hit is NOT a better finisher if
+ // the enemy moves first and knocks us out. Prefer *only* priority attacks
+ // whose conservative damage exceeds the target's remaining actual HP;
+ // never use this rule against a faster priority tier or immunity.
+ const foeFast=typeof p.getStat==='function' && typeof foe.getStat==='function' &&
+  foe.getStat('spe')>=p.getStat('spe');
+ if(foeFast){
+  const guaranteedPriority=actions.filter(action=>{
+   const move=B.dex.moves.get(actionInfo(B,side,action).id);
+   if(!move.exists||move.category==='Status'||move.priority<=0 ||
+    provablyImmuneAttack(B,side,action))return false;
+   // The approximation is deliberately discounted, and the enemy is
+   // already low: this cannot confuse breaking Sash with a real KO.
+   return estimatedDirectDamage(B,side,action)>0 &&
+    estimatedDirectDamage(B,side,action)*0.75>=foe.hp;
+  }).sort((a,b)=>{
+   const am=B.dex.moves.get(actionInfo(B,side,a).id),bm=B.dex.moves.get(actionInfo(B,side,b).id);
+   return (bm.priority||0)-(am.priority||0)||
+    (typeof bm.accuracy==='number'?bm.accuracy:100)-
+    (typeof am.accuracy==='number'?am.accuracy:100);
+  });
+  if(guaranteedPriority.length)return guaranteedPriority[0];
+ }
  const directAttack=usefulAttack(B,side,actions);
  const projected=estimatedDirectDamage(B,side,directAttack);
  if(directAttack && projected>0 && projected>=0.78*foe.hp)return directAttack;
