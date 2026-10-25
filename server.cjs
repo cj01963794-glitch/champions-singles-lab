@@ -137,6 +137,28 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
+
+ // Diagnostic: candidate move outcomes on a representative Primarina/Cinderace matchup.
+ try{
+   const prima={species:'Primarina',name:'누리레느 테스트',nature:'Modest',item:'Sitrus Berry',ability:'Torrent',moves:['Moonblast','Sparkling Aria','Aqua Jet','Encore'],evs:{hp:32,spa:32,spe:2}};
+   const cinder={species:'Cinderace',name:'에이스번 테스트',nature:'Jolly',item:'Wide Lens',ability:'Libero',moves:['Gunk Shot','U-turn','Pyro Ball','High Jump Kick'],evs:{hp:2,atk:32,spe:32}};
+   const base=battle(prima,cinder);
+   const l=legal(base,'p1'),r=legal(base,'p2'),snapshot=JSON.stringify(base.toJSON());
+   let grid=[];
+   for(const left of l){
+     let row=[];
+     for(const right of r){
+       const tmp=Sim.Battle.fromJSON(snapshot);
+       tmp.makeChoices(left,right);
+       const p1=tmp.getSide('p1').pokemon[0],p2=tmp.getSide('p2').pokemon[0];
+       row.push({choice:right,move:cinder.moves[Number(right.match(/move (\d+)/)?.[1]||1)-1],value:score(tmp),hp1:p1.hp,hp2:p2.hp,ended:tmp.ended,winner:tmp.winner,events:tmp.log.filter(x=>x.startsWith('|move|')||x.startsWith('|-miss|')||x.startsWith('|-damage|')||x.startsWith('|-ability|')||x.startsWith('|-start|')).slice(-14)});
+     }
+     grid.push({against:prima.moves[Number(left.match(/move (\d+)/)?.[1]||1)-1],row});
+   }
+   console.log('[CINDER-PRIMARINA-GRID]',JSON.stringify(grid));
+   const duel=simulation(prima,cinder,3);console.log('[CINDER-PRIMARINA-CHOICE]',JSON.stringify({choices:duel.choices,events:duel.log.filter(x=>x.startsWith('|move|')||x.startsWith('|-miss|')||x.startsWith('|-damage|')).slice(0,18)}))
+ }catch(e){console.error('[CINDER-PRIMARINA-ERROR]',e.stack||e)}
+
  const check=(path,method='GET',payload)=>new Promise(resolve=>{
   const req=http.request({hostname:'127.0.0.1',port,path,method,headers:{'content-type':'application/json'}},res=>{
     let body='';res.on('data',c=>body+=c);res.on('end',()=>{
