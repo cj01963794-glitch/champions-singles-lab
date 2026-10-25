@@ -868,6 +868,21 @@ server.listen(port,'0.0.0.0',()=>{
    const audit=probabilisticAttackSearch(B,chosen,0,Date.now()+12000);
    console.log('[PROBABILISTIC-REGRESSION]',JSON.stringify({elapsed:Date.now()-start,
     root:root?{left:root.left,right:root.right}:null,audit}));
+   const trace=[];
+   for(let n=0;n<6;n++)for(const lead of ['move 1 mega','move 2 mega']){
+    const b=battle(sal,prim);b.resetRNG(verificationSeed(0,n,71));
+    const moves=[['first',lead,'move 1']];b.makeChoices(lead,'move 1');
+    for(let k=1;k<=4&&!b.ended;k++){
+     const p=evalOneTurn(b,k,1,Date.now()+3500,2);
+     if(!p?.left||!p?.right)break;
+     moves.push([k,p.left,p.right]);b.makeChoices(p.left,p.right);
+    }
+    const a=b.getSide('p1').pokemon[0],q=b.getSide('p2').pokemon[0];
+    trace.push({n,lead,moves,winner:b.winner||'',hp:[a.hp,q.hp],
+     events:b.log.filter(x=>/^\|move\||^\|-damage\||^\|-heal\||^\|-fail\||^\|-miss\|/.test(x)).slice(0,15)});
+   }
+   console.log('[PROBABILISTIC-FOLLOWUPS]',JSON.stringify(trace));
+
    const mint={species:'Gholdengo',nature:'Modest',ability:'Good as Gold',item:'Air Balloon',
     evs:{hp:32,spa:32,spe:2},moves:['Make It Rain','Dazzling Gleam','Shadow Ball','Nasty Plot']};
    const meta={species:'Metagross-Mega',nature:'Adamant',ability:'Tough Claws',
