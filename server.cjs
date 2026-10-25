@@ -77,7 +77,7 @@ const server=http.createServer(async(req,res)=>{
  try{
   if((pathname==='/'||pathname==='/index.html'||!pathname.startsWith('/api/'))&&req.method==='GET'){
    if(pathname==='/favicon.ico'){res.writeHead(204);return res.end()}
-   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(page());
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(require('node:fs').readFileSync(require('node:path').join(__dirname,'index.html'),'utf8'));
   }
   if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod});
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
