@@ -139,14 +139,22 @@ server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
  const check=(path,method='GET',payload)=>new Promise(resolve=>{
   const req=http.request({hostname:'127.0.0.1',port,path,method,headers:{'content-type':'application/json'}},res=>{
-    let body='';res.on('data',c=>body+=c);res.on('end',()=>resolve({status:res.statusCode,type:res.headers['content-type'],body:body.slice(0,230)}));
+    let body='';res.on('data',c=>body+=c);res.on('end',()=>{
+      let data={};try{data=JSON.parse(body)}catch(e){}
+      const turns=Array.isArray(data.log)?data.log.filter(v=>v.startsWith('|turn|')).map(v=>Number(v.slice(6))):[];
+      resolve({status:res.statusCode,type:res.headers['content-type'],body:body.slice(0,160),turns:data.turns,stopReason:data.stopReason,firstTurn:turns[0],lastTurn:turns.at(-1),loggedTurnCount:turns.length});
+    });
   });req.on('error',e=>resolve({error:e.message}));if(payload)req.write(JSON.stringify(payload));req.end();
  });
  (async()=>{
   for(const [name,pth,met,data] of [
     ['home','/?source=smoketest','GET'],
     ['health','/api/health','GET'],
-    ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}]
+    ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}],
+    ['long-battle','/api/duel','POST',{
+      a:{species:'Magikarp',name:'테스트 A',nature:'Jolly',ability:'Swift Swim',moves:['Splash']},
+      b:{species:'Magikarp',name:'테스트 B',nature:'Jolly',ability:'Swift Swim',moves:['Splash']},maxTurns:25
+    }]
   ]){try{let r=await check(pth,met,data);console.log('[SMOKETEST]',name,JSON.stringify(r))}catch(e){console.error('[SMOKETEST_FAIL]',name,e.stack||e)}}
  })();
 });
