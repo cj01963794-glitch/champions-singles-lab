@@ -1,6 +1,7 @@
 'use strict';
 const {battle,legal,simulation,estimatedDirectDamage,Sim}=require('../server.cjs');
 const seed='1579,3137,6027,8191';
+const verifyLive=process.argv.includes('--verify-live');
 const d={species:'Dragonite-Mega',name:'조심CS메망나',nature:'Modest',item:'Dragoninite',
  ability:'Multiscale',preMegaAbility:'Multiscale',
  moves:['Draco Meteor','Thunderbolt','Flamethrower','Extreme Speed'],
@@ -52,15 +53,30 @@ function scriptedOpener(dside,dAction,gAction,follow=2){
 (async()=>{
  for(const [label,a,b]of cases){
   const dside=label.endsWith('left')?'p1':'p2';
-  console.log('[GARCHOMP-ROOT]',label,JSON.stringify(root(a,b)));
+  if(!verifyLive)console.log('[GARCHOMP-ROOT]',label,JSON.stringify(root(a,b)));
   const B=battle(a,b,seed);
-  if(dside==='p1')for(const action of ['move 1','move 1 mega','move 3','move 3 mega']){
+  if(!verifyLive&&dside==='p1')for(const action of ['move 1','move 1 mega','move 3','move 3 mega']){
    console.log('[GARCHOMP-SCRIPT]',action,JSON.stringify(scriptedOpener(dside,action,'move 2',2)));
   }
-  console.log('[GARCHOMP-LOCAL]',label,JSON.stringify(summarize(simulation(a,b,4,seed),dside)).slice(0,20000));
-  for(let n=0;n<2;n++){
-   try{console.log('[GARCHOMP-LIVE]',label,JSON.stringify(summarize(await live(a,b),dside)).slice(0,20000));break}
-   catch(e){console.log('[GARCHOMP-LIVE-ERROR]',label,n,String(e));}
+  if(!verifyLive)console.log('[GARCHOMP-LOCAL]',label,JSON.stringify(summarize(simulation(a,b,4,seed),dside)).slice(0,20000));
+  let success=false;
+  for(let n=0;n<3;n++){
+   try{
+    const result=await live(a,b);
+    console.log('[GARCHOMP-LIVE]',label,JSON.stringify(summarize(result,dside)).slice(0,20000));
+    if(verifyLive){
+     const ix=dside==='p1'?0:1;
+     const first=result.choices?.[0]?.[ix];
+     if(first!=='move 1 mega')throw Error('Expected immediate Mega Draco Meteor, got '+first);
+     const next=result.choices?.[1]?.[ix];
+     if(next && next!=='move 4')throw Error('Expected Extreme Speed after Sash, got '+next);
+     if(!result.decisionDetails?.[0]?.megaTimingAudit?.applied)
+      throw Error('Mega timing rollout was not applied');
+    }
+    console.log('[GARCHOMP-LIVE-VERIFIED]',label,'Mega Draco first, priority follow-up');
+    success=true;break;
+   }catch(e){console.log('[GARCHOMP-LIVE-ERROR]',label,n,String(e));}
   }
+  if(verifyLive&&!success)process.exitCode=1;
  }
 })();
