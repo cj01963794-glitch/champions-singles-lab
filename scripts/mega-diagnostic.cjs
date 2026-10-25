@@ -31,12 +31,21 @@ const summarize=r=>{
  }
  for(const [label,a,b] of cases.slice(0,verifyLive?2:4)){
   try{
-   const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),55000);
-   const res=await fetch('https://champions-singles-lab.onrender.com/api/duel',{
-    method:'POST',headers:{'content-type':'application/json','cache-control':'no-cache'},
-    body:JSON.stringify({a,b,maxTurns:3,rngSeed:seed}),signal:ctl.signal});
-   clearTimeout(t);
-   const data=await res.json();
+   let res,data;
+   for(let attempt=0;attempt<2;attempt++){
+    const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),55000);
+    try{
+     res=await fetch('https://champions-singles-lab.onrender.com/api/duel',{
+      method:'POST',headers:{'content-type':'application/json','cache-control':'no-cache'},
+      body:JSON.stringify({a,b,maxTurns:3,rngSeed:seed}),signal:ctl.signal});
+     data=JSON.parse(await res.text());
+     break;
+    }catch(e){
+     if(attempt===1)throw e;
+     console.log('[DIAG-LIVE-RETRY]',label,
+      'retrying truncated/invalid Render response:',String(e.message||e));
+    }finally{clearTimeout(t)}
+   }
    console.log('[DIAG-LIVE]',label,res.status,JSON.stringify(summarize(data)));
    if(verifyLive){
     const scChoice=label.endsWith('-right')?data.choices?.[0]?.[1]:data.choices?.[0]?.[0];
