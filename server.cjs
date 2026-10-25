@@ -69,7 +69,27 @@ document.getElementById('run').onclick=async()=>{const out=document.getElementBy
 let catalog;
 document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await fetch('/api/catalog')).json();const q=e.target.value.toLowerCase();document.getElementById('matches').textContent=q.length<2?'':JSON.stringify(Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.filter(x=>x.toLowerCase().includes(q)).slice(0,12)])),null,2)};
 </script></body></html>`}
-const catalog={species:dex.species.all().filter(x=>x.exists).map(x=>x.name),moves:dex.moves.all().filter(x=>x.exists).map(x=>x.name),items:dex.items.all().filter(x=>x.exists).map(x=>x.name)};
+
+const koData=dex.loadTextData('ko');
+const koName=(type,obj)=>koData[type]?.[obj.id]?.name||obj.name;
+const abilityList=(s)=>{
+ const initial=(s.isMega && s.baseSpecies)?dex.species.get(s.baseSpecies):s;
+ return [...new Set(Object.values(initial.abilities||{}))].filter(Boolean).map(en=>({
+   id:dex.abilities.get(en).id,en:dex.abilities.get(en).name,
+   ko:koName('Abilities',dex.abilities.get(en))
+ }));
+};
+const catalog={
+ species:dex.species.all().filter(x=>x.exists).map(x=>({
+   id:x.id,en:x.name,ko:koName('Pokedex',x),
+   abilities:abilityList(x),megaItem:x.isMega?(x.requiredItem||x.requiredItems?.[0]||''):''
+ })),
+ moves:dex.moves.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Moves',x)})),
+ items:dex.items.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Items',x)})),
+ abilities:dex.abilities.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Abilities',x)}))
+};
+console.log('[CATALOG]',Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.length])));
+
 const port=Number(process.env.PORT)||10000;
 const server=http.createServer(async(req,res)=>{
  const pathname=new URL(req.url||'/', 'http://localhost').pathname.replace(/\/+$/, '')||'/';
