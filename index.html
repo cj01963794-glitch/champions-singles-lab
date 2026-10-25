@@ -380,6 +380,19 @@ function renderResult(raw,a,b){
     '. 상대 첫 행동을 고정하고 2턴까지 반복한 관측 승리율이야. 실제 확정 승률은 아니야.'
     +(v.ambiguous?' (차이가 작아 첫 턴 피해를 보조 기준으로 적용)':'');
   }
+  const audits=(raw.decisionDetails||[]).filter(d=>d.attackAudit?.candidates?.length);
+  if(audits.length){
+   policy.textContent+=' · 확률 수순 재검증: '+audits.map(d=>{
+    const v=d.attackAudit,sample=v.side==='p1'?a:b;
+    const comparison=v.candidates.map(c=>
+     decision(sample,c.action)+' 승리 '+c.winPct+'%'+
+      (c.unresolvedPct?' / 미종료 '+c.unresolvedPct+'%':'')
+    ).join(', ');
+    return d.turn+'턴 '+comparison+' ('+v.samples+'회씩, 상대 첫 기술 고정)';
+   }).join(' · ')+'. 난수 반복 시험에서 관측한 결과이며 정확한 수학적 승률은 아니야.';
+   if(audits.some(d=>d.attackAudit.ambiguous))
+    policy.textContent+=' 통계적 차이가 불충분해 기존 판단을 유지했어.';
+  }
   const longRoutes=(raw.decisionDetails||[]).filter(d=>d.longPlan?.chosen);
   if(longRoutes.length){
    const path=longRoutes.map(d=>{
