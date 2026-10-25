@@ -338,9 +338,34 @@ function simulation(a,b,depth=120,rngSeed){
    if(!shallow){stopReason='compute_timeout';break}
    choice={left:shallow.left,right:shallow.right};
   }
+  let counterfactual;
+  if(t<6 && depthUsed===2 && choice.matrix && choice.L?.includes(choice.left) && choice.R?.includes(choice.right)){
+   const i=choice.L.indexOf(choice.left),j=choice.R.indexOf(choice.right);
+   const row=choice.matrix[i],alternatives=choice.R.map((action,index)=>({action,index,value:row[index]}))
+     .sort((a,b)=>a.value-b.value);
+   const reactive=alternatives[0];
+   if(reactive.action!==choice.right){
+    const threatIndex=choice.matrix.reduce((best,r,k)=>r[j]>choice.matrix[best][j]?k:best,0);
+    const reactiveIndex=reactive.index;
+    const threatIfReactIndex=choice.matrix.reduce((best,r,k)=>r[reactiveIndex]>choice.matrix[best][reactiveIndex]?k:best,0);
+    counterfactual={
+     side:'p2',bestAgainstChosen:reactive.action,
+     relativeScoreGain:Math.round(choice.matrix[i][j]-reactive.value),
+     opponentThreatIfReactive:choice.L[threatIfReactIndex],
+     currentWorstThreat:choice.L[threatIndex]
+    };
+   }
+   // Same conditional view for p1, which maximizes evaluation.
+   const col=choice.matrix.map(row=>row[j]);
+   const bestIndex=col.indexOf(Math.max(...col));
+   if(!counterfactual && choice.L[bestIndex]!==choice.left)
+    counterfactual={side:'p1',bestAgainstChosen:choice.L[bestIndex],
+     relativeScoreGain:Math.round(col[bestIndex]-col[i])};
+  }
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
-  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,...(verification?{verification}: {})});
+  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
+   ...(counterfactual?{counterfactual}:{}),...(verification?{verification}: {})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
@@ -487,7 +512,7 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
- if(true){
+ if(process.env.RUN_MIMIKYU_CORVIKNIGHT_DIAGNOSTIC==='1'){
   try{
    const m={species:'Mimikyu',name:'고집HA따라큐',nature:'Adamant',ability:'Disguise',item:'Scope Lens',
     evs:{hp:32,atk:32,spe:2},moves:['Swords Dance','Shadow Claw','Play Rough','Shadow Sneak']};
