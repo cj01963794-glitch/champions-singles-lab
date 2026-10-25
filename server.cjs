@@ -715,28 +715,19 @@ server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
  if(true){
-  try{
-   const m={species:'Mimikyu',name:'고집HA따라큐',nature:'Adamant',ability:'Disguise',item:'Scope Lens',
-    evs:{hp:32,atk:32,spe:2},moves:['Swords Dance','Shadow Claw','Play Rough','Shadow Sneak']};
-   const c={species:'Corviknight',name:'대담HB아머까오',nature:'Bold',ability:'Pressure',item:'Rocky Helmet',
-    evs:{hp:32,def:32,spe:2},moves:['Iron Defense','Roost','Body Press','U-turn']};
-   const B=battle(m,c);
-   const rows=[];
-   for(let t=0;t<3;t++){
-    const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
-    const shallow=evalOneTurn(B,t,3,Date.now()+4000);
-    const deep=evalTwoTurn(B,t,Date.now()+5500);
-    const forecast=deep?defensivePlanSearch(B,'p2',deep,t,Date.now()+5000):null;
-    rows.push({forecast,turn:t+1,corvHP:b.hp,corvMax:b.maxhp,corvBoost:b.boosts.def,
-      mimikyuHP:a.hp,mimikyuAtk:a.boosts.atk,
-      shallow:shallow?{left:shallow.left,right:shallow.right,matrix:shallow.matrix?.map(x=>x.map(y=>Math.round(y)))}:null,
-      deep:deep?{left:deep.left,right:deep.right,matrix:deep.matrix?.map(x=>x.map(y=>Math.round(y)))}:null});
-    if(B.ended)break;
-    B.makeChoices('move 1',t===0?'move 1': 'move 2');
-   }
-   console.log('[MIMIKYU-CORVIKNIGHT-REGRESSION]',JSON.stringify(rows));
-  }catch(e){console.error('[MIMIKYU-CORVIKNIGHT-ERROR]',e.stack||e)}
- }
+ try{
+  const m={species:'Mimikyu',name:'고집HA따라큐',nature:'Adamant',ability:'Disguise',item:'Scope Lens',
+   evs:{hp:32,atk:32,spe:2},moves:['Swords Dance','Shadow Claw','Play Rough','Shadow Sneak']};
+  const c={species:'Corviknight',name:'대담HB아머까오',nature:'Bold',ability:'Pressure',item:'Rocky Helmet',
+   evs:{hp:32,def:32,spe:2},moves:['Iron Defense','Roost','Body Press','U-turn']};
+  const start=Date.now(),run=simulation(m,c,8);
+  console.log('[DEFENSIVE-ROUTE-SMOKE]',JSON.stringify({elapsed:Date.now()-start,
+   turns:run.turns,winner:run.winner,stopReason:run.stopReason,
+   decisions:run.decisionDetails.map(d=>({turn:d.turn,left:d.left,right:d.right,
+    plan:d.longPlan?{chosen:d.longPlan.chosen,reason:d.longPlan.reason,
+     candidates:d.longPlan.candidates?.map(x=>({action:x.action,value:Math.round(x.value)}))}:null}))}));
+ }catch(e){console.error('[DEFENSIVE-ROUTE-ERROR]',e.stack||e)}
+}
 
 
 if(process.env.RUN_META_GOLD_DIAGNOSTIC==='1'){
