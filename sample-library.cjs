@@ -3,6 +3,7 @@ const crypto=require('node:crypto');
 
 const BRANCH='sample-library';
 const PATH='data/samples.enc.json';
+const EXPORT_PATH='data/samples-export.json';
 const REPOSITORY='cj01963794-glitch/champions-singles-lab';
 class LibraryError extends Error{
  constructor(message,status=400){super(message);this.status=status}
@@ -46,8 +47,8 @@ function safeRepo(repo){
  if(!/^[a-z\d_.-]+\/[a-z\d_.-]+$/i.test(repo))throw new LibraryError('저장소 설정이 올바르지 않아.',503);
  return repo;
 }
-async function githubFetch(cfg,method,payload,client=globalThis.fetch){
- const path='https://api.github.com/repos/'+safeRepo(cfg.repo)+'/contents/'+PATH;
+async function githubFetch(cfg,method,payload,client=globalThis.fetch,filePath=PATH){
+ const path='https://api.github.com/repos/'+safeRepo(cfg.repo)+'/contents/'+filePath;
  const url=method==='GET'?path+'?ref='+encodeURIComponent(cfg.branch):path;
  const res=await client(url,{method,headers:{
   'Accept':'application/vnd.github+json','Authorization':'Bearer '+cfg.token,
@@ -66,6 +67,57 @@ async function readItems(cfg,client){
  try{blob=JSON.parse(Buffer.from(r.data.content.replace(/\s/g,''),'base64').toString('utf8'))}
  catch(e){throw new LibraryError('보관함 파일이 손상되었거나 형식이 맞지 않아.',500)}
  return {items:decrypt(blob,cfg.password),sha:r.data.sha};
+}
+// Plaintext snapshots go to sample-library, not main: no redeploy per save.
+function exportDocument(items){
+ return JSON.stringify({
+  schemaVersion:1,generatedAt:new Date().toISOString(),
+  count:items.length,
+  samples:items.map(({id,updatedAt,sample})=>({
+   id,updatedAt,name:sample.name,species:sample.species,nature:sample.nature,
+   item:sample.item,ability:sample.ability,
+   ...(sample.preMegaAbility?{preMegaAbility:sample.preMegaAbility}:{}),
+   moves:[...sample.moves],
+   evs:Object.fromEntries(['hp','atk','def','spa','spd','spe'].map(k=>
+    [k,Number(sample.evs?.[k]||0)]))
+  }))
+ },null,2)+'\n';
+}
+function exportUrl(cfg){
+ return 'https://github.com/'+safeRepo(cfg.repo)+'/blob/'+encodeURIComponent(cfg.branch)+'/'+EXPORT_PATH;
+}
+async function exportState(cfg,client){
+ const r=await githubFetch(cfg,'GET',null,client,EXPORT_PATH);
+ if(r.status===404)return {enabled:false,sha:null,url:exportUrl(cfg)};
+ if(!r.ok)throw new LibraryError('GitHub 내보내기 파일을 조회하지 못했어. ('+r.status+')',502);
+ if(!r.data.sha)throw new LibraryError('GitHub 내보내기 파일의 버전 정보가 없어.',502);
+ return {enabled:true,sha:r.data.sha,url:exportUrl(cfg)};
+}
+async function publishExport(cfg,client,items){
+ const content=Buffer.from(exportDocument(items),'utf8').toString('base64');
+ for(let retry=0;retry<4;retry++){
+  const current=await exportState(cfg,client);
+  const result=await githubFetch(cfg,'PUT',{
+   message:'Sync readable Pokémon sample export',branch:cfg.branch,
+   content,...(current.sha?{sha:current.sha}:{})
+  },client,EXPORT_PATH);
+  if(result.ok)return {enabled:true,synced:true,url:current.url,count:items.length};
+  if((result.status===409||result.status===422)&&retry<3)continue;
+  throw new LibraryError('GitHub JSON 내보내기를 갱신하지 못했어. ('+result.status+')',502);
+ }
+ throw new LibraryError('내보내기 충돌이 발생했어. 다시 시도해 줘.',409);
+}
+async function publishSamples({env=process.env,client=globalThis.fetch}={}){
+ const cfg=settings(env);
+ if(!cfg.enabled)throw new LibraryError('영구 저장소 설정이 완료되지 않았어.',503);
+ const {items}=await readItems(cfg,client);
+ return {items,exportSync:await publishExport(cfg,client,items)};
+}
+async function exportStatus(cfg,client){
+ try{
+  const s=await exportState(cfg,client);
+  return {enabled:s.enabled,url:s.enabled?s.url:null};
+ }catch(e){return {enabled:false,unknown:true}}
 }
 function sanitize(sample,validate){
  if(!sample||typeof sample!=='object'||Array.isArray(sample))throw new LibraryError('샘플 정보가 올바르지 않아.');
@@ -88,12 +140,13 @@ async function listSamples({env=process.env,client=globalThis.fetch}={}){
  const cfg=settings(env);
  if(!cfg.enabled)throw new LibraryError('영구 저장이 아직 설정되지 않았어. Render에 SAMPLES_GITHUB_TOKEN과 SAMPLES_ACCESS_KEY를 등록해 줘.',503);
  const result=await readItems(cfg,client);
- return {items:result.items};
+ return {items:result.items,exportSync:await exportStatus(cfg,client)};
 }
 async function mutateSamples(payload,{env=process.env,client=globalThis.fetch,validate}={}){
  const cfg=settings(env);
  if(!cfg.enabled)throw new LibraryError('영구 저장소 설정이 완료되지 않았어.',503);
  if(!validate)throw new LibraryError('샘플 검증기를 사용할 수 없어.',500);
+ if(payload?.action==='export')return publishSamples({env,client});
  if(!['save','delete'].includes(payload?.action))throw new LibraryError('지원하지 않는 보관함 동작이야.');
  const cleaned=payload.action==='save'?sanitize(payload.sample,validate):null;
  const targetId=String(payload.id||'');
@@ -116,10 +169,25 @@ async function mutateSamples(payload,{env=process.env,client=globalThis.fetch,va
   const encoded=Buffer.from(file,'utf8').toString('base64');
   const result=await githubFetch(cfg,'PUT',{message:'Update encrypted Pokémon sample library',
    content:encoded,branch:cfg.branch,...(sha?{sha}:{})},client);
-  if(result.ok)return {items:next,id:changedId};
+  if(result.ok){
+   // A saved vault update must not be rolled back if public sync fails.
+   let exportSync;
+   try{
+    const state=await exportState(cfg,client);
+    if(!state.enabled)exportSync={enabled:false,url:null};
+    else{
+     const latest=await readItems(cfg,client);
+     exportSync=await publishExport(cfg,client,latest.items);
+    }
+   }catch(e){
+    exportSync={enabled:true,synced:false,
+     error:e.message||'GitHub JSON 동기화 실패',url:exportUrl(cfg)};
+   }
+   return {items:next,id:changedId,exportSync};
+  }
   if((result.status===409||result.status===422)&&attempt<2)continue;
   throw new LibraryError('GitHub 저장에 실패했어. 저장소 토큰의 Contents 읽기/쓰기 권한을 확인해 줘. ('+result.status+')',502);
  }
  throw new LibraryError('동시에 변경된 샘플이 있어. 보관함을 다시 열어 줘.',409);
 }
-module.exports={settings,authorized,encrypt,decrypt,sanitize,listSamples,mutateSamples,LibraryError};
+module.exports={settings,authorized,encrypt,decrypt,sanitize,listSamples,mutateSamples,publishSamples,exportDocument,exportUrl,LibraryError};
