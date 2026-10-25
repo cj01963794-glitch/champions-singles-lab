@@ -498,6 +498,8 @@ if(true){
   const L=legal(B,'p1'),R=legal(B,'p2');
   const shallow=evalOneTurn(B,0,4,Date.now()+4000);
   const deep=evalTwoTurn(B,0,Date.now()+13000);
+  const checked=deep?verifyChanceOutcomes(B,deep,0,Date.now()+9000):null;
+  console.log('[META-GOLD-WINRATE-CHECK]',JSON.stringify(checked));
   const summaries=(d)=>d?{
    firstLeft:d.left,firstRight:d.right,
    rows:d.matrix?.map((row,i)=>({p1:L[i],vsR:row.map((v,j)=>({p2:R[j],v:Math.round(v)}))})),
