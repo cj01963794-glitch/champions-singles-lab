@@ -124,22 +124,38 @@ document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await f
 </script></body></html>`}
 
 const koData=dex.loadTextData('ko');
+const nativeBaseName=(en)=>{
+ const base=dex.species.get(en);
+ const name=koData.Pokedex?.[base.id]?.name;
+ return (name&&name!==base.name)?name:null;
+};
+const megaSuffix=(forme)=>{
+ const m=/^Mega(?:-([XYZ]))?$/i.exec(forme||'');
+ return m?(m[1]||''):'';
+};
 const koName=(type,obj)=>{
  const official=koData[type]?.[obj.id]?.name;
  if(official && official!==obj.name)return official;
- // New Mega-Z species and stones are missing Korean strings in this
- // Showdown snapshot. Compose a label from the translated base species.
- if(type==='Pokedex'&&obj.forme==='Mega-Z'&&obj.baseSpecies){
-  const base=dex.species.get(obj.baseSpecies);
-  const translated=koData.Pokedex?.[base.id]?.name;
-  if(translated)return '메가'+translated+'Z';
+ // All Mega formes (Mega, Mega-X/Y/Z) share a compositional Korean
+ // naming convention. The official translation always takes precedence.
+ if(type==='Pokedex'&&obj.isMega&&obj.baseSpecies){
+  const base=nativeBaseName(obj.baseSpecies);
+  if(base!==null&&/^Mega(?:-[XYZ])?$/i.test(obj.forme||'')){
+   return '메가'+base+megaSuffix(obj.forme);
+  }
  }
- if(type==='Items'&&obj.megaStone&&obj.name.endsWith(' Z')){
-  const target=Object.values(obj.megaStone);
-  if(target.some(name=>name.endsWith('-Mega-Z'))){
-   const base=Object.keys(obj.megaStone)[0];
-   const translated=koData.Pokedex?.[dex.species.get(base).id]?.name;
-   if(translated)return translated+'나이트Z';
+ // The Korean Showdown text package leaves many Mega stones, including
+ // older ones, untranslated. Derive them from actual engine item.megaStone
+ // metadata rather than attempting to parse the English stone name.
+ if(type==='Items'&&obj.megaStone&&typeof obj.megaStone==='object'){
+  const pairs=Object.entries(obj.megaStone);
+  if(pairs.length===1){
+   const [englishBase,targetForm]=pairs[0];
+   const base=nativeBaseName(englishBase);
+   const target=dex.species.get(targetForm);
+   if(base!==null&&target.exists&&target.isMega&&/^Mega(?:-[XYZ])?$/i.test(target.forme||'')){
+    return base+'나이트'+megaSuffix(target.forme);
+   }
   }
  }
  return official||obj.name;
@@ -160,6 +176,32 @@ const catalog={
  abilities:dex.abilities.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Abilities',x)}))
 };
 console.log('[CATALOG]',Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.length])));
+const translationAudit=(()=>{
+ const allMega=dex.species.all().filter(x=>x.exists&&x.isMega);
+ const allStones=dex.items.all().filter(x=>x.exists&&x.megaStone&&Object.keys(x.megaStone).length>0);
+ const uncapturedSpecies=allMega.filter(x=>!/[가-힣]/.test(koName('Pokedex',x)));
+ const uncapturedStones=allStones.filter(x=>!/[가-힣]/.test(koName('Items',x)));
+ const generatedSpecies=allMega.filter(x=>!koData.Pokedex?.[x.id]?.name&&/[가-힣]/.test(koName('Pokedex',x)));
+ const generatedStones=allStones.filter(x=>!koData.Items?.[x.id]?.name&&/[가-힣]/.test(koName('Items',x)));
+ return {
+  totalMegaForms:allMega.length,totalMegaStones:allStones.length,
+  generatedSpecies:generatedSpecies.length,generatedStones:generatedStones.length,
+  untranslatedSpecies:uncapturedSpecies.map(x=>x.name),
+  untranslatedStones:uncapturedStones.map(x=>x.name),
+  sample:{
+   delphox:koName('Pokedex',dex.species.get('Delphox-Mega')),
+   delphoxite:koName('Items',dex.items.get('Delphoxite')),
+   chandelure:koName('Pokedex',dex.species.get('Chandelure-Mega')),
+   chandelurite:koName('Items',dex.items.get('Chandelurite')),
+   garchompZ:koName('Pokedex',dex.species.get('Garchomp-Mega-Z')),
+   garchompiteZ:koName('Items',dex.items.get('Garchompite Z')),
+   charizardX:koName('Pokedex',dex.species.get('Charizard-Mega-X')),
+   charizarditeX:koName('Items',dex.items.get('Charizardite X'))
+  }
+ };
+})();
+console.log('[TRANSLATION-AUDIT]',JSON.stringify(translationAudit));
+
 console.log('[KO-CHECK]',JSON.stringify({
  garchomp:catalog.species.find(x=>x.en==='Garchomp'),
  megametagross:catalog.species.find(x=>x.en==='Metagross-Mega'),
