@@ -45,3 +45,7 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: npm test
+      - name: Compare live and local Mega Sceptile first-action decisions
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/mega-diagnostic.cjs
