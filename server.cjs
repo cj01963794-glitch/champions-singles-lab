@@ -948,6 +948,19 @@ server.listen(port,'0.0.0.0',()=>{
     evs:{hp:27,atk:9,spe:30},moves:['Giga Impact','Earthquake']};
    const prim={species:'Primarina',nature:'Modest',ability:'Torrent',item:'Sitrus Berry',
     evs:{hp:32,def:20,spa:14},moves:['Moonblast','Aqua Jet']};
+   const t=Date.now(),r=simulation(sal,prim,3,'1579,3137,6027,8191');
+   console.log('[PROBABILITY-LIVE-REGRESSION]',JSON.stringify({ms:Date.now()-t,
+    first:r.decisionDetails[0],turns:r.turns,choices:r.choices,
+    winner:r.winner,stopReason:r.stopReason}));
+  }catch(e){console.error('[PROBABILITY-LIVE-ERROR]',e.stack||e)}
+ }
+
+ if(process.env.RUN_PROBABILITY_DIAGNOSTIC==='1'){
+  try{
+   const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaAbility:'Intimidate',item:'Salamencite',
+    evs:{hp:27,atk:9,spe:30},moves:['Giga Impact','Earthquake']};
+   const prim={species:'Primarina',nature:'Modest',ability:'Torrent',item:'Sitrus Berry',
+    evs:{hp:32,def:20,spa:14},moves:['Moonblast','Aqua Jet']};
    const B=battle(sal,prim);
    const root=evalTwoTurn(B,0,Date.now()+6500);
    const chosen=root||{left:'move 1 mega',right:'move 1'};
