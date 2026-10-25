@@ -122,14 +122,10 @@ test('Sceptile can select Leaf Blade instead of blindly boosting again',()=>{
 test('Sceptile vs Sitrus Primarina avoids gratuitous opening Rock Slide',()=>{
  const pp={...prim,item:'Sitrus Berry'};
  const result=simulation(sceptile,pp,4,'1579,3137,6027,8191');
- console.log('[SCEPTILE-POST-FIX]',JSON.stringify({choices:result.choices,
-  winner:result.winner,
-  samples:result.decisionDetails[0]?.megaTimingAudit?.samples,
-  candidateWorstCases:result.decisionDetails[0]?.megaTimingAudit?.candidates,
-  tie:result.decisionDetails[0]?.megaTimingAudit?.closeDamageTieBreak}));
- assert.ok(result.choices.length>0);
- assert.ok(['move 1','move 2','move 1 mega','move 2 mega'].includes(result.choices[0][0]),
-  'root must favor Leaf Blade or Swords Dance over arbitrary Rock Slide');
+ assert.equal(result.choices[0][0],'move 2',
+  'Sceptile must retain its Grass-only typing for its initial Leaf Blade');
+ assert.equal(result.choices[1]?.[0],'move 2 mega',
+  'after the first hit, Sceptile can choose to Mega evolve on the finishing Leaf Blade');
  assert.equal(result.decisionDetails[0].megaTimingConsidered,true);
  assert.ok(result.decisionDetails[0].megaTimingAudit?.samples>=24);
 });
