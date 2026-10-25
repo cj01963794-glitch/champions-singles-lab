@@ -361,6 +361,11 @@ function defensePlanSide(B){
  }
  return null;
 }
+function approximateCombatStat(p,stat){
+ const base=p.storedStats[stat]||1,boost=p.boosts[stat]||0;
+ return boost>=0?Math.floor(base*(2+boost)/2):
+  Math.floor(base*2/(2-boost));
+}
 function usefulAttack(B,side,actions){
  const pokemon=B.getSide(side).pokemon[0],enemy=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
  const attacks=actions.filter(a=>B.dex.moves.get(actionInfo(B,side,a).id).category!=='Status');
@@ -374,8 +379,8 @@ function usefulAttack(B,side,actions){
    eff*=Math.pow(2,e);
   }
   if(B.dex.getImmunity(m.type,enemy)===false)eff=0;
-  const offense=m.category==='Physical'?pokemon.getStat('atk'):pokemon.getStat('spa');
-  const defense=m.category==='Physical'?enemy.getStat('def'):enemy.getStat('spd');
+  const offense=approximateCombatStat(pokemon,m.category==='Physical'?'atk':'spa');
+  const defense=approximateCombatStat(enemy,m.category==='Physical'?'def':'spd');
   const critBonus=(m.critRatio||1)>1?1.12:1;
   const rank=(m.basePower||0)*eff*(pokemon.getTypes().includes(m.type)?1.5:1)*
    Math.max(0.01,offense/Math.max(1,defense))*critBonus*(typeof m.accuracy==='number'?m.accuracy/100:1);
