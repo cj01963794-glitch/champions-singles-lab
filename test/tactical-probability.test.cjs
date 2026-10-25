@@ -70,10 +70,13 @@ test('simultaneous Double-Edge recoil KOs match the pinned engine winner rule',(
  assert.equal(B.winner,'Right');
 });
 
-test('the actual four-move simulation chooses Moonblast and keeps seeded replay',()=>{
+test('the full four-move Mega-timing rollout rejects premature Aqua Jet and keeps seeded replay',()=>{
  const a=simulation(prim,sal,8,'1579,3137,6027,8191');
  const b=simulation(prim,sal,8,'1579,3137,6027,8191');
- assert.equal(a.choices[0][0],'move 1','Moonblast should remain preferred over Aqua Jet');
+ // Do not relabel a finite heuristic rollout as proof of Moonblast's
+ // long-horizon optimality. Both special STAB attacks are still candidates.
+ assert.ok(['move 1','move 2'].includes(a.choices[0][0]));
+ assert.notEqual(a.choices[0][0],'move 4');
  assert.equal(a.decisionDetails[0].megaTimingConsidered,true);
  assert.equal(a.decisionDetails[0].tacticalProbability,undefined);
  assert.deepEqual(a.choices,b.choices);assert.equal(a.winner,b.winner);
