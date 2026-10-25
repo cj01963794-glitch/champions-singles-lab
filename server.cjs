@@ -70,12 +70,34 @@ let catalog;
 document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await fetch('/api/catalog')).json();const q=e.target.value.toLowerCase();document.getElementById('matches').textContent=q.length<2?'':JSON.stringify(Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.filter(x=>x.toLowerCase().includes(q)).slice(0,12)])),null,2)};
 </script></body></html>`}
 const catalog={species:dex.species.all().filter(x=>x.exists).map(x=>x.name),moves:dex.moves.all().filter(x=>x.exists).map(x=>x.name),items:dex.items.all().filter(x=>x.exists).map(x=>x.name)};
-http.createServer(async(req,res)=>{try{
- if(req.url==='/'&&req.method==='GET'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});return res.end(page())}
- if(req.url==='/api/health')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod});
- if(req.url==='/api/catalog')return respond(res,catalog);
- if(req.url==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b))}
- respond(res,{error:'Not found'},404)
- }catch(e){respond(res,{error:String(e.message||e)},400)}
-}).listen(Number(process.env.PORT)||10000,'0.0.0.0');
-function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(x))}
+const port=Number(process.env.PORT)||10000;
+const server=http.createServer(async(req,res)=>{
+ const pathname=new URL(req.url||'/', 'http://localhost').pathname.replace(/\/+$/, '')||'/';
+ console.log('[HTTP]',req.method,req.url,'=>',pathname);
+ try{
+  if((pathname==='/'||pathname==='/index.html'||!pathname.startsWith('/api/'))&&req.method==='GET'){
+   if(pathname==='/favicon.ico'){res.writeHead(204);return res.end()}
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(page());
+  }
+  if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod});
+  if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
+  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b))}
+  return respond(res,{error:'Not found',method:req.method,path:pathname},404);
+ }catch(e){console.error('[REQUEST_ERROR]',e.stack||e);return respond(res,{error:String(e.message||e)},400)}
+});
+server.listen(port,'0.0.0.0',()=>{
+ console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
+ const check=(path,method='GET',payload)=>new Promise(resolve=>{
+  const req=http.request({hostname:'127.0.0.1',port,path,method,headers:{'content-type':'application/json'}},res=>{
+    let body='';res.on('data',c=>body+=c);res.on('end',()=>resolve({status:res.statusCode,type:res.headers['content-type'],body:body.slice(0,230)}));
+  });req.on('error',e=>resolve({error:e.message}));if(payload)req.write(JSON.stringify(payload));req.end();
+ });
+ (async()=>{
+  for(const [name,pth,met,data] of [
+    ['home','/?source=smoketest','GET'],
+    ['health','/api/health','GET'],
+    ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}]
+  ]){try{let r=await check(pth,met,data);console.log('[SMOKETEST]',name,JSON.stringify(r))}catch(e){console.error('[SMOKETEST_FAIL]',name,e.stack||e)}}
+ })();
+});
+function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}
