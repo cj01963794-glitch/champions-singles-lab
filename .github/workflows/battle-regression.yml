@@ -51,6 +51,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/dragonite-mimikyu-diagnostic.cjs --verify-live
+      - name: Diagnose saved Focus Sash Garchomp versus Mega Dragonite
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/garchomp-dragonite-diagnostic.cjs
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
