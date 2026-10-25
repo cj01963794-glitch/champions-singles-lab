@@ -304,6 +304,162 @@ function verifyChanceOutcomes(B,planned,turn,deadline){
    lostPct:Math.round(100*(side==='p2'?x.wins:x.losses)/x.samples),avgFirstDamagePct:Math.round(100*x.firstDamage/x.samples),n:x.samples}))};
 }
 
+
+// Multi-turn defensive survival search: no species or move-set prescriptions.
+// Explore several likely opposing actions, then play up to 7 real Showdown turns,
+// allowing defensive setup, recovery and chip damage to matter beyond 2-ply.
+// This branch is budgeted, and only used for relevant defensive endgames.
+const DEFENSE_BOOST_MOVES=new Set(['irondefense','acidarmor','cotton guard'.replace(/ /g,''),'harden','barrier','withdraw','cosmicpower','bulk up'.replace(/ /g,''),'coil','stockpile','calmmind','amnesia','quiverdance']);
+const ATTACK_BOOST_MOVES=new Set(['swordsdance','dragondance','bulkup','coil','honeclaws','nastyplot','calmmind','shellsmash','quiverdance','bellydrum','growth','workup']);
+const HEALING_MOVES=new Set(['roost','recover','slackoff','softboiled','shoreup','synthesis','moonlight','morningsun','milkdrink','rest','strengthsap']);
+function actionInfo(B,side,action){
+ const p=B.getSide(side).pokemon[0];
+ const ix=Number(String(action||'').match(/move (\d+)/)?.[1]||0)-1;
+ return {id:p.moveSlots[ix]?.id||'',action};
+}
+function strategyMove(B,side,actions,kind){
+ return actions.find(a=>{
+  const id=actionInfo(B,side,a).id;
+  return kind==='def'?DEFENSE_BOOST_MOVES.has(id):
+   kind==='atk'?ATTACK_BOOST_MOVES.has(id):HEALING_MOVES.has(id);
+ });
+}
+function hasRealAttack(B,side){
+ const p=B.getSide(side).pokemon[0];
+ return p.moveSlots.some(s=>{
+  const m=B.dex.moves.get(s.id);
+  return m.category!=='Status' && m.basePower>0;
+ });
+}
+function physicalPressure(B,attacker,defender){
+ const p=B.getSide(attacker).pokemon[0],q=B.getSide(defender).pokemon[0];
+ return p.moveSlots.some(s=>{
+  const m=B.dex.moves.get(s.id);
+  return m.category==='Physical' && m.basePower>=40 &&
+   B.dex.getImmunity(m.type,q)!==false;
+ });
+}
+function defensePlanSide(B){
+ for(const side of ['p1','p2']){
+  const enemy=side==='p1'?'p2':'p1';
+  const actions=legal(B,side);
+  if(strategyMove(B,side,actions,'def')&&strategyMove(B,side,actions,'heal') &&
+    strategyMove(B,enemy,legal(B,enemy),'atk')&&physicalPressure(B,enemy,side)&&
+    hasRealAttack(B,side))return side;
+ }
+ return null;
+}
+function usefulAttack(B,side,actions){
+ const pokemon=B.getSide(side).pokemon[0],enemy=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const attacks=actions.filter(a=>B.dex.moves.get(actionInfo(B,side,a).id).category!=='Status');
+ let candidate=attacks[0],best=-Infinity;
+ for(const a of attacks){
+  const m=B.dex.moves.get(actionInfo(B,side,a).id);
+  if(!m.exists)continue;
+  let eff=1;
+  for(const ty of enemy.getTypes()){
+   const e=B.dex.getEffectiveness(m.type,ty);
+   eff*=Math.pow(2,e);
+  }
+  if(B.dex.getImmunity(m.type,enemy)===false)eff=0;
+  const offense=m.category==='Physical'?pokemon.getStat('atk'):pokemon.getStat('spa');
+  const defense=m.category==='Physical'?enemy.getStat('def'):enemy.getStat('spd');
+  const critBonus=(m.critRatio||1)>1?1.12:1;
+  const rank=(m.basePower||0)*eff*(pokemon.getTypes().includes(m.type)?1.5:1)*
+   Math.max(0.01,offense/Math.max(1,defense))*critBonus*(typeof m.accuracy==='number'?m.accuracy/100:1);
+  if(rank>best){best=rank;candidate=a}
+ }
+ return candidate||actions[0];
+}
+function continuationMove(B,side){
+ const actions=legal(B,side);
+ if(!actions.length)return null;
+ const p=B.getSide(side).pokemon[0];
+ const foe=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const heal=strategyMove(B,side,actions,'heal');
+ const def=strategyMove(B,side,actions,'def');
+ const atk=strategyMove(B,side,actions,'atk');
+ const hp=p.hp/Math.max(1,p.maxhp);
+ const physical=physicalPressure(B,side==='p1'?'p2':'p1',side);
+ // Heal when actually threatened. Do not spend every full-HP turn using
+ // Roost while an opponent is strengthening.
+ if(heal && hp<0.57 && (!def || p.boosts.def>=foe.boosts.atk || hp<0.34))return heal;
+ if(def&&physical&&p.boosts.def<6 &&
+    p.boosts.def<=Math.max(foe.boosts.atk,0)+1 && hp>=0.34)return def;
+ if(atk){
+  const move=actionInfo(B,side,atk).id;
+  const attackingBoost=p.boosts.atk + p.boosts.spa;
+  const enemyDef=foe.boosts.def+foe.boosts.spd;
+  if(attackingBoost<4 && hp>=0.42)return atk;
+  if(attackingBoost<6 && enemyDef>=attackingBoost && hp>=0.65)return atk;
+ }
+ if(heal && hp<0.63)return heal;
+ return usefulAttack(B,side,actions);
+}
+function strategicFutureScore(B,side){
+ const us=B.getSide(side).pokemon[0],them=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const sign=side==='p1'?1:-1;
+ if(B.ended)return B.winner===(side==='p1'?'Left':'Right')?10000:
+  B.winner ? -10000:0;
+ const hpDelta=us.hp/us.maxhp-them.hp/them.maxhp;
+ const attackShift=(us.boosts.atk-them.boosts.def);
+ const defenseShift=(us.boosts.def-them.boosts.atk);
+ // Horizon utility only for unfinished battles, not claimed win chance.
+ // Survival, effective (relative) physical bulk and progress towards attacking
+ // are useful when the complete long-term win probability is not observable.
+ return 300*hpDelta+35*defenseShift+24*attackShift+
+  18*(us.boosts.spa-them.boosts.spd)-18*(them.boosts.spa-us.boosts.spd);
+}
+function defensivePlanSearch(B,side,planned,turn,deadline){
+ const all=legal(B,side),foeSide=side==='p1'?'p2':'p1';
+ const def=strategyMove(B,side,all,'def'),heal=strategyMove(B,side,all,'heal');
+ if(!def||!heal)return null;
+ const own=[...new Set([def,heal,usefulAttack(B,side,all)])].filter(Boolean);
+ const opposite=legal(B,foeSide),opChoice=side==='p1'?planned.right:planned.left;
+ const boost=strategyMove(B,foeSide,opposite,'atk');
+ const hit=usefulAttack(B,foeSide,opposite);
+ const opponent=[...new Set([opChoice,boost,hit])].filter(Boolean);
+ const weights=opponent.map(a=>a===opChoice?0.52:a===boost?0.32:0.16);
+ const total=weights.reduce((a,b)=>a+b,0);
+ const saved=JSON.stringify(B.toJSON());
+ const stats=own.map(action=>({action,value:0,finished:0,wins:0,losses:0,count:0}));
+ const maxSamples=9,minSamples=4;
+ for(let sample=0;sample<maxSamples;sample++){
+  if(Date.now()>deadline)break;
+  const seed=verificationSeed(turn,sample,19);
+  for(let oi=0;oi<opponent.length;oi++){
+   if(Date.now()>deadline)break;
+   for(let ci=0;ci<own.length;ci++){
+    if(Date.now()>deadline)break;
+    const battleBranch=Sim.Battle.fromJSON(saved);
+    battleBranch.resetRNG(seed);
+    battleBranch.makeChoices(side==='p1'?own[ci]:opponent[oi],
+      side==='p2'?own[ci]:opponent[oi]);
+    for(let step=0;step<6&&!battleBranch.ended;step++){
+     if(Date.now()>deadline)break;
+     const l=continuationMove(battleBranch,'p1');
+     const r=continuationMove(battleBranch,'p2');
+     if(!l||!r)break;
+     battleBranch.makeChoices(l,r);
+    }
+    const value=strategicFutureScore(battleBranch,side);
+    const wt=weights[oi]/total;
+    const st=stats[ci];st.value+=wt*value;st.count+=wt;
+    if(battleBranch.ended){
+     st.finished+=wt;
+     if(value>0)st.wins+=wt;else if(value<0)st.losses+=wt;
+    }
+   }
+  }
+ }
+ if(stats.some(x=>x.count<minSamples-0.01))return null;
+ const rank=stats.map(x=>({action:x.action,value:x.value/x.count,
+  observedWinRate:x.wins/x.count,observedLossRate:x.losses/x.count,
+  testedSamples:Math.round(x.count)})).sort((a,b)=>b.value-a.value);
+ return {side,chosen:rank[0].action,depth:7,candidates:rank,
+  sampledOpponentActions:opponent};
+}
+
 function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
  const actualSeed=checkedRngSeed(rngSeed);
@@ -315,7 +471,7 @@ function simulation(a,b,depth=120,rngSeed){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  let choice=null,depthUsed=1,verification=null;
+  let choice=null,depthUsed=1,verification=null,longPlan=null;
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
   if(t<6 && hasTacticalMove(B) && Date.now()-started<10000){
@@ -362,10 +518,21 @@ function simulation(a,b,depth=120,rngSeed){
     counterfactual={side:'p1',bestAgainstChosen:choice.L[bestIndex],
      relativeScoreGain:Math.round(col[bestIndex]-col[i])};
   }
+  // Search farther in setup-vs-sustain matchups: scarce victory paths can
+  // require several defense boosts, recovery and chip, not 2-turn HP gains.
+  const defenseSide=t<5 && Date.now()<globalDeadline-3500?defensePlanSide(B):null;
+  if(defenseSide){
+   longPlan=defensivePlanSearch(B,defenseSide,choice,t,
+     Math.min(Date.now()+4800,globalDeadline-900));
+   if(longPlan?.chosen){
+    if(defenseSide==='p1')choice.left=longPlan.chosen;
+    else choice.right=longPlan.chosen;
+   }
+  }
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
-   ...(counterfactual?{counterfactual}:{}),...(verification?{verification}: {})});
+   ...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
