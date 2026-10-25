@@ -59,7 +59,10 @@ function legal(B,k){
  return (r.moves||[]).map((m,i)=>!m.disabled&&m.pp!==0?'move '+(i+1)+mega:null).filter(Boolean);
 }
 function score(B){const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
- if(B.ended)return B.winner==='Left'?10000:B.winner==='Right'?-10000:0;
+ // When both lines win or lose, survival matters: distinguish a loss after
+ // taking the foe down to 10% from a loss while leaving it at full HP.
+ const hpMargin=150*(a.hp/a.maxhp-b.hp/b.maxhp);
+ if(B.ended)return B.winner==='Left'?10000+hpMargin:B.winner==='Right'?-10000+hpMargin:0;
  const v=p=>p.hp/p.maxhp*150+11*(p.boosts.atk+p.boosts.spa+p.boosts.spe)+6*(p.boosts.def+p.boosts.spd);
  return v(a)-v(b);
 }
@@ -79,15 +82,23 @@ function checkedRngSeed(s){
  return s;
 }
 
-function resolveMatrix(matrix,L,R){
+function resolveMatrix(matrix,L,R,tieMatrix){
  let bestL=L[0],bestR=R[0],bestLeft=-Infinity,bestRight=Infinity;
+ let leftTie=-Infinity,rightTie=Infinity;
+ const eps=0.000001;
  for(let i=0;i<L.length;i++){
   const worst=Math.min(...matrix[i]);
-  if(worst>bestLeft){bestLeft=worst;bestL=L[i]}
+  const tie=tieMatrix?Math.min(...tieMatrix[i]):0;
+  if(worst>bestLeft+eps||(Math.abs(worst-bestLeft)<=eps&&tie>leftTie+eps)){
+   bestLeft=worst;leftTie=tie;bestL=L[i]
+  }
  }
  for(let j=0;j<R.length;j++){
   const worst=Math.max(...matrix.map(row=>row[j]));
-  if(worst<bestRight){bestRight=worst;bestR=R[j]}
+  const tie=tieMatrix?Math.max(...tieMatrix.map(row=>row[j])):0;
+  if(worst<bestRight-eps||(Math.abs(worst-bestRight)<=eps&&tie<rightTie-eps)){
+   bestRight=worst;rightTie=tie;bestR=R[j]
+  }
  }
  return {left:bestL,right:bestR,leftValue:bestLeft,rightValue:bestRight};
 }
@@ -168,6 +179,7 @@ function evalTwoTurn(position,turn,deadline){
  if(!L.length||!R.length)return null;
  const saved=JSON.stringify(position.toJSON());
  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
+ const immediate=Array.from({length:L.length},()=>Array(R.length).fill(0));
  const samples=2;
  for(let k=0;k<samples;k++){
   const seed=policySeed(turn,k+29);
@@ -176,13 +188,16 @@ function evalTwoTurn(position,turn,deadline){
    const branch=Sim.Battle.fromJSON(saved);
    branch.resetRNG(seed);
    branch.makeChoices(L[i],R[j]);
+   // Secondary criterion for exactly tied long-term outcomes: if every line
+   // eventually loses, prefer moves that damage the foe or improve position.
+   immediate[i][j]+=score(branch)/samples;
    const future=branch.ended?score(branch):evalOneTurn(branch,turn+1,1,deadline,2)?.value;
    if(future===undefined||future===null)return null;
    matrix[i][j]+=future/samples;
   }
  }
- const selected=resolveMatrix(matrix,L,R);
- return {...selected,depth:2,matrix,L,R};
+ const selected=resolveMatrix(matrix,L,R,immediate);
+ return {...selected,depth:2,matrix,immediate,L,R};
 }
 function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
