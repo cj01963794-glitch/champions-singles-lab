@@ -19,12 +19,31 @@ function validate(input){
  if(!moves.length)throw Error('No moves');
  const evs={};for(const k of stats)evs[k]=Number(input.evs?.[k]??input.sp?.[k]??0);
  if(Object.values(evs).some(x=>!Number.isInteger(x)||x<0||x>32)||Object.values(evs).reduce((a,b)=>a+b,0)>66)throw Error('Invalid SP');
- const megaItem=spc.isMega?(spc.requiredItem||spc.requiredItems?.[0]):'';
- const species=spc.isMega?spc.baseSpecies:spc.name;
- const item=input.item||megaItem||'';
+ const mega=!!spc.isMega;
+ const species=mega?spc.baseSpecies:spc.name;
+ const base=dex.species.get(species);
+ const neededItem=mega?(spc.requiredItem||spc.requiredItems?.[0]||''):'';
+ const item=input.item||neededItem||'';
  if(item&&!dex.items.get(item).exists)throw Error('Unknown item '+item);
- const nature=dex.natures.get(input.nature||'Serious');if(!nature.exists)throw Error('Unknown nature');
- return {name:input.name||species,species,nature:nature.name,ability:input.ability||dex.species.get(species).abilities['0'],item,moves,evs,level:50};
+ if(mega && neededItem && dex.items.get(item).id!==dex.items.get(neededItem).id)
+  throw Error(spc.name+' needs '+neededItem+' to activate its Mega ability');
+ const allowedPre=Object.values(base.abilities||{});
+ const allowedPost=Object.values(spc.abilities||{});
+ let preAbility=input.preMegaAbility||'';
+ if(mega){
+  const selected=input.ability||'';
+  if(selected&&!allowedPost.includes(selected)&&!allowedPre.includes(selected))
+   throw Error('Unknown Mega ability '+selected+' for '+spc.name);
+  if(!preAbility&&allowedPre.includes(selected))preAbility=selected; // compatibility with older saved sets
+  if(!preAbility)preAbility=base.abilities['0'];
+  if(!allowedPre.includes(preAbility))throw Error('Invalid pre-Mega ability '+preAbility);
+ }else{
+  preAbility=input.ability||base.abilities['0'];
+  if(!allowedPre.includes(preAbility))throw Error('Invalid ability '+preAbility);
+ }
+ const nature=dex.natures.get(input.nature||'Serious');
+ if(!nature.exists)throw Error('Unknown nature');
+ return {name:input.name||species,species,nature:nature.name,ability:preAbility,item,moves,evs,level:50};
 }
 function battle(a,b){
  const B=new Sim.Battle({formatid:FORMAT,seed:'1579,3137,6027,8191'});
@@ -105,18 +124,36 @@ document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await f
 </script></body></html>`}
 
 const koData=dex.loadTextData('ko');
-const koName=(type,obj)=>koData[type]?.[obj.id]?.name||obj.name;
-const abilityList=(s)=>{
- const initial=(s.isMega && s.baseSpecies)?dex.species.get(s.baseSpecies):s;
- return [...new Set(Object.values(initial.abilities||{}))].filter(Boolean).map(en=>({
-   id:dex.abilities.get(en).id,en:dex.abilities.get(en).name,
-   ko:koName('Abilities',dex.abilities.get(en))
- }));
+const koName=(type,obj)=>{
+ const official=koData[type]?.[obj.id]?.name;
+ if(official && official!==obj.name)return official;
+ // New Mega-Z species and stones are missing Korean strings in this
+ // Showdown snapshot. Compose a label from the translated base species.
+ if(type==='Pokedex'&&obj.forme==='Mega-Z'&&obj.baseSpecies){
+  const base=dex.species.get(obj.baseSpecies);
+  const translated=koData.Pokedex?.[base.id]?.name;
+  if(translated)return '메가'+translated+'Z';
+ }
+ if(type==='Items'&&obj.megaStone&&obj.name.endsWith(' Z')){
+  const target=Object.values(obj.megaStone);
+  if(target.some(name=>name.endsWith('-Mega-Z'))){
+   const base=Object.keys(obj.megaStone)[0];
+   const translated=koData.Pokedex?.[dex.species.get(base).id]?.name;
+   if(translated)return translated+'나이트Z';
+  }
+ }
+ return official||obj.name;
 };
+const abilityList=(s)=>[...new Set(Object.values(s.abilities||{}))].filter(Boolean).map(en=>{
+ const x=dex.abilities.get(en);return {id:x.id,en:x.name,ko:koName('Abilities',x)};
+});
 const catalog={
  species:dex.species.all().filter(x=>x.exists).map(x=>({
    id:x.id,en:x.name,ko:koName('Pokedex',x),
-   abilities:abilityList(x),megaItem:x.isMega?(x.requiredItem||x.requiredItems?.[0]||''):''
+   isMega:!!x.isMega,baseSpecies:x.baseSpecies,
+   abilities:abilityList(x),
+   baseAbilities:x.isMega?abilityList(dex.species.get(x.baseSpecies)):[],
+   megaItem:x.isMega?(x.requiredItem||x.requiredItems?.[0]||''):''
  })),
  moves:dex.moves.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Moves',x)})),
  items:dex.items.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Items',x)})),
@@ -127,7 +164,9 @@ console.log('[KO-CHECK]',JSON.stringify({
  garchomp:catalog.species.find(x=>x.en==='Garchomp'),
  megametagross:catalog.species.find(x=>x.en==='Metagross-Mega'),
  earthquake:catalog.moves.find(x=>x.en==='Earthquake'),
- focusSash:catalog.items.find(x=>x.en==='Focus Sash')
+ focusSash:catalog.items.find(x=>x.en==='Focus Sash'),
+ garchompMegaZ:catalog.species.find(x=>x.en==='Garchomp-Mega-Z'),
+ garchompiteZ:catalog.items.find(x=>x.en==='Garchompite Z')
 }));
 
 const port=Number(process.env.PORT)||10000;
