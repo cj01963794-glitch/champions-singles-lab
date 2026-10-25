@@ -78,52 +78,107 @@ function checkedRngSeed(s){
   throw Error('Invalid RNG seed');
  return s;
 }
+
+function resolveMatrix(matrix,L,R){
+ let bestL=L[0],bestR=R[0],bestLeft=-Infinity,bestRight=Infinity;
+ for(let i=0;i<L.length;i++){
+  const worst=Math.min(...matrix[i]);
+  if(worst>bestLeft){bestLeft=worst;bestL=L[i]}
+ }
+ for(let j=0;j<R.length;j++){
+  const worst=Math.max(...matrix.map(row=>row[j]));
+  if(worst<bestRight){bestRight=worst;bestR=R[j]}
+ }
+ return {left:bestL,right:bestR,leftValue:bestLeft,rightValue:bestRight};
+}
+// Values at the end of the entire searched line, not only the first turn.
+// Follow-up moves use actual HP, stat boosts and consumed items from Showdown.
+function evalOneTurn(position,turn,samples=2,deadline=Infinity){
+ if(position.ended)return {value:score(position)};
+ const L=legal(position,'p1'),R=legal(position,'p2');
+ if(!L.length||!R.length)return {value:score(position)};
+ const saved=JSON.stringify(position.toJSON());
+ const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
+ for(let k=0;k<samples;k++){
+  if(Date.now()>deadline)return null;
+  const seed=policySeed(turn,k+13);
+  for(let i=0;i<L.length;i++)for(let j=0;j<R.length;j++){
+   const branch=Sim.Battle.fromJSON(saved);
+   branch.resetRNG(seed);
+   branch.makeChoices(L[i],R[j]);
+   matrix[i][j]+=score(branch)/samples;
+  }
+ }
+ const selected=resolveMatrix(matrix,L,R);
+ return {value:selected.leftValue,left:selected.left,right:selected.right,matrix};
+}
+function hasTacticalMove(B){
+ const tactical=new Set(['swordsdance','dragondance','nastyplot','calmmind','bulkup','irondefense','agility','shellsmash',
+  'coil','quiverdance','curse','cosmicpower','amnesia','stockpile','recover','roost','slackoff','softboiled',
+  'shoreup','synthesis','moonlight','morningsun','wish','substitute','encore','taunt','protect',
+  'rest','strengthsap','leechseed','toxic','willowisp']);
+ return ['p1','p2'].some(side=>{
+  const p=B.getSide(side).pokemon[0];
+  return p.moveSlots.some(m=>tactical.has(m.id)) || (p.item&&B.dex.items.get(p.item).isBerry);
+ });
+}
+function evalTwoTurn(position,turn,deadline){
+ const L=legal(position,'p1'),R=legal(position,'p2');
+ if(!L.length||!R.length)return null;
+ const saved=JSON.stringify(position.toJSON());
+ const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
+ const samples=3;
+ for(let k=0;k<samples;k++){
+  const seed=policySeed(turn,k+29);
+  for(let i=0;i<L.length;i++)for(let j=0;j<R.length;j++){
+   if(Date.now()>deadline)return null;
+   const branch=Sim.Battle.fromJSON(saved);
+   branch.resetRNG(seed);
+   branch.makeChoices(L[i],R[j]);
+   const future=branch.ended?score(branch):evalOneTurn(branch,turn+1,1,deadline)?.value;
+   if(future===undefined||future===null)return null;
+   matrix[i][j]+=future/samples;
+  }
+ }
+ const selected=resolveMatrix(matrix,L,R);
+ return {...selected,depth:2,matrix,L,R};
+}
 function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
  const actualSeed=checkedRngSeed(rngSeed);
  const B=battle(a,b,actualSeed),choices=[];
- const started=Date.now();
- let stopReason='';
+ const started=Date.now(),globalDeadline=started+18000;
+ let stopReason='',planned=0,fallbacks=0;
+ const decisionDetails=[];
  for(let t=0;t<depth&&!B.ended;t++){
-  if(Date.now()-started>18000){stopReason='compute_timeout';break}
+  if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  // Judge each joint action by expected utility across a shared, deterministic
-  // set of RNG seeds. A single unlucky Gunk Shot miss must not cause a move
-  // to be classified as intrinsically inferior.
-  const snapshot=JSON.stringify(B.toJSON());
-  const samples=t<3?16:t<20?8:4;
-  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
-  for(let k=0;k<samples;k++){
-   const seed=policySeed(t,k);
-   for(let i=0;i<L.length;i++){
-    for(let j=0;j<R.length;j++){
-     const tmp=Sim.Battle.fromJSON(snapshot);
-     tmp.resetRNG(seed);
-     tmp.makeChoices(L[i],R[j]);
-     matrix[i][j]+=score(tmp)/samples;
-    }
-   }
+  let choice=null,depthUsed=1;
+  // Planning runs when set-up, healing, disabling or a consumable Berry may
+  // change the outcome across turns. Budgeted to preserve Render responsiveness.
+  if(t<6 && hasTacticalMove(B) && Date.now()-started<10000){
+   const deadline=Math.min(Date.now()+6500,globalDeadline-2200);
+   const deep=evalTwoTurn(B,t,deadline);
+   if(deep){choice=deep;depthUsed=2;planned++}
+   else fallbacks++;
   }
-  let bestL=L[0],bestR=R[0],max=-Infinity,min=Infinity;
-  for(let i=0;i<L.length;i++){
-   const worst=Math.min(...matrix[i]);
-   if(worst>max){max=worst;bestL=L[i]}
+  if(!choice){
+   const shallow=evalOneTurn(B,t,t<3?8:t<20?4:2,globalDeadline-500);
+   if(!shallow){stopReason='compute_timeout';break}
+   choice={left:shallow.left,right:shallow.right};
   }
-  for(let j=0;j<R.length;j++){
-   const worst=Math.max(...matrix.map(row=>row[j]));
-   if(worst<min){min=worst;bestR=R[j]}
-  }
-  B.makeChoices(bestL,bestR);
-  choices.push([bestL,bestR]);
+  B.makeChoices(choice.left,choice.right);
+  choices.push([choice.left,choice.right]);
+  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
   winner:B.ended?(B.winner||'draw'):'unresolved',
   stopReason:B.ended?'battle_ended':stopReason,
-  policy:'averaged-rng-shallow-minimax',
-  rngSeed:actualSeed,
-  log:B.log,
+  policy:'conditional-two-turn-adversarial-search',
+  tacticalTurns:planned,searchFallbacks:fallbacks,decisionDetails,
+  rngSeed:actualSeed,log:B.log,
   choices,turns:choices.length,maxTurns:depth
  };
 }
@@ -262,23 +317,22 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
- // Poltergeist diagnostic: check whether this is an accuracy miss, missing item,
- // or simply the same initial PRNG state on every website invocation.
  try{
-  const mega={species:'Delphox-Mega',name:'메가마폭시',item:'Delphoxite',ability:'Levitate',preMegaAbility:'Blaze',nature:'Bold',evs:{hp:32,def:32,spe:2},moves:['Calm Mind']};
-  const aeg={species:'Aegislash',name:'킬가르도',item:'Leftovers',ability:'Stance Change',nature:'Adamant',evs:{hp:32,atk:32,spe:2},moves:['Poltergeist']};
-  const trials=[];
-  for(let i=0;i<12;i++){
-   const B=battle(mega,aeg);
-   const seed=i===0?null:policySeed(0,i);
-   if(seed)B.resetRNG(seed);
-   B.makeChoices('move 1 mega','move 1');
-   const p=B.getSide('p1').pokemon[0];
-   const rows=B.log.filter(x=>/Poltergeist|\-miss\||\-fail\||\-immune\||\-damage\||\-activate\||\-mega\||\-item\|/.test(x));
-   trials.push({seed:i===0?'default':seed,item:p.item,ability:p.ability,form:p.species.name,rows:rows.slice(-10)});
-  }
-  console.log('[POLTERGEIST-TRIALS]',JSON.stringify(trials));
- }catch(e){console.error('[POLTERGEIST-TEST-ERROR]',e.stack||e)}
+  const bax={species:'Baxcalibur-Mega',name:'HB메가드닐레이브',item:'Baxcalibrite',nature:'Impish',
+    ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',
+    moves:['Swords Dance','Thunder Fang'],evs:{hp:32,def:32,spe:2}};
+  const prima={species:'Primarina',name:'자뭉누리레느',item:'Sitrus Berry',nature:'Bold',
+    ability:'Torrent',moves:['Moonblast','Sparkling Aria'],evs:{hp:32,def:32,spe:2}};
+  const B=battle(bax,prima);
+  const shallow=evalOneTurn(B,0,8);
+  const deep=evalTwoTurn(B,0,Date.now()+12000);
+  const test={shallow:shallow?.left,deep:deep?.left,opponent:deep?.right,
+    depth:deep?.depth,timing:'2-turn-lookahead',
+    rows:deep?deep.matrix.map((row,i)=>({choice:deep.L[i],worst:Math.min(...row)})):[],
+    species:dex.species.get('Baxcalibur-Mega').name};
+  console.log('[SWORDS-DANCE-REGRESSION]',JSON.stringify(test));
+ }catch(e){console.error('[SWORDS-DANCE-TEST-ERROR]',e.stack||e)}
+
 
 
  try{
