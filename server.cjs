@@ -727,7 +727,7 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
- if(true){
+ if(process.env.RUN_DEFENSIVE_REGRESSION==='1'){
  try{
   const m={species:'Mimikyu',name:'고집HA따라큐',nature:'Adamant',ability:'Disguise',item:'Scope Lens',
    evs:{hp:32,atk:32,spe:2},moves:['Swords Dance','Shadow Claw','Play Rough','Shadow Sneak']};
