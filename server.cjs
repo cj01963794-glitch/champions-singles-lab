@@ -679,7 +679,7 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
- if(process.env.RUN_MIMIKYU_CORVIKNIGHT_DIAGNOSTIC==='1'){
+ if(true){
   try{
    const m={species:'Mimikyu',name:'고집HA따라큐',nature:'Adamant',ability:'Disguise',item:'Scope Lens',
     evs:{hp:32,atk:32,spe:2},moves:['Swords Dance','Shadow Claw','Play Rough','Shadow Sneak']};
@@ -691,7 +691,8 @@ server.listen(port,'0.0.0.0',()=>{
     const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
     const shallow=evalOneTurn(B,t,3,Date.now()+4000);
     const deep=evalTwoTurn(B,t,Date.now()+5500);
-    rows.push({turn:t+1,corvHP:b.hp,corvMax:b.maxhp,corvBoost:b.boosts.def,
+    const forecast=deep?defensivePlanSearch(B,'p2',deep,t,Date.now()+5000):null;
+    rows.push({forecast,turn:t+1,corvHP:b.hp,corvMax:b.maxhp,corvBoost:b.boosts.def,
       mimikyuHP:a.hp,mimikyuAtk:a.boosts.atk,
       shallow:shallow?{left:shallow.left,right:shallow.right,matrix:shallow.matrix?.map(x=>x.map(y=>Math.round(y)))}:null,
       deep:deep?{left:deep.left,right:deep.right,matrix:deep.matrix?.map(x=>x.map(y=>Math.round(y)))}:null});
