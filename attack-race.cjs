@@ -29,12 +29,15 @@ function combinations(n,k,visit,start=0,chosen=[]){
 }
 // Solve a small simultaneous zero-sum game, including mixed strategies.
 // Pure maximin/minimax choices alone need not form an equilibrium.
-function gameValue(matrix){
+function gameValue(matrix,wantStrategy=false){
  const m=matrix.length,n=matrix[0].length;
  const lower=Math.max(...matrix.map(row=>Math.min(...row)));
  const upper=Math.min(...matrix[0].map((_,j)=>Math.max(...matrix.map(row=>row[j]))));
- if(upper-lower<1e-10)return (lower+upper)/2;
- let best=-Infinity;
+ if(upper-lower<1e-10){
+  const index=matrix.findIndex(row=>Math.min(...row)>=lower-1e-10);
+  return wantStrategy?{value:(lower+upper)/2,probabilities:matrix.map((_,i)=>i===index?1:0)}:(lower+upper)/2;
+ }
+ let best=-Infinity,bestSolution;
  const constraints=[...Array(n)].map((_,j)=>[...matrix.map(row=>row[j]),-1]);
  for(let i=0;i<m;i++)constraints.push([...Array(m)].map((_,k)=>i===k?1:0).concat(0));
  combinations(n+m,m,indices=>{
@@ -42,10 +45,11 @@ function gameValue(matrix){
    [1,...Array(m).fill(0)]);
   if(!solution||solution.slice(0,m).some(p=>p< -1e-8))return;
   if(constraints.some(row=>row.reduce((sum,c,i)=>sum+c*solution[i],0)< -1e-8))return;
-  best=Math.max(best,solution[m]);
+  if(solution[m]>best){best=solution[m];bestSolution=solution.slice(0,m)}
  });
  if(!Number.isFinite(best))throw Error('Unable to solve probability payoff matrix');
- return Math.max(0,Math.min(1,best));
+ const value=Math.max(0,Math.min(1,best));
+ return wantStrategy?{value,probabilities:bestSolution.map(p=>Math.max(0,p))}:value;
 }
 
 function harmlessSecondary(secondary,foeMoves){
@@ -87,7 +91,7 @@ function buildModel(B,Sim,deadline,horizon){
   // This model only accepts passive transformations; entry effects already
   // resolved by the real battle (such as Salamence's pre-Mega Intimidate) stay.
   if(mega){
-   const abilities=Object.values(trial.dex.species.get(mega).abilities||{});
+   const abilities=Object.values(trial.dex.species.get(trial.actions.canMegaEvo(p)).abilities||{});
    if(abilities.includes('Intimidate'))return null;
    trial.actions.runMegaEvo(p);
   }
@@ -123,7 +127,7 @@ function buildModel(B,Sim,deadline,horizon){
     probe.randomizer=damage=>Math.floor(Math.floor(damage)*(100-roll)/100);
     const original=probe.actions.getDamage;
     probe.actions.getDamage=function(source,target,...args){
-     if(source!==us||target!==them)return original.call(this,source,target,...args);
+     if(measured||source!==us||target!==them)return original.call(this,source,target,...args);
      // The guard admits only passive damage effects. Evaluate all damage
      // factors in the same real active-move context before any HP/item change,
      // avoiding sixteen expensive full-battle deserializations per branch.
@@ -235,4 +239,4 @@ function exactAttackRace(B,{Sim,deadline=Infinity,horizon=3,maxStates=50000}={})
   valueBounds:[pct(gameValue(lower)),pct(gameValue(upper))]};
 }
 
-module.exports={exactAttackRace,gameValue,supportsMove,buildModel};
+module.exports={exactAttackRace,gameValue,supportsMove,buildModel,PASSIVE_ABILITIES,LOW_HP_ABILITIES};

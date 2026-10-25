@@ -34,4 +34,11 @@ test('result table distinguishes weighted probability bounds from sampled estima
   payoff:[[{winLowerPct:50,winUpperPct:60}]]}});
  assert.ok(sample.get('probability-matrix').innerHTML.includes('조합별 64회 표본'));
  assert.ok(sample.get('probability-matrix').innerHTML.includes('신뢰구간은 아니며'));
+ const tactical=render({left:'move 1',right:'move 1',depth:2,tacticalProbability:{
+  method:'bounded-tactical-probability-game',applicable:true,applied:true,horizon:2,
+  leftActions:['move 1','move 2'],rightActions:['move 1'],dominatedLeftActions:['move 2'],
+  payoff:[[{winLowerPct:50,winUpperPct:60}],[{winLowerPct:0,winUpperPct:40}]]}});
+ assert.ok(tactical.get('policy-info').textContent.includes('승률 하한'));
+ assert.ok(tactical.get('probability-matrix').innerHTML.includes('반동·랭크업·앙코르'));
+ assert.ok(tactical.get('probability-matrix').innerHTML.includes('다른 기술보다 불리함'));
 });

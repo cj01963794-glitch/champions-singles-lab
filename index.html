@@ -368,7 +368,7 @@ function renderResult(raw,a,b){
   };
   const firstIsPlanned=first.depth>=2;
   policy.style.display='block';
-  policy.textContent=(first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
+  policy.textContent=(first.tacticalProbability?.applied?'첫 턴은 반동·랭크업·앙코르를 포함해 확률을 합산하고, 승률 하한을 기준으로 선택했어.':first.tacticalProbability&&!first.tacticalProbability.applicable?'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어.':first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?.applied?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
   if(first.verification?.candidates?.length){
@@ -411,7 +411,7 @@ function renderResult(raw,a,b){
  let matrixBox=document.getElementById('probability-matrix');
  if(!matrixBox){matrixBox=document.createElement('div');matrixBox.id='probability-matrix';policy.after(matrixBox)}
  const exact=first?.exactSearch;
- const comparison=exact?.certified?exact:first?.attackAudit;
+ const comparison=first?.tacticalProbability?.applicable?first.tacticalProbability:exact?.certified?exact:first?.attackAudit;
  if(comparison?.payoff){
   const format=c=>c.winLowerPct===c.winUpperPct?c.winLowerPct.toFixed(2)+'%':
    c.winLowerPct.toFixed(2)+'–'+c.winUpperPct.toFixed(2)+'%';
@@ -420,10 +420,13 @@ function renderResult(raw,a,b){
   matrixBox.innerHTML='<details open><summary>첫 행동 조합별 A의 승률 비교</summary><div class="payoff-wrap"><table class="payoff"><thead><tr><th>A ↓ / B →</th>'+
    comparison.rightActions.map(action=>'<th scope="col">'+h(decisionLabel(b,action))+'</th>').join('')+
    '</tr></thead><tbody>'+rows+'</tbody></table></div><p class="help">'+
-   (comparison.method==='exact-bounded-attack-game'?
+   (comparison.method==='bounded-tactical-probability-game'?
+    '확률 합산 · '+comparison.horizon+'턴까지 반동·랭크업·앙코르 강제를 반영했어. 범위는 이후 미확정 수순의 하한·상한이야. 전체 승률의 최적해를 확정한 값은 아니며, 각자 승률 하한을 확보하는 전략을 선택해.':comparison.method==='exact-bounded-attack-game'?
     '확률 합산 · '+comparison.horizon+'턴까지 양측의 후속 선택을 비교했어. 범위는 이후 미확정 결과를 모두 패배/승리로 처리한 하한·상한이야. 이 지원 범위에서는 남은 불확실성을 고려해도 선택한 양측 첫 기술이 유리함을 확인했어.':
     '조합별 '+comparison.samples+'회 표본 · 범위는 미종료 수순을 패배/승리로 처리한 값이야. 표본 오차를 나타내는 신뢰구간은 아니며, 이후 기술 선택은 시험용 정책이야.')+
-   '</p></details>';
+   '</p>'+(comparison.dominatedLeftActions?.length||comparison.dominatedRightActions?.length?'<p class="help">모든 상대 첫 행동에 대해 다른 기술보다 불리함을 확인한 선택: '+
+    [...(comparison.dominatedLeftActions||[]).map(action=>'A '+h(decisionLabel(a,action))),
+     ...(comparison.dominatedRightActions||[]).map(action=>'B '+h(decisionLabel(b,action)))].join(', ')+'</p>':'')+'</details>';
  }else matrixBox.textContent='';
  function decisionLabel(sample,action){
   const i=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
@@ -462,6 +465,7 @@ function renderResult(raw,a,b){
   const explanations={
     turn_limit:(raw.maxTurns||raw.turns)+'턴 제한에 도달했어. 실제 배틀은 끝나지 않았으므로 이 결과를 패배·무승부로 취급하지 않아.',
     compute_timeout:'장기전 계산 시간이 초과되어 중단했어. 이건 실제 무승부가 아니야.',
+    probability_search_incomplete:'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어. 임시 HP 점수 판단을 검증된 수순으로 사용하지 않았어.',
     no_available_actions:'선택 가능한 행동을 찾지 못해 중단했어. 턴 로그를 확인해 줘.',
     other:'시뮬레이션이 끝나지 않은 상태에서 중단했어.'
   };

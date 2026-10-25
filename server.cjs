@@ -3,6 +3,7 @@ const http=require('node:http');
 const {randomBytes}=require('node:crypto');
 const {exactAttackRace}=require('./attack-race.cjs');
 const {sampledRace}=require('./sampled-race.cjs');
+const {makeTacticalSearch,choosePolicy}=require('./tactical-race.cjs');
 const Sim=require(process.env.SHOWDOWN_PACKAGE_PATH || 'pokemon-showdown');
 const FORMAT='gen9championscustomgame';
 const dex=Sim.Dex.forFormat(FORMAT);
@@ -595,14 +596,14 @@ function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
  const actualSeed=checkedRngSeed(rngSeed);
  const B=battle(a,b,actualSeed),choices=[];
- const started=Date.now(),globalDeadline=started+18000;
+ const started=Date.now(),globalDeadline=started+30000;
  let stopReason='',planned=0,fallbacks=0,extendedSearchCount=0;
  const decisionDetails=[];
  for(let t=0;t<depth&&!B.ended;t++){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null;
+  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null,tacticalProbability=null,attackAttempted=false;
   // A certified opening uses all outcome probabilities, not sampled seeds.
   // Unknown suffixes are [0,1] bounds, so only a provable pure equilibrium is
   // allowed to override the existing planner. Other mechanics use the fallback.
@@ -613,6 +614,20 @@ function simulation(a,b,depth=120,rngSeed){
     choice={left:exactSearch.left,right:exactSearch.right};depthUsed=3;
    }
   }
+  if(!choice && t<4 && Date.now()<globalDeadline-4500){
+   tacticalProbability=makeTacticalSearch(B,{Sim,horizon:2,
+    deadline:Math.min(Date.now()+(t===0?18000:4000),globalDeadline-3000)});
+   if(tacticalProbability?.applicable){
+    const policyRoll=side=>require('node:crypto').createHash('sha256')
+     .update('separate-policy-stream:'+actualSeed+':'+t+':'+side).digest().readUInt32BE(0)/4294967296;
+    choice={left:choosePolicy(tacticalProbability.leftActions,tacticalProbability.leftPolicy,policyRoll('p1')),
+     right:choosePolicy(tacticalProbability.rightActions,tacticalProbability.rightPolicy,policyRoll('p2'))};
+    tacticalProbability.applied=true;depthUsed=tacticalProbability.horizon;
+   }else if(tacticalProbability && t===0){
+    stopReason='probability_search_incomplete';
+    decisionDetails.push({turn:1,depth:0,left:null,right:null,tacticalProbability});break;
+   }
+  }
   // High-variance direct attack races need stochastic terminal outcomes BEFORE
   // the legacy two-sample 2-turn planner can bias the choice. Keep long-term
   // defense/setup scenarios on the tactical planner below.
@@ -620,21 +635,18 @@ function simulation(a,b,depth=120,rngSeed){
   if(!choice && openingRace && Date.now()<globalDeadline-9500){
    const shallow=evalOneTurn(B,t,4,globalDeadline-9500);
    if(shallow){
-    choice={left:shallow.left,right:shallow.right};
-    depthUsed=3;
+    const provisional={left:shallow.left,right:shallow.right};
     // Two-move attack races get a larger budget. For full four-move
     // sets, return to the proven basic planner sooner, preserving enough
     // wall time to actually finish the battle after choosing an opener.
     const rolloutBudget=openingRace.attacks.length<=2?9000:4100;
-    attackAudit=probabilisticAttackSearch(B,choice,t,
+    attackAttempted=true;
+    attackAudit=probabilisticAttackSearch(B,provisional,t,
      Math.min(Date.now()+rolloutBudget,globalDeadline-8000));
     if(attackAudit?.chosen){
-     const foe=attackAudit.side==='p1'?'right':'left';
-     choice[attackAudit.side==='p1'?'left':'right']=attackAudit.chosen;
-     // The opponent's best reply used for all rollouts must be the same
-     // response used in the actual two-player simulation.
-     if(attackAudit.comparedAgainst)choice[foe]=attackAudit.comparedAgainst;
-    }
+     choice={left:attackAudit.left,right:attackAudit.right};depthUsed=3;
+     attackAudit.applied=true;
+    }else{fallbacks++;if(attackAudit)attackAudit.applied=false}
    }
   }
 
@@ -701,10 +713,11 @@ function simulation(a,b,depth=120,rngSeed){
   }
   // Probabilistic checks override only well-separated attack choices,
   // leaving the existing tactical planner and defensive setup untouched.
-  if(t===0 && !exactSearch?.certified && !attackAudit && !longPlan && Date.now()<globalDeadline-3800){
+  if(t===0 && !exactSearch?.certified && !tacticalProbability?.applied && !attackAttempted && !longPlan && Date.now()<globalDeadline-3800){
    const auditDeadline=Math.min(Date.now()+7500,globalDeadline-900);
    attackAudit=probabilisticAttackSearch(B,choice,t,auditDeadline);
    if(attackAudit?.chosen){
+    attackAudit.applied=true;
     if(attackAudit.side==='p1'){
      choice.left=attackAudit.chosen;
      if(attackAudit.comparedAgainst)choice.right=attackAudit.comparedAgainst;
@@ -717,7 +730,7 @@ function simulation(a,b,depth=120,rngSeed){
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
-   ...(exactSearch?{exactSearch}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
+   ...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
@@ -856,7 +869,7 @@ const server=http.createServer(async(req,res)=>{
    if(pathname==='/favicon.ico'){res.writeHead(204);return res.end()}
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(require('node:fs').readFileSync(require('node:path').join(__dirname,'index.html'),'utf8'));
   }
-  if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod,policyVersion:'0.7.0'});
+  if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod,policyVersion:'0.7.1'});
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
   if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed))}
   return respond(res,{error:'Not found',method:req.method,path:pathname},404);
