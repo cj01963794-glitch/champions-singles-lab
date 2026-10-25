@@ -126,7 +126,7 @@ document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await f
 const koData=dex.loadTextData('ko');
 // The source's Korean text may localize "baseSpecies" or "forme" without
 // localizing "name", especially for gendered and regional forms.
-const verifiedKoreanBaseExceptions={floette:'플라엣테'};
+const verifiedKoreanBaseExceptions={floette:'플라엣테',zygarde:'지가르데'};
 const nativeBaseName=(english)=>{
  const species=dex.species.get(english);
  const ancestor=dex.species.get(species.baseSpecies||english);
