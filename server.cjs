@@ -1,5 +1,6 @@
 'use strict';
 const http=require('node:http');
+const sampleLibrary=require('./sample-library.cjs');
 const {randomBytes}=require('node:crypto');
 const {exactAttackRace}=require('./attack-race.cjs');
 const {sampledRace}=require('./sampled-race.cjs');
@@ -950,6 +951,33 @@ const server=http.createServer(async(req,res)=>{
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(require('node:fs').readFileSync(require('node:path').join(__dirname,'index.html'),'utf8'));
   }
   if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod,policyVersion:'0.7.1'});
+  if(pathname==='/api/sample-library/status'&&req.method==='GET'){
+   const settings=sampleLibrary.settings();
+   return respond(res,{enabled:settings.enabled,storage:'encrypted-github-branch',
+    message:settings.enabled?'영구 보관함 준비 완료':'Render에 영구 저장용 GitHub 토큰과 보관함 비밀번호를 등록해야 해.'});
+  }
+  if(pathname==='/api/sample-library'){
+   const settings=sampleLibrary.settings();
+   if(!settings.enabled)return respond(res,{error:'영구 저장소가 아직 연결되지 않았어. Render 환경변수 설정이 필요해.'},503);
+   if(!sampleLibrary.authorized(req.headers['x-samples-key']))
+    return respond(res,{error:'보관함 비밀번호가 올바르지 않아.'},401);
+   try{
+    if(req.method==='GET')return respond(res,await sampleLibrary.listSamples());
+    if(req.method==='POST'){
+     let body='';
+     for await(const c of req){
+      body+=c;
+      if(body.length>20000)return respond(res,{error:'샘플 데이터가 너무 커.'},413);
+     }
+     let payload;
+     try{payload=JSON.parse(body)}catch(e){return respond(res,{error:'요청 형식이 잘못됐어.'},400)}
+     return respond(res,await sampleLibrary.mutateSamples(payload,{validate}));
+    }
+   }catch(e){
+    console.error('[SAMPLE_LIBRARY_ERROR]',e.status||500,e.message);
+    return respond(res,{error:e.message||'샘플 저장 오류'},e.status||500);
+   }
+  }
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
   if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed))}
   return respond(res,{error:'Not found',method:req.method,path:pathname},404);
