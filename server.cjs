@@ -199,6 +199,103 @@ function evalTwoTurn(position,turn,deadline){
  const selected=resolveMatrix(matrix,L,R,immediate);
  return {...selected,depth:2,matrix,immediate,L,R};
 }
+
+// Only recheck close, damaging first-turn candidates. Use paired RNG seeds,
+// actual Showdown battle outcomes and optimal short-horizon follow-up actions.
+// This avoids treating 1 lucky freeze in two samples as a 50% freeze chance.
+function verificationSeed(turn,sample,phase=0){
+ const hash=require('node:crypto').createHash('sha256')
+  .update('verification-v1:'+turn+':'+sample+':'+phase).digest();
+ return [0,2,4,6].map(i=>hash.readUInt16BE(i)).join(',');
+}
+function moveIsAttack(B,side,choice){
+ const k=Number(choice.match(/move (\d+)/)?.[1]||0)-1;
+ const pokemon=B.getSide(side).pokemon[0];
+ const move=B.dex.moves.get(pokemon.moveSlots[k]?.id);
+ return !!move.exists && move.category!=='Status';
+}
+function closeAttackCandidates(B,planned,side){
+ const primary=side==='p2'?'right':'left';
+ const acts=side==='p2'?planned.R:planned.L;
+ if(!acts||acts.length<2)return [];
+ const scores=acts.map((choice,index)=>{
+  const col=side==='p2'?Math.max(...planned.matrix.map(row=>row[index])):
+    Math.min(...planned.matrix[index]);
+  return {choice,index,score:col};
+ });
+ scores.sort((a,b)=>side==='p2'?a.score-b.score:b.score-a.score);
+ const best=scores[0];
+ // Recheck only plausible close comparisons. Large decisive gaps do not
+ // justify a potentially expensive extra phase.
+ if(!best||!moveIsAttack(B,side,best.choice))return [];
+ const candidates=scores.filter(x=>Math.abs(x.score-best.score)<=200
+   &&moveIsAttack(B,side,x.choice)).slice(0,3);
+ return candidates.length>=2?candidates:[];
+}
+function verifyChanceOutcomes(B,planned,turn,deadline){
+ const right=closeAttackCandidates(B,planned,'p2');
+ const left=closeAttackCandidates(B,planned,'p1');
+ const side=right.length>=2?'p2':left.length>=2?'p1':null;
+ if(!side)return null;
+ const candidates=side==='p2'?right:left;
+ const other=side==='p2'?planned.left:planned.right;
+ const saved=JSON.stringify(B.toJSON());
+ const stats=candidates.map(x=>({action:x.choice,wins:0,losses:0,draws:0,unfinished:0,
+   hpTotal:0,samples:0,scoreTotal:0}));
+ const maxSamples=28,minimum=14;
+ for(let n=0;n<maxSamples;n++){
+  if(Date.now()>deadline)break;
+  const seed1=verificationSeed(turn,n,1);
+  const seed2=verificationSeed(turn,n,2);
+  for(let c=0;c<candidates.length;c++){
+   if(Date.now()>deadline)break;
+   const branch=Sim.Battle.fromJSON(saved);
+   branch.resetRNG(seed1);
+   const a=side==='p1'?candidates[c].choice:other;
+   const b=side==='p2'?candidates[c].choice:other;
+   branch.makeChoices(a,b);
+   if(!branch.ended){
+    // Use a bounded best-response evaluation, rather than a hard-coded
+    // attack (e.g. Earthquake), to preserve setup/priority move interactions.
+    const reply=evalOneTurn(branch,turn+1,1,deadline,2);
+    if(!reply)break;
+    branch.resetRNG(seed2);
+    branch.makeChoices(reply.left,reply.right);
+   }
+   const w=branch.winner;
+   const st=stats[c];
+   st.samples++;
+   if(branch.ended){
+    if(w==='Left')st.wins++;
+    else if(w==='Right')st.losses++;
+    else st.draws++;
+   }else st.unfinished++;
+   const aP=branch.getSide('p1').pokemon[0],bP=branch.getSide('p2').pokemon[0];
+   const diff=aP.hp/aP.maxhp-bP.hp/bP.maxhp;
+   st.hpTotal+=diff;
+   st.scoreTotal+=(w==='Left'?1:w==='Right'?-1:0)+diff*0.002;
+  }
+ }
+ // Incomplete sampling caused by a deadline should never silently turn
+ // into a decision based on one lucky freeze.
+ if(stats.some(x=>x.samples<minimum)||new Set(stats.map(x=>x.samples)).size!==1)return null;
+ const scoreOf=x=>x.scoreTotal/x.samples;
+ stats.sort((a,b)=>side==='p2'?scoreOf(a)-scoreOf(b):scoreOf(b)-scoreOf(a));
+ const leader=stats[0],runner=stats[1];
+ // If the win-rate gap is too close to confidently distinguish on the
+ // available budget, retain a conservative tie-break toward immediate damage
+ // (no arbitrary bonus for freeze or status effects).
+ if(Math.abs(scoreOf(leader)-scoreOf(runner))<0.04)return {
+  side,chosen:null,samples:leader.samples,
+  candidates:stats.map(x=>({action:x.action,winPct:Math.round(100*(side==='p2'?x.losses:x.wins)/x.samples),
+    lostPct:Math.round(100*(side==='p2'?x.wins:x.losses)/x.samples),
+    n:x.samples})),ambiguous:true
+ };
+ return {side,chosen:leader.action,samples:leader.samples,ambiguous:false,
+  candidates:stats.map(x=>({action:x.action,winPct:Math.round(100*(side==='p2'?x.losses:x.wins)/x.samples),
+   lostPct:Math.round(100*(side==='p2'?x.wins:x.losses)/x.samples),n:x.samples}))};
+}
+
 function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
  const actualSeed=checkedRngSeed(rngSeed);
@@ -210,13 +307,22 @@ function simulation(a,b,depth=120,rngSeed){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  let choice=null,depthUsed=1;
+  let choice=null,depthUsed=1,verification=null;
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
   if(t<6 && hasTacticalMove(B) && Date.now()-started<10000){
    const deadline=Math.min(Date.now()+6500,globalDeadline-2200);
    const deep=evalTwoTurn(B,t,deadline);
-   if(deep){choice=deep;depthUsed=2;planned++}
+   if(deep){
+    choice=deep;depthUsed=2;planned++;
+    if(t<2 && Date.now()<globalDeadline-3500){
+     verification=verifyChanceOutcomes(B,deep,t,Math.min(Date.now()+6500,globalDeadline-900));
+     if(verification?.chosen){
+      if(verification.side==='p1')choice.left=verification.chosen;
+      if(verification.side==='p2')choice.right=verification.chosen;
+     }
+    }
+   }
    else fallbacks++;
   }
   if(!choice){
@@ -226,7 +332,7 @@ function simulation(a,b,depth=120,rngSeed){
   }
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
-  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right});
+  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,...(verification?{verification}: {})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
