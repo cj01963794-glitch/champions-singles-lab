@@ -50,7 +50,7 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  let closeDamageTieBreak=null;
  if(attackDamageTieBreak && n>=minSamples && B.getSide && B.dex?.moves){
   const isAttack=(side,choice)=>{
-   const i=Number(String(choice).match(/move (\\d+)/)?.[1]||0)-1;
+   const i=Number(String(choice).match(/move (\d+)/)?.[1]||0)-1;
    const slot=B.getSide(side)?.pokemon?.[0]?.moveSlots?.[i];
    const move=B.dex.moves.get(slot?.id);
    return !!move?.exists && move.category!=='Status';
