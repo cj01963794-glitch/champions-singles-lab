@@ -16,12 +16,19 @@ const mimikyu={
 async function diagnostic(a,b,label,live){
  try{
   const target=live?await (async()=>{
-   const resp=await fetch('https://champions-singles-lab.onrender.com/api/duel',{
-    method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({a,b,maxTurns:4,rngSeed:seed}),signal:AbortSignal.timeout(80000)});
-   const content=await resp.text();
-   if(!resp.ok)throw Error(resp.status+' '+content.slice(0,200));
-   return JSON.parse(content);
+   for(let attempt=0;attempt<3;attempt++){
+    try{
+     const resp=await fetch('https://champions-singles-lab.onrender.com/api/duel',{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({a,b,maxTurns:4,rngSeed:seed}),signal:AbortSignal.timeout(80000)});
+     const content=await resp.text();
+     if(!resp.ok)throw Error(resp.status+' '+content.slice(0,200));
+     return JSON.parse(content);
+    }catch(e){
+     if(attempt===2)throw e;
+     console.log('[MIMIKYU-LIVE-RETRY]',label,attempt+1,String(e.message||e));
+    }
+   }
   })():simulation(a,b,4,seed);
   const audit=target.decisionDetails?.[0]?.megaTimingAudit;
   console.log('[MIMIKYU-DIAG]',label,live?'live':'local',JSON.stringify({
