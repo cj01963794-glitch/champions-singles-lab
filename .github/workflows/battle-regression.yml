@@ -50,7 +50,7 @@ jobs:
       - name: Diagnose stored Mimikyu and Mega Dragonite choices
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
-        run: node scripts/dragonite-mimikyu-diagnostic.cjs
+        run: node scripts/dragonite-mimikyu-diagnostic.cjs --verify-live
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
