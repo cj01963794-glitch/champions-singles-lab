@@ -17,3 +17,19 @@ for(const name of targets){
   forme:x.forme,formeLetter:x.formeLetter,gender:x.gender,ko:y?.ko,originalText:koData.Pokedex?.[x.id],
   baseText:koData.Pokedex?.[dex.species.get(x.baseSpecies).id]}));
 }
+
+const unlocalized=catalog.species.filter(x=>!/[가-힣]/.test(x.ko));
+const byBase=new Map();
+for(const record of unlocalized){
+ const dexEntry=dex.species.get(record.id);
+ const ancestor=dex.species.get(dexEntry.baseSpecies);
+ const baseText=koData.Pokedex?.[ancestor.id]||{};
+ const raw=koData.Pokedex?.[record.id]||{};
+ const group=byBase.get(ancestor.name)||{base:ancestor.name,baseKo:baseText.baseSpecies||baseText.name,
+  forms:[]};
+ group.forms.push({name:record.en,forme:dexEntry.forme,rawForme:raw.forme,rawName:raw.name});
+ byBase.set(ancestor.name,group);
+}
+console.log('[KO-BASE-GROUPS]',JSON.stringify([...byBase.values()]));
+const noBase=[...byBase.values()].filter(x=>!/[가-힣]/.test(x.baseKo||''));
+console.log('[KO-BASE-UNTRANSLATED]',JSON.stringify(noBase));
