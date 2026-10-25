@@ -560,6 +560,23 @@ function strongestOpeningResponse(B,side,attacks,planned,turn,deadline){
 // Cheap, state-dependent tactical policy used *only inside* probability
 // rollouts. Unlike single-seed minimax it never treats a priority move's
 // tiny non-KO chip as protection against a faster finishing attack.
+// Fast upper bound to skip expensive priority-KO probes when a target
+// obviously survives. This is a screen only: Showdown still decides combat.
+function upperAttackBound(B,side,action){
+ const us=B.getSide(side).pokemon[0],them=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const m=B.dex.moves.get(actionInfo(B,side,action).id);
+ if(!m.exists||!m.basePower)return 0;
+ const phys=m.category==='Physical';
+ const attack=approximateCombatStat(us,phys?'atk':'spa');
+ const defense=approximateCombatStat(them,phys?'def':'spd');
+ const base=(Math.floor(22*m.basePower*attack/Math.max(1,defense)/50)+2);
+ let mult=us.getTypes().includes(m.type)?1.5:1;
+ for(const ty of them.getTypes())mult*=Math.pow(2,B.dex.getEffectiveness(m.type,ty));
+ if(B.dex.getImmunity(m.type,them)===false)return 0;
+ // 1.5 critical multiplier plus a generous allowance for items/abilities.
+ return Math.ceil(base*mult*2.1);
+}
+
 function raceFollowupChoice(B,side,turn){
  const all=legal(B,side),hits=all.filter(a=>moveIsAttack(B,side,a));
  if(!hits.length)return all[0]||null;
@@ -572,9 +589,11 @@ function raceFollowupChoice(B,side,turn){
  if(!priorities.length)return baseline;
  const enemySide=side==='p1'?'p2':'p1';
  for(const priority of priorities){
+  const target=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+  if(target.hp>upperAttackBound(B,side,priority))continue;
   let willKO=0;
   const snapshot=JSON.stringify(B.toJSON());
-  for(let n=0;n<2;n++){
+  for(let n=0;n<1;n++){
    const probe=Sim.Battle.fromJSON(snapshot);
    probe.resetRNG(verificationSeed(turn,n,88));
    const other=usefulAttack(probe,enemySide,
@@ -599,7 +618,7 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
  const snapshot=JSON.stringify(B.toJSON());
  const options=race.attacks.map(a=>({action:a,wins:0,losses:0,draws:0,unresolved:0,
   hpTiebreak:0,n:0}));
- const maxSamples=96,minSamples=32;
+ const maxSamples=256,minSamples=48;
  for(let n=0;n<maxSamples;n++){
   if(Date.now()>deadline)break;
   const firstSeed=verificationSeed(turn,n,71);
