@@ -32,3 +32,12 @@ SHOWDOWN_PACKAGE_PATH=/absolute/path/to/pokemon-showdown npm start
 Regression coverage includes the specified Salamence/Primarina spreads, side and move-order swaps, independent full-engine weighted outcome enumeration, seeded replay, unsupported mechanics, and joint-action sampling. The full four-move regression uses Primarina's Moonblast/Sparkling Aria/Encore/Aqua Jet and Salamence's Double-Edge/Giga Impact/Earthquake/Dragon Dance, including the engine's simultaneous recoil-KO winner rule. All 17 tests pass against the pinned engine revision.
 
 Pokémon Showdown is licensed under MIT. Public deployment on Render (free tier) uses a pinned source revision.
+
+The Mega-timing fallback also ranks candidate attacks using the attacker's **actual
+ability on that action**. This preserves Scrappy/Mind's Eye Normal/Fighting
+attacks against Ghost while they remain in the base form, and stops treating
+them as legal bypasses after evolving. Real damage and effects are still
+resolved by Showdown. Entry abilities such as Intimidate are applied by Showdown
+before turn one, and those pre-turn events now appear in the UI battle log.
+The added test cases cover Mega Kangaskhan's Scrappy and Mega Salamence /
+Mega Gyarados Intimidate.

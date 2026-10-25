@@ -19,6 +19,27 @@ function render(first){
  vm.runInContext('renderResult(raw,a,b)',context);
  return nodes;
 }
+test('entry abilities and attack drops before turn one are shown in the battle log',()=>{
+ const parser=html.slice(html.indexOf('function parseBattle(log){'),
+  html.indexOf('function hpCard(',html.indexOf('function parseBattle(log){')));
+ const context=vm.createContext({
+  unSplit:log=>log,sideOf:s=>s?.startsWith('p1')?'p1':'p2',
+  hpInfo:()=>({now:100,max:100}),printActor:s=>s,
+  korean:()=>'',abilityKo:{Intimidate:'위협'},statKo:{atk:'공격'}
+ });
+ vm.runInContext(parser,context);
+ context.lines=[
+  '|switch|p1a: Salamence|Salamence|100/100',
+  '|switch|p2a: Garchomp|Garchomp|100/100',
+  '|-ability|p1a: Salamence|Intimidate|boost',
+  '|-unboost|p2a: Garchomp|atk|1',
+  '|turn|1',
+  '|move|p1a: Salamence|Earthquake|p2a: Garchomp'
+ ];
+ const parsed=vm.runInContext('parseBattle(lines)',context);
+ assert.ok(parsed.turns[0].intro.some(x=>x.text.includes('위협')));
+ assert.ok(parsed.turns[0].intro.some(x=>x.text.includes('공격')&&x.text.includes('1랭크')));
+});
 test('result table distinguishes weighted probability bounds from sampled estimates',()=>{
  const exact=render({left:'move 1',right:'move 1',depth:3,exactSearch:{
   method:'exact-bounded-attack-game',certified:true,horizon:3,

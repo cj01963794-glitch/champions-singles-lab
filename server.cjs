@@ -122,6 +122,32 @@ function resolveMatrix(matrix,L,R,tieMatrix){
  }
  return {left:bestL,right:bestR,leftValue:bestLeft,rightValue:bestRight};
 }
+// Pre- and post-Mega abilities can change which attacks are usable, not
+// merely their power. This is ONLY a candidate-ranking heuristic; the actual
+// outcomes always come from Showdown's move and ability mechanics.
+function attackMatchup(B,attacker,defender,move,action=''){
+ let types=attacker.getTypes(),ability=id(attacker.ability);
+ if(String(action).endsWith(' mega')){
+  const evolution=B.actions.canMegaEvo(attacker);
+  if(evolution){
+   const form=B.dex.species.get(evolution);
+   if(form.exists){types=form.types;ability=id(form.abilities['0']||ability)}
+  }
+ }
+ let effectiveness=1;
+ for(const type of defender.getTypes()){
+  // Scrappy / Mind's Eye allow Normal and Fighting hits on Ghost targets
+  // only while the attacker actually has that ability.
+  const ignoreGhost=type==='Ghost' && (move.type==='Normal'||move.type==='Fighting') &&
+   (ability==='scrappy'||ability==='mindseye');
+  if(ignoreGhost)continue;
+  if(B.dex.getImmunity(move.type,type)===false)return {effectiveness:0,stab:1};
+  const e=B.dex.getEffectiveness(move.type,type);
+  effectiveness*=e>0?2**e:e<0?2**e:1;
+ }
+ return {effectiveness,stab:types.includes(move.type)?1.5:1};
+}
+
 // Values at the end of the entire searched line, not only the first turn.
 // Follow-up moves use actual HP, stat boosts and consumed items from Showdown.
 // Only the second ply is beam-pruned for CPU cost; the root still considers
@@ -142,14 +168,8 @@ function followChoiceBeam(B,side,actions,limit=2){
     'bulkup','quiverdance','willowisp','toxic','leechseed']);
    return {action,attack:false,rank:priorityStatus.has(m.id)?90:20};
   }
-  const sameType=active.getTypes().includes(m.type)?1.5:1;
-  let effectiveness=1;
-  for(const type of foe.getTypes()){
-   const eff=B.dex.getEffectiveness(m.type,type);
-   effectiveness*=eff>0?2**eff:eff<0?2**eff:1;
-  }
-  if(B.dex.getImmunity(m.type,foe)===false)effectiveness=0;
-  const rank=(m.basePower||0)*sameType*effectiveness*(typeof m.accuracy==='number'?m.accuracy/100:1)+
+  const {effectiveness,stab}=attackMatchup(B,active,foe,m,action);
+  const rank=(m.basePower||0)*stab*effectiveness*(typeof m.accuracy==='number'?m.accuracy/100:1)+
     (m.priority>0?20:0);
   return {action,attack:true,rank};
  });
@@ -371,7 +391,7 @@ function physicalPressure(B,attacker,defender){
  return p.moveSlots.some(s=>{
   const m=B.dex.moves.get(s.id);
   return m.category==='Physical' && m.basePower>=40 &&
-   B.dex.getImmunity(m.type,q)!==false;
+   attackMatchup(B,p,q,m).effectiveness>0;
  });
 }
 function defensePlanSide(B){
@@ -396,16 +416,11 @@ function usefulAttack(B,side,actions){
  for(const a of attacks){
   const m=B.dex.moves.get(actionInfo(B,side,a).id);
   if(!m.exists)continue;
-  let eff=1;
-  for(const ty of enemy.getTypes()){
-   const e=B.dex.getEffectiveness(m.type,ty);
-   eff*=Math.pow(2,e);
-  }
-  if(B.dex.getImmunity(m.type,enemy)===false)eff=0;
+  const {effectiveness:eff,stab}=attackMatchup(B,pokemon,enemy,m,a);
   const offense=approximateCombatStat(pokemon,m.category==='Physical'?'atk':'spa');
   const defense=approximateCombatStat(enemy,m.category==='Physical'?'def':'spd');
   const critBonus=(m.critRatio||1)>1?1.12:1;
-  const rank=(m.basePower||0)*eff*(pokemon.getTypes().includes(m.type)?1.5:1)*
+  const rank=(m.basePower||0)*eff*stab*
    Math.max(0.01,offense/Math.max(1,defense))*critBonus*(typeof m.accuracy==='number'?m.accuracy/100:1);
   if(rank>best){best=rank;candidate=a}
  }
@@ -566,9 +581,9 @@ function upperAttackBound(B,side,action){
  const attack=approximateCombatStat(us,phys?'atk':'spa');
  const defense=approximateCombatStat(them,phys?'def':'spd');
  const base=(Math.floor(22*m.basePower*attack/Math.max(1,defense)/50)+2);
- let mult=us.getTypes().includes(m.type)?1.5:1;
- for(const ty of them.getTypes())mult*=Math.pow(2,B.dex.getEffectiveness(m.type,ty));
- if(B.dex.getImmunity(m.type,them)===false)return 0;
+ const {effectiveness,stab}=attackMatchup(B,us,them,m,action);
+ const mult=stab*effectiveness;
+ if(!effectiveness)return 0;
  // 1.5 critical multiplier plus a generous allowance for items/abilities.
  return Math.ceil(base*mult*2.1);
 }

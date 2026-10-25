@@ -304,18 +304,24 @@ function sampleLabel(x){return x.name||korean('species',x.species)||x.species}
 function printActor(s){return s==='p1'?'A · '+sampleLabel(collect(left)):s==='p2'?'B · '+sampleLabel(collect(right)):s||'포켓몬'}
 function parseBattle(log){
  const state={p1:null,p2:null},started={p1:null,p2:null},turns=[];let turn=null,action=null;
- function detail(txt,kind){if(!turn)return;const x={text:txt,kind:kind||''};if(action)action.details.push(x);else turn.intro.push(x)}
+ const openingEvents=[];
+ function detail(txt,kind){
+  const x={text:txt,kind:kind||''};
+  if(!turn){openingEvents.push(x);return}
+  if(action)action.details.push(x);else turn.intro.push(x);
+ }
  const lines=unSplit(log);
  for(const ln of lines){
   if(!ln.startsWith('|'))continue;const v=ln.split('|');const cmd=v[1];
   if(cmd==='switch'||cmd==='drag'||cmd==='replace'){
    const side=sideOf(v[2]);if(side){state[side]=hpInfo(v[4],state[side]);if(!started[side])started[side]=state[side]?{...state[side]}:null}continue
   }
-  if(cmd==='turn'){turn={number:Number(v[2]),intro:[],actions:[]};turns.push(turn);action=null;continue}
-  if(!turn)continue;
+  if(cmd==='turn'){turn={number:Number(v[2]),intro:turns.length?[]:openingEvents.splice(0),actions:[]};turns.push(turn);action=null;continue}
   if(cmd==='move'){
+   if(!turn)continue;
    action={actor:sideOf(v[2]),move:v[3],details:[]};turn.actions.push(action);continue
   }
+  if(cmd==='-ability'){detail(printActor(sideOf(v[2]))+' 특성 발동: '+(korean('abilities',v[3])||abilityKo[v[3]]||v[3]));continue}
   if(cmd==='-mega'){detail((sideOf(v[2])==='p1'?'A':'B')+'가 메가진화: '+String(v[4]||v[3]));continue}
   if(cmd==='-terastallize'){detail(printActor(sideOf(v[2]))+' 테라스탈: '+v[3]);continue}
   if(cmd==='-damage'||cmd==='-heal'){
