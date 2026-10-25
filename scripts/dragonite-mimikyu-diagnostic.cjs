@@ -1,6 +1,7 @@
 'use strict';
 const {simulation,battle,legal,estimatedDirectDamage}=require('../server.cjs');
 const seed='1579,3137,6027,8191';
+const verifyLive=process.argv.includes('--verify-live');
 const dragonite={
  species:'Dragonite-Mega',name:'조심CS메망나',nature:'Modest',item:'Dragoninite',
  ability:'Multiscale',preMegaAbility:'Multiscale',
@@ -31,7 +32,18 @@ async function diagnostic(a,b,label,live){
    candidates:audit?.candidates,
    trace:(target.log||[]).filter(x=>/\\|move\\||\\|-immune\\||\\|-activate\\||\\|turn\\||\\|-damage\\|/.test(x)).slice(0,26)
   }));
- }catch(err){console.error('[MIMIKYU-DIAG-ERROR]',label,live?'live':'local',err.stack||err)}
+  if(verifyLive&&live){
+   const side=label.endsWith('-left')?0:1;
+   const first=target.choices?.[0]?.[side]||'';
+   if(!/^move [23](?: mega)?$/.test(first) || !audit?.applied)
+    throw Error('LIVE-SAMPLE-REGRESSION first='+first+
+     ' auditApplied='+audit?.applied);
+   console.log('[MIMIKYU-LIVE-VERIFIED]',label,first,'samples='+audit.samples);
+  }
+ }catch(err){
+  console.error('[MIMIKYU-DIAG-ERROR]',label,live?'live':'local',err.stack||err);
+  if(verifyLive)process.exitCode=1;
+ }
 }
 (async()=>{
  const b=battle(dragonite,mimikyu);
@@ -40,7 +52,7 @@ async function diagnostic(a,b,label,live){
   actions:legal(b,'p1'),estimated:legal(b,'p1').map(a=>[a,estimatedDirectDamage(b,'p1',a)])
  }));
  for(const [name,a,c] of [['dragonite-left',dragonite,mimikyu],['dragonite-right',mimikyu,dragonite]]){
-  await diagnostic(a,c,name,false);
+  if(!verifyLive)await diagnostic(a,c,name,false);
   await diagnostic(a,c,name,true);
  }
 })();
