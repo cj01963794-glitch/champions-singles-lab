@@ -615,7 +615,7 @@ function simulation(a,b,depth=120,rngSeed){
    const deep=evalTwoTurn(B,t,deadline);
    if(deep){
     choice=deep;depthUsed=2;planned++;
-    if(t<2 && Date.now()<globalDeadline-3500){
+    if(t<2 && !probabilisticRaceSide(B) && Date.now()<globalDeadline-3500){
      verification=verifyChanceOutcomes(B,deep,t,Math.min(Date.now()+6500,globalDeadline-900));
      if(verification?.chosen){
       if(verification.side==='p1')choice.left=verification.chosen;
@@ -828,6 +828,31 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
+ if(true){
+  try{
+   const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaAbility:'Intimidate',item:'Salamencite',
+    evs:{hp:27,atk:9,spe:30},moves:['Giga Impact','Earthquake']};
+   const prim={species:'Primarina',nature:'Modest',ability:'Torrent',item:'Sitrus Berry',
+    evs:{hp:32,def:20,spa:14},moves:['Moonblast','Aqua Jet']};
+   const B=battle(sal,prim);
+   const root=evalTwoTurn(B,0,Date.now()+6500);
+   const chosen=root||{left:'move 1 mega',right:'move 1'};
+   const start=Date.now();
+   const audit=probabilisticAttackSearch(B,chosen,0,Date.now()+12000);
+   console.log('[PROBABILISTIC-REGRESSION]',JSON.stringify({elapsed:Date.now()-start,
+    root:root?{left:root.left,right:root.right}:null,audit}));
+   const mint={species:'Gholdengo',nature:'Modest',ability:'Good as Gold',item:'Air Balloon',
+    evs:{hp:32,spa:32,spe:2},moves:['Make It Rain','Dazzling Gleam','Shadow Ball','Nasty Plot']};
+   const meta={species:'Metagross-Mega',nature:'Adamant',ability:'Tough Claws',
+    preMegaAbility:'Clear Body',item:'Metagrossite',evs:{hp:2,atk:32,spe:32},
+    moves:['Ice Punch','Psychic Fangs','Bullet Punch','Earthquake']};
+   const G=battle(mint,meta);
+   const g=evalTwoTurn(G,0,Date.now()+6500);
+   const goldAudit=probabilisticAttackSearch(G,g||{left:'move 3',right:'move 1 mega'},0,Date.now()+11000);
+   console.log('[PROBABILISTIC-GOLD]',JSON.stringify({root:g?{left:g.left,right:g.right}:null,audit:goldAudit}));
+  }catch(e){console.error('[PROBABILISTIC-REGRESSION-ERROR]',e.stack||e)}
+ }
+
  if(process.env.RUN_SALAMENCE_PROBABILITY==='1'){
   try{
    const sal={species:'Salamence-Mega',nature:'Adamant',ability:'Aerilate',preMegaAbility:'Intimidate',item:'Salamencite',
