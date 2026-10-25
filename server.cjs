@@ -608,6 +608,41 @@ function raceFollowupChoice(B,side,turn){
  return baseline;
 }
 
+
+// Quasi-Monte Carlo combat RNG: spread attack accuracy, critical hits,
+// secondaries and each 16-way damage roll over different low-discrepancy
+// dimensions. This is a stratified approximation, NOT an exhaustive tree.
+function radicalInverse(index,base){
+ let numerator=0,factor=1/base;
+ while(index>0){
+  numerator+=(index%base)*factor;
+  index=Math.floor(index/base);
+  factor/=base;
+ }
+ return numerator;
+}
+const QMC_BASES=[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61];
+function stratifyCombatRNG(B,turn,sample){
+ const idx=sample+1+turn*257;
+ let chance=0,damage=0;
+ const originalChance=B.randomChance.bind(B);
+ const originalRandomizer=B.randomizer.bind(B);
+ B.randomChance=function(numerator,denominator){
+  const dim=chance++;
+  if(dim>=QMC_BASES.length-1)return originalChance(numerator,denominator);
+  const u=radicalInverse(idx,QMC_BASES[dim]);
+  return u<numerator/denominator;
+ };
+ B.randomizer=function(value){
+  const dim=damage++;
+  if(dim>=QMC_BASES.length-1)return originalRandomizer(value);
+  // Independent dimensions for chance and damage sequences to avoid a
+  // single shared damage quantile making the two strategies look identical.
+  const factor=85+Math.floor(16*radicalInverse(idx,QMC_BASES[(dim+8)%QMC_BASES.length]));
+  return Math.floor(value*factor/100);
+ };
+}
+
 function probabilisticAttackSearch(B,planned,turn,deadline){
  const race=probabilisticRaceSide(B);
  if(!race)return null;
@@ -617,7 +652,7 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
  // both sides reconsider using real Showdown battle state at every turn.
  const snapshot=JSON.stringify(B.toJSON());
  const options=race.attacks.map(a=>({action:a,wins:0,losses:0,draws:0,unresolved:0,
-  hpTiebreak:0,n:0}));
+  hpTiebreak:0,n:0,trace:[]}));
  const maxSamples=256,minSamples=48;
  for(let n=0;n<maxSamples;n++){
   if(Date.now()>deadline)break;
@@ -627,6 +662,7 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
    if(Date.now()>deadline)break;
    const branch=Sim.Battle.fromJSON(snapshot);
    branch.resetRNG(firstSeed);
+   stratifyCombatRNG(branch,turn,n);
    branch.makeChoices(side==='p1'?options[i].action:opposingMove,
     side==='p2'?options[i].action:opposingMove);
    for(let step=1;step<=4&&!branch.ended;step++){
@@ -656,6 +692,7 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
    else if(o.result===-1)st.losses++;
    else st.draws++;
    st.hpTiebreak+=o.hp;
+   st.trace.push(o.ended?(o.result===1?1:o.result===-1?0:0.5):0.5);
   }
  }
  if(options.some(o=>o.n<minSamples)||new Set(options.map(o=>o.n)).size!==1)return null;
@@ -667,17 +704,16 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
  // Use a conservative paired-outcome uncertainty margin, avoiding choices
  // flipped by small samples. If ambiguous, keep the existing planner result.
  const margin=((selected.wins-selected.losses)-(runner.wins-runner.losses))/n;
- const independentStderr=Math.sqrt(Math.max(0.000001,
-  (selected.wins+selected.losses)/n+
-  (runner.wins+runner.losses)/n-
-  Math.pow((selected.wins-selected.losses)/n,2)-
-  Math.pow((runner.wins-runner.losses)/n,2))/n);
- const significant=margin>Math.max(0.07,1.25*independentStderr);
- // When there are enough sampled completed fights, the empirical best move
- // is a better decision rule than reverting to biased one-turn HP minimax.
- // Still flag close estimates as uncertain in the user interface.
- const usable=(significant||(n>=96&&margin>=0.015));
+ const pairedDiffs=selected.trace.map((v,i)=>v-runner.trace[i]);
+ const centered=pairedDiffs.reduce((a,b)=>a+b,0)/n;
+ const variance=n>1?pairedDiffs.reduce((a,v)=>a+(v-centered)**2,0)/(n-1):1;
+ const pairedStderr=Math.sqrt(variance/n);
+ const meaningful=margin>=Math.max(0.012,0.9*pairedStderr);
+ const usable=(n>=64&&meaningful);
+ const significant=margin>=Math.max(0.04,1.96*pairedStderr);
+
  return {side,chosen:usable?selected.action:null,ambiguous:!significant,
+  pairedStandardErrorPct:Math.round(pairedStderr*1000)/10,
   comparedAgainst:opposingMove,samples:n,
   candidates:rank.map(o=>({action:o.action,winPct:Math.round(1000*o.wins/n)/10,
    lossPct:Math.round(1000*o.losses/n)/10,
