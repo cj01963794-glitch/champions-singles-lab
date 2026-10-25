@@ -410,6 +410,38 @@ function strategicFutureScore(B,side){
  return 300*hpDelta+35*defenseShift+24*attackShift+
   18*(us.boosts.spa-them.boosts.spd)-18*(them.boosts.spa-us.boosts.spd);
 }
+
+// Prefer investing in recoverable long-term bulk while the defender is healthy,
+// the physical opponent can continue boosting and Roost would sacrifice tempo.
+// This is a general stage/HP/survival test, not a species-specific move override.
+// Unlike a short worst-case minimax, it explicitly accepts some critical-hit
+// risk if setting up is the only way to build a sustainable defensive route.
+function defenseRouteOpportunity(B,side,turn){
+ const own=legal(B,side),opp=side==='p1'?'p2':'p1',other=legal(B,opp);
+ const defender=B.getSide(side).pokemon[0],attacker=B.getSide(opp).pokemon[0];
+ const setup=strategyMove(B,side,own,'def'),recovery=strategyMove(B,side,own,'heal');
+ if(!setup||!recovery||defender.boosts.def>=6 || defender.hp/defender.maxhp<0.78 ||
+   !strategyMove(B,opp,other,'atk')||!physicalPressure(B,opp,side)||
+   defender.boosts.def>attacker.boosts.atk+1)return null;
+ const attack=usefulAttack(B,opp,other);
+ if(!attack || actionInfo(B,opp,attack).id===actionInfo(B,opp,strategyMove(B,opp,other,'atk')).id)
+  return null;
+ const snapshot=JSON.stringify(B.toJSON());
+ let survived=0, tried=0;
+ for(let k=0;k<5;k++){
+  const trial=Sim.Battle.fromJSON(snapshot);
+  trial.resetRNG(verificationSeed(turn,k,41));
+  trial.makeChoices(side==='p1'?setup:attack,side==='p2'?setup:attack);
+  const p=trial.getSide(side).pokemon[0];
+  survived+=p.hp>0?1:0;
+  tried++;
+ }
+ if(survived<2)return null;
+ return {side,chosen:setup,reason:'defensive-setup-before-healing',
+  survivedImmediateSamples:survived,testedImmediateSamples:tried,
+  defenseStage:defender.boosts.def,enemyAttackStage:attacker.boosts.atk};
+}
+
 function defensivePlanSearch(B,side,planned,turn,deadline){
  const all=legal(B,side),foeSide=side==='p1'?'p2':'p1';
  const def=strategyMove(B,side,all,'def'),heal=strategyMove(B,side,all,'heal');
@@ -520,10 +552,13 @@ function simulation(a,b,depth=120,rngSeed){
   }
   // Search farther in setup-vs-sustain matchups: scarce victory paths can
   // require several defense boosts, recovery and chip, not 2-turn HP gains.
-  const defenseSide=t<5 && Date.now()<globalDeadline-3500?defensePlanSide(B):null;
+  const defenseSide=t<6 && Date.now()<globalDeadline-2200?defensePlanSide(B):null;
   if(defenseSide){
-   longPlan=defensivePlanSearch(B,defenseSide,choice,t,
-     Math.min(Date.now()+4800,globalDeadline-900));
+   longPlan=defenseRouteOpportunity(B,defenseSide,t);
+   if(!longPlan && Date.now()<globalDeadline-3800){
+    longPlan=defensivePlanSearch(B,defenseSide,choice,t,
+      Math.min(Date.now()+4100,globalDeadline-900));
+   }
    if(longPlan?.chosen){
     if(defenseSide==='p1')choice.left=longPlan.chosen;
     else choice.right=longPlan.chosen;
