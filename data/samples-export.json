@@ -1,0 +1,382 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-25T21:44:57.875Z",
+  "count": 16,
+  "samples": [
+    {
+      "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
+      "updatedAt": "2026-10-25T20:40:37.784Z",
+      "name": "기띠고집한카",
+      "species": "Garchomp",
+      "nature": "Adamant",
+      "item": "Focus Sash",
+      "ability": "Rough Skin",
+      "moves": [
+        "Earthquake",
+        "Scale Shot",
+        "Fire Fang",
+        "Swords Dance"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "97bd4bad-6bac-474a-8b57-5825b5f8020f",
+      "updatedAt": "2026-10-25T20:41:35.694Z",
+      "name": "노자속기메갸라",
+      "species": "Gyarados-Mega",
+      "nature": "Adamant",
+      "item": "Gyaradosite",
+      "ability": "Mold Breaker",
+      "preMegaAbility": "Intimidate",
+      "moves": [
+        "Power Whip",
+        "Earthquake",
+        "Ice Fang",
+        "Dragon Dance"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "7a9259c2-06b1-41f4-82d1-730884a553da",
+      "updatedAt": "2026-10-25T20:43:43.179Z",
+      "name": "고집스카프한카",
+      "species": "Garchomp",
+      "nature": "Adamant",
+      "item": "Choice Scarf",
+      "ability": "Rough Skin",
+      "moves": [
+        "Earthquake",
+        "Outrage",
+        "Rock Slide",
+        "Fire Fang"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "4d9e5b14-0e03-4565-8e4f-d0cb0302a85e",
+      "updatedAt": "2026-10-25T20:46:50.676Z",
+      "name": "초점HA따라큐",
+      "species": "Mimikyu",
+      "nature": "Adamant",
+      "item": "Scope Lens",
+      "ability": "Disguise",
+      "moves": [
+        "Shadow Claw",
+        "Play Rough",
+        "Swords Dance",
+        "Shadow Sneak"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 2
+      }
+    },
+    {
+      "id": "399dcdc2-13df-49b2-9706-9de993981b43",
+      "updatedAt": "2026-10-25T20:48:12.979Z",
+      "name": "울멧HB아머까오",
+      "species": "Corviknight",
+      "nature": "Bold",
+      "item": "Rocky Helmet",
+      "ability": "Pressure",
+      "moves": [
+        "Iron Defense",
+        "Body Press",
+        "Roost",
+        "U-turn"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 0,
+        "spd": 2,
+        "spe": 0
+      }
+    },
+    {
+      "id": "cd08cf1e-a03c-4bd0-a289-ba4f7ee443e7",
+      "updatedAt": "2026-10-25T20:52:57.480Z",
+      "name": "HBC자뭉누리",
+      "species": "Primarina",
+      "nature": "Modest",
+      "item": "Sitrus Berry",
+      "ability": "Torrent",
+      "moves": [
+        "Sparkling Aria",
+        "Moonblast",
+        "Encore",
+        "Aqua Jet"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 20,
+        "spa": 14,
+        "spd": 0,
+        "spe": 0
+      }
+    },
+    {
+      "id": "a5645ea1-8b62-471c-8ce1-4dc98e2953e7",
+      "updatedAt": "2026-10-25T20:55:17.080Z",
+      "name": "조심CS메망나",
+      "species": "Dragonite-Mega",
+      "nature": "Modest",
+      "item": "Dragoninite",
+      "ability": "Multiscale",
+      "preMegaAbility": "Multiscale",
+      "moves": [
+        "Draco Meteor",
+        "Thunderbolt",
+        "Flamethrower",
+        "Extreme Speed"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "f7c8117b-48fe-450e-b2c9-8c299e0ee92f",
+      "updatedAt": "2026-10-25T20:59:37.279Z",
+      "name": "풍선HC타부자고",
+      "species": "Gholdengo",
+      "nature": "Modest",
+      "item": "Air Balloon",
+      "ability": "Good as Gold",
+      "moves": [
+        "Make It Rain",
+        "Shadow Ball",
+        "Nasty Plot",
+        "Recover"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 2
+      }
+    },
+    {
+      "id": "ae6fdd53-d7d6-4a63-8665-0cf506f7ebb4",
+      "updatedAt": "2026-10-25T21:01:17.581Z",
+      "name": "고집AS메메타",
+      "species": "Metagross-Mega",
+      "nature": "Adamant",
+      "item": "Metagrossite",
+      "ability": "Tough Claws",
+      "preMegaAbility": "Clear Body",
+      "moves": [
+        "Psychic Fangs",
+        "Ice Punch",
+        "Earthquake",
+        "Bullet Punch"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "3cc21f4b-83d5-4dc0-83a0-3b7534be92dd",
+      "updatedAt": "2026-10-25T21:07:30.796Z",
+      "name": "고집기띠에이스번",
+      "species": "Cinderace",
+      "nature": "Adamant",
+      "item": "Focus Sash",
+      "ability": "Libero",
+      "moves": [
+        "Pyro Ball",
+        "Gunk Shot",
+        "High Jump Kick",
+        "Sucker Punch"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "22e4994f-c83e-49ae-8686-3909101fcaee",
+      "updatedAt": "2026-10-25T21:14:47.397Z",
+      "name": "고집AS메만다",
+      "species": "Salamence-Mega",
+      "nature": "Adamant",
+      "item": "Salamencite",
+      "ability": "Aerilate",
+      "preMegaAbility": "Intimidate",
+      "moves": [
+        "Double-Edge",
+        "Earthquake",
+        "Dragon Dance",
+        "Roost"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "61b73c93-e3ea-4024-9a5b-6bf5fbf64a25",
+      "updatedAt": "2026-10-25T21:18:37.497Z",
+      "name": "조심철광젯루카",
+      "species": "Lucario-Mega-Z",
+      "nature": "Modest",
+      "item": "Lucarionite Z",
+      "ability": "Aura Guard",
+      "preMegaAbility": "Inner Focus",
+      "moves": [
+        "Steel Beam",
+        "Focus Blast",
+        "Dark Pulse",
+        "Vacuum Wave"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "e7b8be5a-d711-4900-b369-9add3beeb89a",
+      "updatedAt": "2026-10-25T21:25:13.216Z",
+      "name": "기띠에써르",
+      "species": "Indeedee",
+      "nature": "Modest",
+      "item": "Focus Sash",
+      "ability": "Psychic Surge",
+      "moves": [
+        "Expanding Force",
+        "Mystical Fire",
+        "Dazzling Gleam",
+        "Encore"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "12a6dc43-b616-4835-bcc1-352b6003d90a",
+      "updatedAt": "2026-10-25T21:27:36.418Z",
+      "name": "HB와자몽",
+      "species": "Charizard-Mega-Y",
+      "nature": "Bold",
+      "item": "Charizardite Y",
+      "ability": "Drought",
+      "preMegaAbility": "Blaze",
+      "moves": [
+        "Flamethrower",
+        "Solar Beam",
+        "Dragon Pulse",
+        "Roost"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 2,
+        "spd": 0,
+        "spe": 0
+      }
+    },
+    {
+      "id": "bc0caf16-e900-401a-a6d7-1b99c1543d65",
+      "updatedAt": "2026-10-25T21:29:44.017Z",
+      "name": "울멧HB하마돈",
+      "species": "Hippowdon",
+      "nature": "Bold",
+      "item": "Rocky Helmet",
+      "ability": "Sand Stream",
+      "moves": [
+        "Earthquake",
+        "Yawn",
+        "Stealth Rock",
+        "Slack Off"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 0,
+        "spd": 2,
+        "spe": 0
+      }
+    },
+    {
+      "id": "91528f5d-9d8c-4063-a809-db793dfe687c",
+      "updatedAt": "2026-10-25T21:43:50.279Z",
+      "name": "HS명상메플라",
+      "species": "Floette-Mega",
+      "nature": "Timid",
+      "item": "Floettite",
+      "ability": "Fairy Aura",
+      "preMegaAbility": "Flower Veil",
+      "moves": [
+        "Moonblast",
+        "Synthesis",
+        "Draining Kiss",
+        "Calm Mind"
+      ],
+      "evs": {
+        "hp": 22,
+        "atk": 0,
+        "def": 11,
+        "spa": 1,
+        "spd": 0,
+        "spe": 32
+      }
+    }
+  ]
+}
