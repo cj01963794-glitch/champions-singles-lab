@@ -4,7 +4,7 @@
 // simultaneous opening pair, never one convenient fixed opponent action.
 // Continuations remain heuristic, so none of these values certify optimality.
 function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMatrix,
- maxSamples=128,minSamples=32,attackDamageTieBreak=false}={}){
+ maxSamples=128,minSamples=32,attackDamageTieBreak=false,preferMegaTie=null}={}){
  const L=legal(B,'p1'),R=legal(B,'p2');
  if(!L.length||!R.length)return null;
  const saved=JSON.stringify(B.toJSON());
@@ -47,6 +47,27 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  if(!n)return null;
  const values=cells.map(row=>row.map(c=>(c.wins+c.draws/2)/n));
  const selected=resolveMatrix(values,L,R);
+ // Paired finite samples frequently see identical win/loss records for
+ // base and Mega of the same move. When type, ability and all stats
+ // relevant to this action weakly improve, an exact observed tie should
+ // favor the Mega rather than whichever choice index came first.
+ // This must NOT upgrade a type-changing or ability-changing Mega,
+ // nor overturn a measured win-rate difference.
+ const megaTieBreak=[];
+ if(preferMegaTie){
+  for(const [side,actions,field] of [['p1',L,'left'],['p2',R,'right']]){
+   const selectedAction=selected[field];
+   const alt=selectedAction+' mega';
+   const i=actions.indexOf(selectedAction),j=actions.indexOf(alt);
+   if(i<0||j<0||!preferMegaTie(B,side,selectedAction))continue;
+   const value=index=>side==='p1'?Math.min(...values[index]):
+    Math.max(...values.map(row=>row[index]));
+   if(Math.abs(value(i)-value(j))<1e-10){
+    selected[field]=alt;
+    megaTieBreak.push({side,from:selectedAction,to:alt,reason:'same-payoff-safer-mega-stats'});
+   }
+  }
+ }
  let closeDamageTieBreak=null;
  if(attackDamageTieBreak && n>=minSamples && B.getSide && B.dex?.moves){
   const isAttack=(side,choice)=>{
@@ -84,7 +105,7 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  const pct=x=>Math.round(x*1000)/10;
  return {method:'sampled-joint-opening-game',samples:n,ambiguous:true,
   left:enough?selected.left:null,right:enough?selected.right:null,
-  closeDamageTieBreak,
+  megaTieBreak,closeDamageTieBreak,
   sampleBudgetComplete:n===maxSamples,continuation:'heuristic',
   leftActions:L,rightActions:R,
   payoff:cells.map((row,i)=>row.map((c,j)=>({winPct:pct(c.wins/n),lossPct:pct(c.losses/n),
