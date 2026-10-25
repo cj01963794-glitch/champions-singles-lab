@@ -43,6 +43,11 @@ function score(B){const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0
  const v=p=>p.hp/p.maxhp*150+11*(p.boosts.atk+p.boosts.spa+p.boosts.spe)+6*(p.boosts.def+p.boosts.spd);
  return v(a)-v(b);
 }
+
+const policySeed=(turn,sample)=>{
+ const i=sample+1,t=turn+1;
+ return [11017+3701*i+131*t,23011+4219*i+337*t,33013+2749*i+271*t,41017+5563*i+193*t].map(x=>x%65536).join(',');
+};
 function simulation(a,b,depth=120){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
  const B=battle(a,b),choices=[];
@@ -52,20 +57,24 @@ function simulation(a,b,depth=120){
   if(Date.now()-started>18000){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  // Clone the live battle state to evaluate this turn. Replaying a long
-  // history for every candidate was quadratic in the number of turns.
+  // Judge each joint action by expected utility across a shared, deterministic
+  // set of RNG seeds. A single unlucky Gunk Shot miss must not cause a move
+  // to be classified as intrinsically inferior.
   const snapshot=JSON.stringify(B.toJSON());
-  let bestL=L[0],bestR=R[0],max=-Infinity,min=Infinity;
-  const matrix=[];
-  for(let i=0;i<L.length;i++){
-   const row=[];
-   for(let j=0;j<R.length;j++){
-    const tmp=Sim.Battle.fromJSON(snapshot);
-    tmp.makeChoices(L[i],R[j]);
-    row.push(score(tmp));
+  const samples=t<3?16:t<20?8:4;
+  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
+  for(let k=0;k<samples;k++){
+   const seed=policySeed(t,k);
+   for(let i=0;i<L.length;i++){
+    for(let j=0;j<R.length;j++){
+     const tmp=Sim.Battle.fromJSON(snapshot);
+     tmp.resetRNG(seed);
+     tmp.makeChoices(L[i],R[j]);
+     matrix[i][j]+=score(tmp)/samples;
+    }
    }
-   matrix.push(row);
   }
+  let bestL=L[0],bestR=R[0],max=-Infinity,min=Infinity;
   for(let i=0;i<L.length;i++){
    const worst=Math.min(...matrix[i]);
    if(worst>max){max=worst;bestL=L[i]}
@@ -81,7 +90,8 @@ function simulation(a,b,depth=120){
  return {
   winner:B.ended?(B.winner||'draw'):'unresolved',
   stopReason:B.ended?'battle_ended':stopReason,
-  log:B.log, // Keep the complete battle log, including turns 1-9
+  policy:'averaged-rng-shallow-minimax',
+  log:B.log,
   choices,turns:choices.length,maxTurns:depth
  };
 }
@@ -138,26 +148,13 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
- // Diagnostic: candidate move outcomes on a representative Primarina/Cinderace matchup.
+
  try{
    const prima={species:'Primarina',name:'누리레느 테스트',nature:'Modest',item:'Sitrus Berry',ability:'Torrent',moves:['Moonblast','Sparkling Aria','Aqua Jet','Encore'],evs:{hp:32,spa:32,spe:2}};
    const cinder={species:'Cinderace',name:'에이스번 테스트',nature:'Jolly',item:'Wide Lens',ability:'Libero',moves:['Gunk Shot','U-turn','Pyro Ball','High Jump Kick'],evs:{hp:2,atk:32,spe:32}};
-   const base=battle(prima,cinder);
-   const l=legal(base,'p1'),r=legal(base,'p2'),snapshot=JSON.stringify(base.toJSON());
-   let grid=[];
-   for(const left of l){
-     let row=[];
-     for(const right of r){
-       const tmp=Sim.Battle.fromJSON(snapshot);
-       tmp.makeChoices(left,right);
-       const p1=tmp.getSide('p1').pokemon[0],p2=tmp.getSide('p2').pokemon[0];
-       row.push({choice:right,move:cinder.moves[Number(right.match(/move (\d+)/)?.[1]||1)-1],value:score(tmp),hp1:p1.hp,hp2:p2.hp,ended:tmp.ended,winner:tmp.winner,events:tmp.log.filter(x=>x.startsWith('|move|')||x.startsWith('|-miss|')||x.startsWith('|-damage|')||x.startsWith('|-ability|')||x.startsWith('|-start|')).slice(-14)});
-     }
-     grid.push({against:prima.moves[Number(left.match(/move (\d+)/)?.[1]||1)-1],row});
-   }
-   console.log('[CINDER-PRIMARINA-GRID]',JSON.stringify(grid));
-   const duel=simulation(prima,cinder,3);console.log('[CINDER-PRIMARINA-CHOICE]',JSON.stringify({choices:duel.choices,events:duel.log.filter(x=>x.startsWith('|move|')||x.startsWith('|-miss|')||x.startsWith('|-damage|')).slice(0,18)}))
- }catch(e){console.error('[CINDER-PRIMARINA-ERROR]',e.stack||e)}
+   const duel=simulation(prima,cinder,3);
+   console.log('[MOVE-POLICY-TEST]',JSON.stringify({choice:duel.choices[0],events:duel.log.filter(x=>x.startsWith('|move|')||x.startsWith('|-miss|')).slice(0,7),turns:duel.turns}));
+ }catch(e){console.error('[MOVE-POLICY-ERROR]',e.stack||e)}
 
  const check=(path,method='GET',payload)=>new Promise(resolve=>{
   const req=http.request({hostname:'127.0.0.1',port,path,method,headers:{'content-type':'application/json'}},res=>{
