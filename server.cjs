@@ -358,6 +358,26 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
+if(process.env.MATCHUP_DIAGNOSTIC==='1'){
+ const run=(bNature,bSp,pNature,pSp)=>{
+ try{
+ const bx={species:'Baxcalibur-Mega',item:'Baxcalibrite',nature:bNature,ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',moves:['Swords Dance','Thunder Fang','Earthquake','Ice Shard'],evs:bSp};
+ const pr={species:'Primarina',item:'Sitrus Berry',nature:pNature,ability:'Torrent',moves:['Calm Mind','Aqua Jet','Moonblast','Sparkling Aria'],evs:pSp};
+ const b=battle(bx,pr), L=legal(b,'p1'),R=legal(b,'p2');
+ const pre={type:b.getSide('p1').pokemon[0].getTypes(),firstLegal:L,secondLegal:R};
+ const shallow=evalOneTurn(b,0,2,Date.now()+6000);
+ const deep=evalTwoTurn(b,0,Date.now()+14000);
+ const mk=(m)=>m?.matrix?.map((row,i)=>({p1:L[i],row:row.map((v,j)=>[R[j],Math.round(v)])}));
+ console.log('[MOONBLAST-INVESTIGATION]',JSON.stringify({bNature,bSp,pNature,pSp,pre,
+ shallow:shallow?{left:shallow.left,right:shallow.right,matrix:mk(shallow)}:null,
+ deep:deep?{left:deep.left,right:deep.right,matrix:mk(deep)}:null}));
+ }catch(e){console.error('[MOONBLAST-DIAG-ERROR]',e.stack||e)}
+ };
+ run('Impish',{hp:32,def:32,spe:2},'Modest',{hp:32,spa:32,spe:2});
+ run('Impish',{hp:32,def:32,spe:2},'Bold',{hp:32,def:32,spe:2});
+}
+
+
  if(process.env.RUN_POLICY_REGRESSION==='1'){
  try{
   const b={species:'Baxcalibur-Mega',name:'HB메가드닐레이브',item:'Baxcalibrite',nature:'Impish',
