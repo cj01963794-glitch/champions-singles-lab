@@ -55,8 +55,20 @@ function battle(a,b,seed='1579,3137,6027,8191'){
 function legal(B,k){
  const r=B.getSide(k)?.activeRequest?.active?.[0];
  if(!r)return [];
- const mega=r.canMegaEvo?' mega':'';
- return (r.moves||[]).map((m,i)=>!m.disabled&&m.pp!==0?'move '+(i+1)+mega:null).filter(Boolean);
+ const mega=r.canMegaEvo?' mega':'',p=B.getSide(k).pokemon[0];
+ const available=(r.moves||[]).map((m,i)=>!m.disabled&&m.pp!==0?'move '+(i+1)+mega:null).filter(Boolean);
+ // A full +6 stat cannot be boosted again. Do not waste turns on moves
+ // whose only effect is already at its cap (iron defense, swords dance etc).
+ const meaningful=available.filter(a=>{
+  const ix=Number(a.match(/move (\d+)/)?.[1]||0)-1;
+  const m=B.dex.moves.get(p.moveSlots[ix]?.id);
+  if(m.category!=='Status'||m.target!=='self')return true;
+  const boosts=m.boosts||m.self?.boosts;
+  if(!boosts)return true;
+  const entries=Object.entries(boosts);
+  return !entries.length||entries.some(([stat,amount])=>amount>0 ? p.boosts[stat]<6 : p.boosts[stat]>-6);
+ });
+ return meaningful.length?meaningful:available;
 }
 function score(B){const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
  // When both lines win or lose, survival matters: distinguish a loss after
@@ -497,7 +509,7 @@ function simulation(a,b,depth=120,rngSeed){
  const actualSeed=checkedRngSeed(rngSeed);
  const B=battle(a,b,actualSeed),choices=[];
  const started=Date.now(),globalDeadline=started+18000;
- let stopReason='',planned=0,fallbacks=0;
+ let stopReason='',planned=0,fallbacks=0,extendedSearchCount=0;
  const decisionDetails=[];
  for(let t=0;t<depth&&!B.ended;t++){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
@@ -555,7 +567,8 @@ function simulation(a,b,depth=120,rngSeed){
   const defenseSide=t<6 && Date.now()<globalDeadline-2200?defensePlanSide(B):null;
   if(defenseSide){
    longPlan=defenseRouteOpportunity(B,defenseSide,t);
-   if(!longPlan && Date.now()<globalDeadline-3800){
+   if(!longPlan && extendedSearchCount<1 && Date.now()<globalDeadline-3800){
+    extendedSearchCount++;
     longPlan=defensivePlanSearch(B,defenseSide,choice,t,
       Math.min(Date.now()+4100,globalDeadline-900));
    }
