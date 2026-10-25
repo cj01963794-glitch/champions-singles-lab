@@ -1,6 +1,8 @@
 'use strict';
 const http=require('node:http');
 const {randomBytes}=require('node:crypto');
+const {exactAttackRace}=require('./attack-race.cjs');
+const {sampledRace}=require('./sampled-race.cjs');
 const Sim=require(process.env.SHOWDOWN_PACKAGE_PATH || 'pokemon-showdown');
 const FORMAT='gen9championscustomgame';
 const dex=Sim.Dex.forFormat(FORMAT);
@@ -530,33 +532,6 @@ function probabilisticRaceSide(B){
  }
  return null;
 }
-// Evaluate rival opening actions before comparing candidate first moves.
-// Both players choose simultaneously; blindly freezing the low-depth minimax
-// answer (e.g. Aqua Jet instead of Moonblast) fabricates an easy opponent.
-function strongestOpeningResponse(B,side,attacks,planned,turn,deadline){
- const foeSide=side==='p1'?'p2':'p1';
- const opposing=legal(B,foeSide);
- if(opposing.length<=1)return opposing[0]||(side==='p1'?planned.right:planned.left);
- const original=JSON.stringify(B.toJSON());
- const tested=[];
- for(const response of opposing){
-  if(Date.now()>deadline)break;
-  let total=0,count=0;
-  for(let n=0;n<6;n++)for(const attack of attacks){
-   if(Date.now()>deadline)break;
-   const branch=Sim.Battle.fromJSON(original);
-   branch.resetRNG(verificationSeed(turn,n,65));
-   branch.makeChoices(side==='p1'?attack:response,
-    side==='p2'?attack:response);
-   total+=(side==='p1'?1:-1)*score(branch);
-   count++;
-  }
-  if(count===6*attacks.length)tested.push({action:response,value:total/count});
- }
- tested.sort((a,b)=>a.value-b.value);
- return tested[0]?.action||(side==='p1'?planned.right:planned.left);
-}
-
 // Cheap, state-dependent tactical policy used *only inside* probability
 // rollouts. Unlike single-seed minimax it never treats a priority move's
 // tiny non-KO chip as protection against a faster finishing attack.
@@ -609,115 +584,11 @@ function raceFollowupChoice(B,side,turn){
 }
 
 
-// Quasi-Monte Carlo combat RNG: spread attack accuracy, critical hits,
-// secondaries and each 16-way damage roll over different low-discrepancy
-// dimensions. This is a stratified approximation, NOT an exhaustive tree.
-function radicalInverse(index,base){
- let numerator=0,factor=1/base;
- while(index>0){
-  numerator+=(index%base)*factor;
-  index=Math.floor(index/base);
-  factor/=base;
- }
- return numerator;
-}
-const QMC_BASES=[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61];
-function stratifyCombatRNG(B,turn,sample){
- const idx=sample+1+turn*257;
- let chance=0,damage=0;
- const originalChance=B.randomChance.bind(B);
- const originalRandomizer=B.randomizer.bind(B);
- B.randomChance=function(numerator,denominator){
-  const dim=chance++;
-  if(dim>=QMC_BASES.length-1)return originalChance(numerator,denominator);
-  const u=radicalInverse(idx,QMC_BASES[dim]);
-  return u<numerator/denominator;
- };
- B.randomizer=function(value){
-  const dim=damage++;
-  if(dim>=QMC_BASES.length-1)return originalRandomizer(value);
-  // Independent dimensions for chance and damage sequences to avoid a
-  // single shared damage quantile making the two strategies look identical.
-  const factor=85+Math.floor(16*radicalInverse(idx,QMC_BASES[(dim+8)%QMC_BASES.length]));
-  return Math.floor(value*factor/100);
- };
-}
-
 function probabilisticAttackSearch(B,planned,turn,deadline){
- const race=probabilisticRaceSide(B);
- if(!race)return null;
- const side=race.side,foeSide=side==='p1'?'p2':'p1';
- const opposingMove=strongestOpeningResponse(B,side,race.attacks,planned,turn,deadline);
- // Preserve opponent's current best-response estimate. After the first turn,
- // both sides reconsider using real Showdown battle state at every turn.
- const snapshot=JSON.stringify(B.toJSON());
- const options=race.attacks.map(a=>({action:a,wins:0,losses:0,draws:0,unresolved:0,
-  hpTiebreak:0,n:0,trace:[]}));
- const maxSamples=256,minSamples=48;
- for(let n=0;n<maxSamples;n++){
-  if(Date.now()>deadline)break;
-  const firstSeed=verificationSeed(turn,n,71);
-  const round=[];
-  for(let i=0;i<options.length;i++){
-   if(Date.now()>deadline)break;
-   const branch=Sim.Battle.fromJSON(snapshot);
-   branch.resetRNG(firstSeed);
-   stratifyCombatRNG(branch,turn,n);
-   branch.makeChoices(side==='p1'?options[i].action:opposingMove,
-    side==='p2'?options[i].action:opposingMove);
-   for(let step=1;step<=4&&!branch.ended;step++){
-    if(Date.now()>deadline)break;
-    const nextLeft=raceFollowupChoice(branch,'p1',turn+step);
-    const nextRight=raceFollowupChoice(branch,'p2',turn+step);
-    if(!nextLeft||!nextRight)break;
-    branch.makeChoices(nextLeft,nextRight);
-   }
-   if(!branch.ended && Date.now()>deadline)break;
-   const us=branch.getSide(side).pokemon[0],them=branch.getSide(foeSide).pokemon[0];
-   const winner=branch.winner;
-   round.push({
-    result:branch.ended?(winner===(side==='p1'?'Left':'Right')?1:
-     winner===(side==='p1'?'Right':'Left')?-1:0):0,
-    ended:branch.ended,
-    hp:us.hp/us.maxhp-them.hp/them.maxhp
-   });
-  }
-  // Apply a sample only when all candidate actions were tested on the same seed.
-  if(round.length!==options.length)break;
-  for(let i=0;i<options.length;i++){
-   const st=options[i],o=round[i];
-   st.n++;
-   if(!o.ended)st.unresolved++;
-   else if(o.result===1)st.wins++;
-   else if(o.result===-1)st.losses++;
-   else st.draws++;
-   st.hpTiebreak+=o.hp;
-   st.trace.push(o.ended?(o.result===1?1:o.result===-1?0:0.5):0.5);
-  }
- }
- if(options.some(o=>o.n<minSamples)||new Set(options.map(o=>o.n)).size!==1)return null;
- // Only a completed battle is a demonstrated win. Incomplete results are
- // neutral, not fake victories inferred from HP at the sampling horizon.
- const rank=[...options].sort((a,b)=>(b.wins-b.losses)-(a.wins-a.losses)||
-  (b.wins-a.wins)||b.hpTiebreak-a.hpTiebreak);
- const selected=rank[0],runner=rank[1],n=selected.n;
- // Use a conservative paired-outcome uncertainty margin, avoiding choices
- // flipped by small samples. If ambiguous, keep the existing planner result.
- const pairedDiffs=selected.trace.map((v,i)=>v-runner.trace[i]);
- const margin=pairedDiffs.reduce((a,v)=>a+v,0)/n;
- const centered=pairedDiffs.reduce((a,b)=>a+b,0)/n;
- const variance=n>1?pairedDiffs.reduce((a,v)=>a+(v-centered)**2,0)/(n-1):1;
- const pairedStderr=Math.sqrt(variance/n);
- const meaningful=margin>=Math.max(0.012,0.9*pairedStderr);
- const usable=(n>=64&&meaningful);
- const significant=margin>=Math.max(0.025,1.96*pairedStderr);
-
- return {side,chosen:usable?selected.action:null,ambiguous:!significant,
-  pairedStandardErrorPct:Math.round(pairedStderr*1000)/10,
-  comparedAgainst:opposingMove,samples:n,
-  candidates:rank.map(o=>({action:o.action,winPct:Math.round(1000*o.wins/n)/10,
-   lossPct:Math.round(1000*o.losses/n)/10,
-   unresolvedPct:Math.round(1000*o.unresolved/n)/10,n}))};
+ if(!probabilisticRaceSide(B))return null;
+ return sampledRace(B,planned,turn,deadline,{Sim,legal,seed:verificationSeed,resolveMatrix,
+  followup:(branch,side,t)=>hasTacticalMove(branch)?continuationMove(branch,side):
+   raceFollowupChoice(branch,side,t)});
 }
 
 function simulation(a,b,depth=120,rngSeed){
@@ -731,12 +602,22 @@ function simulation(a,b,depth=120,rngSeed){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null;
+  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null;
+  // A certified opening uses all outcome probabilities, not sampled seeds.
+  // Unknown suffixes are [0,1] bounds, so only a provable pure equilibrium is
+  // allowed to override the existing planner. Other mechanics use the fallback.
+  if(t<4 && Date.now()<globalDeadline-9000){
+   exactSearch=exactAttackRace(B,{Sim,horizon:3,
+    deadline:Math.min(Date.now()+3000,globalDeadline-8000)});
+   if(exactSearch?.certified){
+    choice={left:exactSearch.left,right:exactSearch.right};depthUsed=3;
+   }
+  }
   // High-variance direct attack races need stochastic terminal outcomes BEFORE
   // the legacy two-sample 2-turn planner can bias the choice. Keep long-term
   // defense/setup scenarios on the tactical planner below.
   const openingRace=t===0 && !defensePlanSide(B)?probabilisticRaceSide(B):null;
-  if(openingRace && Date.now()<globalDeadline-9500){
+  if(!choice && openingRace && Date.now()<globalDeadline-9500){
    const shallow=evalOneTurn(B,t,4,globalDeadline-9500);
    if(shallow){
     choice={left:shallow.left,right:shallow.right};
@@ -820,7 +701,7 @@ function simulation(a,b,depth=120,rngSeed){
   }
   // Probabilistic checks override only well-separated attack choices,
   // leaving the existing tactical planner and defensive setup untouched.
-  if(t<2 && !attackAudit && !longPlan && Date.now()<globalDeadline-3800){
+  if(t===0 && !exactSearch?.certified && !attackAudit && !longPlan && Date.now()<globalDeadline-3800){
    const auditDeadline=Math.min(Date.now()+7500,globalDeadline-900);
    attackAudit=probabilisticAttackSearch(B,choice,t,auditDeadline);
    if(attackAudit?.chosen){
@@ -836,13 +717,13 @@ function simulation(a,b,depth=120,rngSeed){
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
-   ...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
+   ...(exactSearch?{exactSearch}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
   winner:B.ended?(B.winner||'draw'):'unresolved',
   stopReason:B.ended?'battle_ended':stopReason,
-  policy:'conditional-two-turn-adversarial-search',
+  policy:'bounded-probability-game-with-tactical-fallback',
   tacticalTurns:planned,searchFallbacks:fallbacks,decisionDetails,
   rngSeed:actualSeed,log:B.log,
   choices,turns:choices.length,maxTurns:depth
@@ -922,7 +803,7 @@ const catalog={
  items:dex.items.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Items',x)})),
  abilities:dex.abilities.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Abilities',x)}))
 };
-console.log('[CATALOG]',Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.length])));
+if(require.main===module)console.log('[CATALOG]',Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.length])));
 const translationAudit=(()=>{
  const allMega=dex.species.all().filter(x=>x.exists&&x.isMega);
  const allStones=dex.items.all().filter(x=>x.exists&&x.megaStone&&Object.keys(x.megaStone).length>0);
@@ -954,9 +835,9 @@ const translationAudit=(()=>{
   }
  };
 })();
-console.log('[TRANSLATION-AUDIT]',JSON.stringify(translationAudit));
+if(require.main===module)console.log('[TRANSLATION-AUDIT]',JSON.stringify(translationAudit));
 
-console.log('[KO-CHECK]',JSON.stringify({
+if(require.main===module)console.log('[KO-CHECK]',JSON.stringify({
  garchomp:catalog.species.find(x=>x.en==='Garchomp'),
  megametagross:catalog.species.find(x=>x.en==='Metagross-Mega'),
  earthquake:catalog.moves.find(x=>x.en==='Earthquake'),
@@ -966,6 +847,7 @@ console.log('[KO-CHECK]',JSON.stringify({
 }));
 
 const port=Number(process.env.PORT)||10000;
+function startServer(){
 const server=http.createServer(async(req,res)=>{
  const pathname=new URL(req.url||'/', 'http://localhost').pathname.replace(/\/+$/, '')||'/';
  console.log('[HTTP]',req.method,req.url,'=>',pathname);
@@ -974,7 +856,7 @@ const server=http.createServer(async(req,res)=>{
    if(pathname==='/favicon.ico'){res.writeHead(204);return res.end()}
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});return res.end(require('node:fs').readFileSync(require('node:path').join(__dirname,'index.html'),'utf8'));
   }
-  if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod});
+  if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod,policyVersion:'0.7.0'});
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
   if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed))}
   return respond(res,{error:'Not found',method:req.method,path:pathname},404);
@@ -1198,4 +1080,8 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
   ]){try{let r=await check(pth,met,data);console.log('[SMOKETEST]',name,JSON.stringify(r))}catch(e){console.error('[SMOKETEST_FAIL]',name,e.stack||e)}}
  })();
 });
+return server;
+}
+if(require.main===module)startServer();
+module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}

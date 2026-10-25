@@ -1,9 +1,10 @@
 {
   "name": "champions-singles-lab",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
-    "start": "node server.cjs"
+    "start": "node server.cjs",
+    "test": "node --test test/*.test.cjs"
   },
   "engines": {
     "node": ">=22.18.0"

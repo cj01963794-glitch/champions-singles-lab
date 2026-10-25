@@ -37,6 +37,7 @@ button:disabled{opacity:.55;cursor:progress}
 .secondary{background:#283954;color:#dce8ff;font-size:13px;padding:10px 14px}
 .help{font-size:12px;color:var(--muted)}
 .note{background:#202d3f;border-left:3px solid var(--amber);border-radius:7px;padding:10px 12px;color:#d4e1f1;font-size:12px;margin:15px 0}
+.payoff-wrap{overflow-x:auto;margin:12px 0}.payoff{border-collapse:collapse;width:100%;font-size:12px}.payoff th,.payoff td{padding:9px;border:1px solid var(--line);text-align:center}.payoff th{background:#23324b}.payoff td{white-space:nowrap}
 .result-title{font-size:23px;font-weight:820}
 .result-winner{background:#173e37;color:#7ee5bc;display:inline-flex;font-size:13px;font-weight:800;padding:5px 11px;border-radius:30px}
 .result-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
@@ -101,7 +102,7 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 </section>
 </div>
 <div class="panel"><div class="btnrow"><label for="max-turns" style="display:flex;align-items:center;gap:8px;margin:0">최대 턴 <select id="max-turns" style="width:auto;min-width:90px"><option value="30">30턴</option><option value="60">60턴</option><option value="120" selected>120턴</option><option value="200">200턴</option></select></label><label for="rng-mode" style="display:flex;align-items:center;gap:8px;margin:0">실전 난수 <select id="rng-mode" style="width:auto;min-width:160px"><option value="random" selected>매번 새로 뽑기</option><option value="replay">이전 결과 재현</option></select></label><button id="run">대면 시뮬레이션 실행</button><button id="swap" class="secondary">양측 샘플 바꾸기</button><button id="restore" class="secondary">기본 예시로 복구</button></div><div class="help" style="margin-top:10px">포켓몬·도구·기술은 한글/영문으로 검색할 수 있고, 특성은 해당 포켓몬의 목록에서 선택해. 계산에는 영문 내부 ID를 사용해. 두 샘플은 브라우저에 자동 보관돼. 난수는 매 실행 새로 생성되며, 동일 결과를 다시 보고 싶으면 '이전 결과 재현'을 선택해.</div><div id="err" class="error" style="margin-top:10px"></div></div>
-<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플과 최대 턴수를 선택하고 <b>대면 시뮬레이션 실행</b>을 누르면 1턴부터 종료 턴까지 기록을 볼 수 있어.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="policy-info" class="note" style="display:none"></div><details id="counterfactual-info" class="note" style="display:none"><summary>턴별 AI 선택과 상대 행동에 따른 대안 보기</summary><div id="counterfactual-lines" style="margin-top:8px"></div></details><div id="rng-info" class="help" style="margin:8px 0 16px"></div><div id="stop-info" class="note" style="display:none"></div><div id="timeline"></div><div class="note">주의: 턴마다 한 단계 앞을 평가하는 시험용 행동 선택기라서 잘못된 기술을 선택할 수 있어. 이 승패를 대면 성능 순위로 사용해서는 안 돼.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
+<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플과 최대 턴수를 선택하고 <b>대면 시뮬레이션 실행</b>을 누르면 1턴부터 종료 턴까지 기록을 볼 수 있어.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="policy-info" class="note" style="display:none"></div><details id="counterfactual-info" class="note" style="display:none"><summary>턴별 AI 선택과 상대 행동에 따른 대안 보기</summary><div id="counterfactual-lines" style="margin-top:8px"></div></details><div id="rng-info" class="help" style="margin:8px 0 16px"></div><div id="stop-info" class="note" style="display:none"></div><div id="timeline"></div><div class="note">단순 공격전의 지원 범위에서는 확률을 합산하고, 복잡한 효과·변화기 수순은 제한된 탐색과 표본 추정을 사용해. 개별 시뮬레이션의 승패는 종합 대면 성능 순위가 아니야.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
 <footer>Engine: Pokémon Showdown · Mod: Champions · 1v1 Singles · 계산 결과는 아직 검증 중</footer>
 </main>
 <datalist id="suggest-species"></datalist><datalist id="suggest-items"></datalist><datalist id="suggest-moves"></datalist>
@@ -367,7 +368,7 @@ function renderResult(raw,a,b){
   };
   const firstIsPlanned=first.depth>=2;
   policy.style.display='block';
-  policy.textContent=(first.attackAudit?'첫 턴 행동은 명중·급소·데미지 난수를 분산 표본으로 재현하고 이후 수순을 시험했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
+  policy.textContent=(first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
   if(first.verification?.candidates?.length){
@@ -388,10 +389,10 @@ function renderResult(raw,a,b){
      decision(sample,c.action)+' 승리 '+c.winPct+'%'+
       (c.unresolvedPct?' / 미종료 '+c.unresolvedPct+'%':'')
     ).join(', ');
-    return d.turn+'턴 '+comparison+' ('+v.samples+'회씩, 상대 첫 기술 고정)';
-   }).join(' · ')+'. 난수 반복 시험에서 관측한 결과이며 정확한 수학적 승률은 아니야.';
+    return d.turn+'턴 '+comparison+' (조합별 '+v.samples+'회, 각 행동에 불리한 상대 대응 기준)';
+   }).join(' · ')+'. 이후 수순은 시험용 정책으로 진행한 표본 추정이며, 최적 승률을 증명하는 값은 아니야.';
    if(audits.some(d=>d.attackAudit.ambiguous && d.attackAudit.chosen))
-    policy.textContent+=' 승리율 차이에 불확실성이 있지만 현재 표본에서 앞선 기술을 잠정 선택했어.';
+    policy.textContent+=' 현재 표본의 보수적인 대응 기준으로 행동을 잠정 선택했어.';
    if(audits.some(d=>d.attackAudit.ambiguous && !d.attackAudit.chosen))
     policy.textContent+=' 표본만으로 우열을 구분하기 어려워 기존 판단을 유지했어.';
   }
@@ -406,6 +407,28 @@ function renderResult(raw,a,b){
     '이 경로가 실제 승리를 보장하거나 정확한 승률을 뜻하지는 않아.';
   }
  }else{policy.style.display='none'}
+
+ let matrixBox=document.getElementById('probability-matrix');
+ if(!matrixBox){matrixBox=document.createElement('div');matrixBox.id='probability-matrix';policy.after(matrixBox)}
+ const exact=first?.exactSearch;
+ const comparison=exact?.certified?exact:first?.attackAudit;
+ if(comparison?.payoff){
+  const format=c=>c.winLowerPct===c.winUpperPct?c.winLowerPct.toFixed(2)+'%':
+   c.winLowerPct.toFixed(2)+'–'+c.winUpperPct.toFixed(2)+'%';
+  const rows=comparison.payoff.map((row,i)=>'<tr><th scope="row">'+h(decisionLabel(a,comparison.leftActions[i]))+'</th>'+
+   row.map(c=>'<td>'+format(c)+'</td>').join('')+'</tr>').join('');
+  matrixBox.innerHTML='<details open><summary>첫 행동 조합별 A의 승률 비교</summary><div class="payoff-wrap"><table class="payoff"><thead><tr><th>A ↓ / B →</th>'+
+   comparison.rightActions.map(action=>'<th scope="col">'+h(decisionLabel(b,action))+'</th>').join('')+
+   '</tr></thead><tbody>'+rows+'</tbody></table></div><p class="help">'+
+   (comparison.method==='exact-bounded-attack-game'?
+    '확률 합산 · '+comparison.horizon+'턴까지 양측의 후속 선택을 비교했어. 범위는 이후 미확정 결과를 모두 패배/승리로 처리한 하한·상한이야. 이 지원 범위에서는 남은 불확실성을 고려해도 선택한 양측 첫 기술이 유리함을 확인했어.':
+    '조합별 '+comparison.samples+'회 표본 · 범위는 미종료 수순을 패배/승리로 처리한 값이야. 표본 오차를 나타내는 신뢰구간은 아니며, 이후 기술 선택은 시험용 정책이야.')+
+   '</p></details>';
+ }else matrixBox.textContent='';
+ function decisionLabel(sample,action){
+  const i=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
+  return korean('moves',sample.moves[i])||sample.moves[i]||action;
+ }
 
  const cfInfo=document.getElementById('counterfactual-info');
  const cfLines=document.getElementById('counterfactual-lines');
