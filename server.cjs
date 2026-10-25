@@ -229,7 +229,7 @@ function closeAttackCandidates(B,planned,side){
  // justify a potentially expensive extra phase.
  if(!best||!moveIsAttack(B,side,best.choice))return [];
  const candidates=scores.filter(x=>Math.abs(x.score-best.score)<=200
-   &&moveIsAttack(B,side,x.choice)).slice(0,3);
+   &&moveIsAttack(B,side,x.choice)).slice(0,2);
  return candidates.length>=2?candidates:[];
 }
 function verifyChanceOutcomes(B,planned,turn,deadline){
@@ -242,7 +242,7 @@ function verifyChanceOutcomes(B,planned,turn,deadline){
  const saved=JSON.stringify(B.toJSON());
  const stats=candidates.map(x=>({action:x.choice,wins:0,losses:0,draws:0,unfinished:0,
    hpTotal:0,firstDamage:0,samples:0,scoreTotal:0}));
- const maxSamples=28,minimum=14;
+ const maxSamples=24,minimum=14;
  for(let n=0;n<maxSamples;n++){
   if(Date.now()>deadline)break;
   const seed1=verificationSeed(turn,n,1);
@@ -487,7 +487,7 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
-if(true){
+if(process.env.RUN_META_GOLD_DIAGNOSTIC==='1'){
  try{
   const gold={name:'조심HC 풍선 타부자고',species:'Gholdengo',item:'Air Balloon',ability:'Good as Gold',nature:'Modest',
    evs:{hp:32,spa:32,spe:2},moves:['Make It Rain','Dazzling Gleam','Shadow Ball','Nasty Plot']};
