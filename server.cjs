@@ -54,7 +54,7 @@ function simulation(a,b,depth=120){
   if(!L.length||!R.length){stopReason='no_available_actions';break}
   // Clone the live battle state to evaluate this turn. Replaying a long
   // history for every candidate was quadratic in the number of turns.
-  const snapshot=B.toJSON();
+  const snapshot=JSON.stringify(B.toJSON());
   let bestL=L[0],bestR=R[0],max=-Infinity,min=Infinity;
   const matrix=[];
   for(let i=0;i<L.length;i++){
