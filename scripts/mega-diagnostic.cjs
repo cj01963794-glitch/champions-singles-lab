@@ -1,6 +1,7 @@
 'use strict';
 const {simulation}=require('../server.cjs');
 const seed='1579,3137,6027,8191';
+const verifyLive=process.argv.includes('--verify-live');
 const sceptile={species:'Sceptile-Mega',nature:'Jolly',item:'Sceptilite',ability:'Lightning Rod',
  preMegaAbility:'Overgrow',evs:{atk:32,spe:32,hp:2},moves:['Swords Dance','Leaf Blade','Earthquake','Rock Slide']};
 const primarina={species:'Primarina',nature:'Bold',ability:'Torrent',item:'Sitrus Berry',
@@ -22,13 +23,13 @@ const summarize=r=>{
   auditLeftActions:d.megaTimingAudit?.leftActions,auditRightActions:d.megaTimingAudit?.rightActions};
 };
 (async()=>{
- for(const [label,a,b] of cases){
+ for(const [label,a,b] of verifyLive?[]:cases){
   try{
    const local=simulation(a,b,3,seed);
    console.log('[DIAG-LOCAL]',label,JSON.stringify(summarize(local)));
   }catch(e){console.log('[DIAG-LOCAL-ERROR]',label,String(e.stack||e))}
  }
- for(const [label,a,b] of cases.slice(0,4)){
+ for(const [label,a,b] of cases.slice(0,verifyLive?2:4)){
   try{
    const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),55000);
    const res=await fetch('https://champions-singles-lab.onrender.com/api/duel',{
@@ -37,6 +38,15 @@ const summarize=r=>{
    clearTimeout(t);
    const data=await res.json();
    console.log('[DIAG-LIVE]',label,res.status,JSON.stringify(summarize(data)));
-  }catch(e){console.log('[DIAG-LIVE-ERROR]',label,String(e.stack||e))}
+   if(verifyLive){
+    const scChoice=label.endsWith('-right')?data.choices?.[0]?.[1]:data.choices?.[0]?.[0];
+    const d=data.decisionDetails?.[0];
+    if(res.status!==200||scChoice!=='move 2'||d?.megaTimingAudit?.applied!==true){
+     process.exitCode=1;
+     console.error('[LIVE-VERIFICATION-FAIL]',label,'chosen=',scChoice,
+      'applied=',d?.megaTimingAudit?.applied,'samples=',d?.megaTimingAudit?.samples);
+    }else console.log('[LIVE-VERIFICATION-PASS]',label,'base-form Leaf Blade',d?.megaTimingAudit?.samples,'paired samples');
+   }
+  }catch(e){process.exitCode=1;console.log('[DIAG-LIVE-ERROR]',label,String(e.stack||e))}
  }
 })();
