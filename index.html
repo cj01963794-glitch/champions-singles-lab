@@ -367,7 +367,7 @@ function renderResult(raw,a,b){
   };
   const firstIsPlanned=first.depth>=2;
   policy.style.display='block';
-  policy.textContent=(firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
+  policy.textContent=(first.attackAudit?'첫 턴 행동은 명중·급소·데미지 난수를 분산 표본으로 재현하고 이후 수순을 시험했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
   if(first.verification?.candidates?.length){
@@ -390,8 +390,10 @@ function renderResult(raw,a,b){
     ).join(', ');
     return d.turn+'턴 '+comparison+' ('+v.samples+'회씩, 상대 첫 기술 고정)';
    }).join(' · ')+'. 난수 반복 시험에서 관측한 결과이며 정확한 수학적 승률은 아니야.';
-   if(audits.some(d=>d.attackAudit.ambiguous))
-    policy.textContent+=' 통계적 차이가 불충분해 기존 판단을 유지했어.';
+   if(audits.some(d=>d.attackAudit.ambiguous && d.attackAudit.chosen))
+    policy.textContent+=' 승리율 차이에 불확실성이 있지만 현재 표본에서 앞선 기술을 잠정 선택했어.';
+   if(audits.some(d=>d.attackAudit.ambiguous && !d.attackAudit.chosen))
+    policy.textContent+=' 표본만으로 우열을 구분하기 어려워 기존 판단을 유지했어.';
   }
   const longRoutes=(raw.decisionDetails||[]).filter(d=>d.longPlan?.chosen);
   if(longRoutes.length){
