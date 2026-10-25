@@ -423,7 +423,7 @@ function defensivePlanSearch(B,side,planned,turn,deadline){
  const total=weights.reduce((a,b)=>a+b,0);
  const saved=JSON.stringify(B.toJSON());
  const stats=own.map(action=>({action,value:0,finished:0,wins:0,losses:0,count:0}));
- const maxSamples=9,minSamples=4;
+ const maxSamples=6,minSamples=4;
  for(let sample=0;sample<maxSamples;sample++){
   if(Date.now()>deadline)break;
   const seed=verificationSeed(turn,sample,19);
@@ -435,7 +435,7 @@ function defensivePlanSearch(B,side,planned,turn,deadline){
     battleBranch.resetRNG(seed);
     battleBranch.makeChoices(side==='p1'?own[ci]:opponent[oi],
       side==='p2'?own[ci]:opponent[oi]);
-    for(let step=0;step<6&&!battleBranch.ended;step++){
+    for(let step=0;step<13&&!battleBranch.ended;step++){
      if(Date.now()>deadline)break;
      const l=continuationMove(battleBranch,'p1');
      const r=continuationMove(battleBranch,'p2');
@@ -456,7 +456,7 @@ function defensivePlanSearch(B,side,planned,turn,deadline){
  const rank=stats.map(x=>({action:x.action,value:x.value/x.count,
   observedWinRate:x.wins/x.count,observedLossRate:x.losses/x.count,
   testedSamples:Math.round(x.count)})).sort((a,b)=>b.value-a.value);
- return {side,chosen:rank[0].action,depth:7,candidates:rank,
+ return {side,chosen:rank[0].action,depth:14,candidates:rank,
   sampledOpponentActions:opponent};
 }
 
