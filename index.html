@@ -90,8 +90,8 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 <div class="field" style="margin-top:12px"><label>SP 투자 (HP / 공격 / 방어 / 특공 / 특방 / 스피드)</label><div class="sp-grid"></div></div>
 </section>
 </div>
-<div class="panel"><div class="btnrow"><button id="run">대면 시뮬레이션 실행</button><button id="swap" class="secondary">양측 샘플 바꾸기</button><button id="restore" class="secondary">기본 예시로 복구</button></div><div class="help" style="margin-top:10px">포켓몬·도구·기술은 한글/영문으로 검색할 수 있고, 특성은 해당 포켓몬의 목록에서 선택해. 계산에는 영문 내부 ID를 사용해. 두 샘플은 브라우저에 자동 보관돼.</div><div id="err" class="error" style="margin-top:10px"></div></div>
-<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플을 확인하고 <b>대면 시뮬레이션 실행</b>을 누르면 읽기 쉬운 결과가 나타나.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="timeline"></div><div class="note">주의: 턴마다 한 단계 앞을 평가하는 시험용 행동 선택기라서 잘못된 기술을 선택할 수 있어. 이 승패를 대면 성능 순위로 사용해서는 안 돼.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
+<div class="panel"><div class="btnrow"><label for="max-turns" style="display:flex;align-items:center;gap:8px;margin:0">최대 턴 <select id="max-turns" style="width:auto;min-width:90px"><option value="30">30턴</option><option value="60">60턴</option><option value="120" selected>120턴</option><option value="200">200턴</option></select></label><button id="run">대면 시뮬레이션 실행</button><button id="swap" class="secondary">양측 샘플 바꾸기</button><button id="restore" class="secondary">기본 예시로 복구</button></div><div class="help" style="margin-top:10px">포켓몬·도구·기술은 한글/영문으로 검색할 수 있고, 특성은 해당 포켓몬의 목록에서 선택해. 계산에는 영문 내부 ID를 사용해. 두 샘플은 브라우저에 자동 보관돼.</div><div id="err" class="error" style="margin-top:10px"></div></div>
+<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플과 최대 턴수를 선택하고 <b>대면 시뮬레이션 실행</b>을 누르면 1턴부터 종료 턴까지 기록을 볼 수 있어.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="stop-info" class="note" style="display:none"></div><div id="timeline"></div><div class="note">주의: 턴마다 한 단계 앞을 평가하는 시험용 행동 선택기라서 잘못된 기술을 선택할 수 있어. 이 승패를 대면 성능 순위로 사용해서는 안 돼.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
 <footer>Engine: Pokémon Showdown · Mod: Champions · 1v1 Singles · 계산 결과는 아직 검증 중</footer>
 </main>
 <datalist id="suggest-species"></datalist><datalist id="suggest-items"></datalist><datalist id="suggest-moves"></datalist>
@@ -314,7 +314,19 @@ function renderResult(raw,a,b){
  const x=parseBattle(raw.log||[]);
  const w=raw.winner==='Left'?sampleLabel(a):raw.winner==='Right'?sampleLabel(b):raw.winner==='draw'?'무승부':'승패 미확정';
  document.getElementById('result-title').textContent=sampleLabel(a)+' vs '+sampleLabel(b);
- document.getElementById('winner').textContent=raw.winner==='draw'?'무승부':raw.winner==='unresolved'?'미확정':w+' 승리';
+ const incomplete=raw.winner==='unresolved';
+ document.getElementById('winner').textContent=raw.winner==='draw'?'무승부':incomplete?'판정 보류':w+' 승리';
+ const stop=document.getElementById('stop-info');
+ if(incomplete){
+  const explanations={
+    turn_limit:(raw.maxTurns||raw.turns)+'턴 제한에 도달했어. 실제 배틀은 끝나지 않았으므로 이 결과를 패배·무승부로 취급하지 않아.',
+    compute_timeout:'장기전 계산 시간이 초과되어 중단했어. 이건 실제 무승부가 아니야.',
+    no_available_actions:'선택 가능한 행동을 찾지 못해 중단했어. 턴 로그를 확인해 줘.',
+    other:'시뮬레이션이 끝나지 않은 상태에서 중단했어.'
+  };
+  stop.textContent='⚠ '+(explanations[raw.stopReason]||explanations.other)+' ('+raw.turns+'턴까지 계산됨)';
+  stop.style.display='block';
+ }else{stop.style.display='none'}
  document.getElementById('hp').innerHTML=hpCard('A · '+sampleLabel(a),x.state.p1,x.started.p1)+hpCard('B · '+sampleLabel(b),x.state.p2,x.started.p2);
  const html=[];
  for(const t of x.turns){
@@ -339,7 +351,7 @@ document.getElementById('run').onclick=async()=>{
  if(!a.ability||!b.ability){out.textContent='양쪽 포켓몬의 특성을 선택해 줘.';return}
  store();btn.disabled=true;btn.textContent='대면 계산 중...';
  try{
-  const res=await fetch('/api/duel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({a,b})});
+  const res=await fetch('/api/duel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({a,b,maxTurns:Number(document.getElementById('max-turns').value)})});
   const data=await res.json();
   if(!res.ok)throw Error(data.error||'서버 오류');
   renderResult(data,a,b);
