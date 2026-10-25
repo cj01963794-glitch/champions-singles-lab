@@ -552,6 +552,38 @@ function strongestOpeningResponse(B,side,attacks,planned,turn,deadline){
  return tested[0]?.action||(side==='p1'?planned.right:planned.left);
 }
 
+// Cheap, state-dependent tactical policy used *only inside* probability
+// rollouts. Unlike single-seed minimax it never treats a priority move's
+// tiny non-KO chip as protection against a faster finishing attack.
+function raceFollowupChoice(B,side,turn){
+ const all=legal(B,side),hits=all.filter(a=>moveIsAttack(B,side,a));
+ if(!hits.length)return all[0]||null;
+ const baseline=usefulAttack(B,side,hits);
+ const priorities=hits.filter(a=>{
+  const m=B.dex.moves.get(actionInfo(B,side,a).id);
+  const base=B.dex.moves.get(actionInfo(B,side,baseline).id);
+  return m.priority>base.priority;
+ });
+ if(!priorities.length)return baseline;
+ const enemySide=side==='p1'?'p2':'p1';
+ for(const priority of priorities){
+  let willKO=0;
+  const snapshot=JSON.stringify(B.toJSON());
+  for(let n=0;n<2;n++){
+   const probe=Sim.Battle.fromJSON(snapshot);
+   probe.resetRNG(verificationSeed(turn,n,88));
+   const other=usefulAttack(probe,enemySide,
+    legal(probe,enemySide).filter(a=>moveIsAttack(probe,enemySide,a)))||
+    legal(probe,enemySide)[0];
+   if(!other)continue;
+   probe.makeChoices(side==='p1'?priority:other,side==='p2'?priority:other);
+   if(probe.getSide(enemySide).pokemon[0].hp===0)willKO++;
+  }
+  if(willKO>0)return priority;
+ }
+ return baseline;
+}
+
 function probabilisticAttackSearch(B,planned,turn,deadline){
  const race=probabilisticRaceSide(B);
  if(!race)return null;
@@ -575,9 +607,10 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
     side==='p2'?options[i].action:opposingMove);
    for(let step=1;step<=4&&!branch.ended;step++){
     if(Date.now()>deadline)break;
-    const reply=evalOneTurn(branch,turn+step,1,deadline,2);
-    if(!reply)break;
-    branch.makeChoices(reply.left,reply.right);
+    const nextLeft=raceFollowupChoice(branch,'p1',turn+step);
+    const nextRight=raceFollowupChoice(branch,'p2',turn+step);
+    if(!nextLeft||!nextRight)break;
+    branch.makeChoices(nextLeft,nextRight);
    }
    if(!branch.ended && Date.now()>deadline)break;
    const us=branch.getSide(side).pokemon[0],them=branch.getSide(foeSide).pokemon[0];
