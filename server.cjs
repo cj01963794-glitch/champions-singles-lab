@@ -693,6 +693,7 @@ function simulation(a,b,depth=120,rngSeed){
    megaTimingAudit=sampledRace(B,null,t,
     Math.min(Date.now()+10000,globalDeadline-9000),
     {Sim,legal,seed:verificationSeed,resolveMatrix,maxSamples:48,minSamples:24,
+     attackDamageTieBreak:true,
      followup:(branch,side)=>continuationMove(branch,side)});
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
    if(megaTimingAudit?.chosen && decisive){

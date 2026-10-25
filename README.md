@@ -47,3 +47,10 @@ audit rather than immediately preferring a two-turn HP score. The 10-second
 sampling cap and 24-paired-round minimum make this a **sample estimate** with
 unresolved-mass bounds, not an exact win-probability certification. If the
 sample is insufficient, the older limited tactical fallback remains.
+
+The optional-Mega sampler applies a limited **near-tie** safeguard when
+two direct attacks' pessimistic sampled win rates differ by at most two
+observed outcomes. Only then, if their observed first-turn damage
+meaningfully differs, it uses direct damage as a tie-breaker. This is
+explicitly marked as a heuristic and does not imply mathematical proof of
+higher win probability.

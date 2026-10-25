@@ -73,7 +73,6 @@ test('simultaneous Double-Edge recoil KOs match the pinned engine winner rule',(
 test('the actual four-move simulation chooses Moonblast and keeps seeded replay',()=>{
  const a=simulation(prim,sal,8,'1579,3137,6027,8191');
  const b=simulation(prim,sal,8,'1579,3137,6027,8191');
- console.log('[MEGA_TIMING_AUDIT]',JSON.stringify({first:a.decisionDetails[0],choices:a.choices.slice(0,3)}).slice(0,18000));
  assert.equal(a.choices[0][0],'move 1','Moonblast should remain preferred over Aqua Jet');
  assert.equal(a.decisionDetails[0].megaTimingConsidered,true);
  assert.equal(a.decisionDetails[0].tacticalProbability,undefined);

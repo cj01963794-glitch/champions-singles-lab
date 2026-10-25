@@ -379,6 +379,12 @@ function renderResult(raw,a,b){
    (first.megaTimingAudit?.applied?'첫 턴은 메가진화 타이밍을 포함한 모든 양측 행동 조합을 실제 쇼다운 배틀 표본으로 비교했어. 정확한 최적 승률은 아니야.':first.tacticalProbability?.applied?'첫 턴은 반동·랭크업·앙코르를 포함해 확률을 합산하고, 승률 하한을 기준으로 선택했어.':first.tacticalProbability&&!first.tacticalProbability.applicable?'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어.':first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?.applied?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
+  if(first.megaTimingAudit?.closeDamageTieBreak){
+   const t=first.megaTimingAudit.closeDamageTieBreak;
+   policy.textContent+=' · 표본 승리율 격차 '+t.sampleWinGapPct+
+    '%p는 충분히 작아서, 실제 전투에서 입힌 첫 피해가 '+t.firstDamageDifferencePct+
+    '%p 높은 공격을 동률 보조 기준으로 선택했어. 확정 승률 비교는 아니야.';
+  }
   if(first.verification?.candidates?.length){
    const v=first.verification;
    const candidateSample=v.side==='p1'?a:b;
