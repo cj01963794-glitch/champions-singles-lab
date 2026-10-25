@@ -168,7 +168,7 @@ function evalTwoTurn(position,turn,deadline){
  if(!L.length||!R.length)return null;
  const saved=JSON.stringify(position.toJSON());
  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
- const samples=3;
+ const samples=2;
  for(let k=0;k<samples;k++){
   const seed=policySeed(turn,k+29);
   for(let i=0;i<L.length;i++)for(let j=0;j<R.length;j++){
@@ -362,13 +362,13 @@ server.listen(port,'0.0.0.0',()=>{
  try{
   const b={species:'Baxcalibur-Mega',name:'HB메가드닐레이브',item:'Baxcalibrite',nature:'Impish',
     ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',
-    moves:['Swords Dance','Thunder Fang','Earthquake','Ice Shard'],evs:{hp:32,def:32,spe:2}};
+    moves:['Swords Dance','Thunder Fang','Dragon Claw','Glaive Rush'],evs:{hp:32,def:32,spe:2}};
   const p={species:'Primarina',name:'자뭉누리레느',item:'Sitrus Berry',nature:'Modest',
     ability:'Torrent',moves:['Moonblast','Sparkling Aria','Ice Beam','Psychic'],evs:{hp:32,spa:32,spe:2}};
   const B=battle(b,p);
   const first=Date.now();
   const shallow=evalOneTurn(B,0,8);
-  const deep=evalTwoTurn(B,0,Date.now()+10000);
+  const deep=evalTwoTurn(B,0,Date.now()+6500);
   const two=[];
   for(const [label,firstMove] of [['SD','move 1 mega'],['ATTACK','move 2 mega']]){
    const sim=battle(b,p);
