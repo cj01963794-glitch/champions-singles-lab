@@ -93,9 +93,50 @@ function resolveMatrix(matrix,L,R){
 }
 // Values at the end of the entire searched line, not only the first turn.
 // Follow-up moves use actual HP, stat boosts and consumed items from Showdown.
-function evalOneTurn(position,turn,samples=2,deadline=Infinity){
+// Only the second ply is beam-pruned for CPU cost; the root still considers
+// every legal move, including every setup option. This pruning ranks coverage
+// and move roles but never scores the final result without Showdown simulation.
+function followChoiceBeam(B,side,actions,limit=2){
+ if(actions.length<=limit)return actions;
+ const active=B.getSide(side).pokemon[0];
+ const foe=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const scored=actions.map(action=>{
+  const idx=Number(action.match(/move (\d+)/)?.[1]||0)-1;
+  const id=active.moveSlots[idx]?.id;
+  const m=B.dex.moves.get(id);
+  if(!m.exists)return {action,attack:false,rank:-99};
+  if(m.category==='Status'){
+   const priorityStatus=new Set(['encore','taunt','protect','substitute','recover','roost',
+    'swordsdance','dragondance','calmmind','nastyplot','irondefense','shellsmash',
+    'bulkup','quiverdance','willowisp','toxic','leechseed']);
+   return {action,attack:false,rank:priorityStatus.has(m.id)?90:20};
+  }
+  const sameType=active.getTypes().includes(m.type)?1.5:1;
+  let effectiveness=1;
+  for(const type of foe.getTypes()){
+   const eff=B.dex.getEffectiveness(m.type,type);
+   effectiveness*=eff>0?2**eff:eff<0?2**eff:1;
+  }
+  if(B.dex.getImmunity(m.type,foe)===false)effectiveness=0;
+  const rank=(m.basePower||0)*sameType*effectiveness*(typeof m.accuracy==='number'?m.accuracy/100:1)+
+    (m.priority>0?20:0);
+  return {action,attack:true,rank};
+ });
+ const attacks=scored.filter(x=>x.attack).sort((a,b)=>b.rank-a.rank);
+ const tactical=scored.filter(x=>!x.attack).sort((a,b)=>b.rank-a.rank);
+ const keep=[];
+ if(attacks.length)keep.push(attacks[0]);
+ if(tactical.length&&keep.length<limit)keep.push(tactical[0]);
+ for(const x of [...attacks.slice(1),...tactical.slice(1)])
+  if(keep.length<limit&&!keep.includes(x))keep.push(x);
+ return keep.slice(0,limit).map(x=>x.action);
+}
+
+function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
  if(position.ended)return {value:score(position)};
- const L=legal(position,'p1'),R=legal(position,'p2');
+ const L0=legal(position,'p1'),R0=legal(position,'p2');
+ const L=beamLimit?followChoiceBeam(position,'p1',L0,beamLimit):L0;
+ const R=beamLimit?followChoiceBeam(position,'p2',R0,beamLimit):R0;
  if(!L.length||!R.length)return {value:score(position)};
  const saved=JSON.stringify(position.toJSON());
  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
@@ -135,7 +176,7 @@ function evalTwoTurn(position,turn,deadline){
    const branch=Sim.Battle.fromJSON(saved);
    branch.resetRNG(seed);
    branch.makeChoices(L[i],R[j]);
-   const future=branch.ended?score(branch):evalOneTurn(branch,turn+1,1,deadline)?.value;
+   const future=branch.ended?score(branch):evalOneTurn(branch,turn+1,1,deadline,2)?.value;
    if(future===undefined||future===null)return null;
    matrix[i][j]+=future/samples;
   }
@@ -317,39 +358,31 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
+ if(process.env.RUN_POLICY_REGRESSION==='1'){
  try{
-  const spreads=[
-   {tag:'HB impish',nature:'Impish',evs:{hp:32,def:32,spe:2}},
-   {tag:'HA adamant',nature:'Adamant',evs:{hp:32,atk:32,spe:2}},
-   {tag:'AS adamant',nature:'Adamant',evs:{atk:32,spe:32,hp:2}}
-  ];
-  const prims=[
-   {tag:'HB bold',nature:'Bold',evs:{hp:32,def:32,spe:2}},
-   {tag:'HC modest',nature:'Modest',evs:{hp:32,spa:32,spe:2}}
-  ];
-  const rows=[];
-  for(const b of spreads)for(const p of prims){
-   const bax={species:'Baxcalibur-Mega',name:'메가드닐레이브',item:'Baxcalibrite',nature:b.nature,
-      ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',moves:['Swords Dance','Thunder Fang'],evs:b.evs};
-   const prima={species:'Primarina',name:'누리레느',item:'Sitrus Berry',nature:p.nature,
-      ability:'Torrent',moves:['Moonblast','Sparkling Aria'],evs:p.evs};
-   const outcomes=[];
-   for(const [tag,first] of [['SD','move 1 mega'],['ATTACK','move 2 mega']]){
-     const B=battle(bax,prima);
-     B.makeChoices(first,'move 1');
-     if(!B.ended)B.makeChoices('move 2','move 1');
-     outcomes.push({tag,winner:B.winner||null,ended:B.ended,
-       p1hp:B.getSide('p1').pokemon[0].hp,p2hp:B.getSide('p2').pokemon[0].hp,
-       p2item:B.getSide('p2').pokemon[0].item,
-       moves:B.log.filter(x=>x.startsWith('|move|')).map(x=>x.split('|')[3])});
-   }
-   const root=battle(bax,prima);
-   const deep=evalTwoTurn(root,0,Date.now()+9000);
-   rows.push({b:b.tag,p:p.tag,outcomes,chosen:deep?.left,
-     deepValues:deep?.matrix.map((v,i)=>[deep.L[i],Math.min(...v)])});
+  const b={species:'Baxcalibur-Mega',name:'HB메가드닐레이브',item:'Baxcalibrite',nature:'Impish',
+    ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',
+    moves:['Swords Dance','Thunder Fang','Earthquake','Ice Shard'],evs:{hp:32,def:32,spe:2}};
+  const p={species:'Primarina',name:'자뭉누리레느',item:'Sitrus Berry',nature:'Modest',
+    ability:'Torrent',moves:['Moonblast','Sparkling Aria','Ice Beam','Psychic'],evs:{hp:32,spa:32,spe:2}};
+  const B=battle(b,p);
+  const first=Date.now();
+  const shallow=evalOneTurn(B,0,8);
+  const deep=evalTwoTurn(B,0,Date.now()+10000);
+  const two=[];
+  for(const [label,firstMove] of [['SD','move 1 mega'],['ATTACK','move 2 mega']]){
+   const sim=battle(b,p);
+   sim.makeChoices(firstMove,'move 1');
+   if(!sim.ended)sim.makeChoices('move 2','move 1');
+   two.push({label,winner:sim.winner,remaining:[sim.getSide('p1').pokemon[0].hp,sim.getSide('p2').pokemon[0].hp],
+     item:sim.getSide('p2').pokemon[0].item});
   }
-  console.log('[SWORDS-DANCE-SPREAD-TEST]',JSON.stringify(rows));
- }catch(e){console.error('[SWORDS-DANCE-SPREAD-ERROR]',e.stack||e)}
+  console.log('[TACTICAL-4MOVE-REGRESSION]',JSON.stringify({
+   shallow:shallow?.left,deep:deep?.left,opponent:deep?.right,
+   rows:deep?.matrix.map((v,i)=>[deep.L[i],Math.min(...v)]),
+   scripted:two,ms:Date.now()-first}));
+ }catch(e){console.error('[TACTICAL-4MOVE-ERROR]',e.stack||e)}
+ }
 
  const check=(path,method='GET',payload)=>new Promise(resolve=>{
   const req=http.request({hostname:'127.0.0.1',port,path,method,headers:{'content-type':'application/json'}},res=>{
