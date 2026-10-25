@@ -894,22 +894,33 @@ const koName=(type,obj)=>{
 const abilityList=(s)=>[...new Set(Object.values(s.abilities||{}))].filter(Boolean).map(en=>{
  const x=dex.abilities.get(en);return {id:x.id,en:x.name,ko:koName('Abilities',x)};
 });
+// The Showdown custom-game dex also contains CAP fan Pokémon and CAP-only
+// mechanics. Keep the Champions sample picker limited to official content.
+const unofficialCatalogIds={
+ Moves:new Set(['nihillight','paleowave','shadowstrike','polarflare']),
+ Items:new Set(['crucibellite','vilevial']),
+ Abilities:new Set(['auraguard','mountaineer','rebound','persistent','noability'])
+};
 const catalog={
- species:dex.species.all().filter(x=>x.exists).map(x=>({
+ species:dex.species.all().filter(x=>x.exists&&x.num>0).map(x=>({
    id:x.id,en:x.name,ko:koName('Pokedex',x),
    isMega:!!x.isMega,baseSpecies:x.baseSpecies,
    abilities:abilityList(x),
    baseAbilities:x.isMega?abilityList(dex.species.get(x.baseSpecies)):[],
    megaItem:x.isMega?(x.requiredItem||x.requiredItems?.[0]||''):''
  })),
- moves:dex.moves.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Moves',x)})),
- items:dex.items.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Items',x)})),
- abilities:dex.abilities.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Abilities',x)}))
+ moves:dex.moves.all().filter(x=>x.exists&&!unofficialCatalogIds.Moves.has(x.id))
+  .map(x=>({id:x.id,en:x.name,ko:koName('Moves',x)})),
+ items:dex.items.all().filter(x=>x.exists&&!unofficialCatalogIds.Items.has(x.id))
+  .map(x=>({id:x.id,en:x.name,ko:koName('Items',x)})),
+ abilities:dex.abilities.all().filter(x=>x.exists&&!unofficialCatalogIds.Abilities.has(x.id))
+  .map(x=>({id:x.id,en:x.name,ko:koName('Abilities',x)}))
 };
 if(require.main===module)console.log('[CATALOG]',Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.length])));
 const translationAudit=(()=>{
- const allMega=dex.species.all().filter(x=>x.exists&&x.isMega);
- const allStones=dex.items.all().filter(x=>x.exists&&x.megaStone&&Object.keys(x.megaStone).length>0);
+ const allMega=dex.species.all().filter(x=>x.exists&&x.isMega&&x.num>0);
+ const allStones=dex.items.all().filter(x=>x.exists&&!unofficialCatalogIds.Items.has(x.id)&&
+  x.megaStone&&Object.keys(x.megaStone).length>0);
  const uncapturedSpecies=allMega.filter(x=>!/[가-힣]/.test(koName('Pokedex',x)));
  const uncapturedStones=allStones.filter(x=>!/[가-힣]/.test(koName('Items',x)));
  const generatedSpecies=allMega.filter(x=>!/[가-힣]/.test(koData.Pokedex?.[x.id]?.name||'')&&/[가-힣]/.test(koName('Pokedex',x)));
