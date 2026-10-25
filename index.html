@@ -77,7 +77,12 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 <div class="poke-head"><div class="poke-name">포켓몬 A</div><span class="side-pill">왼쪽</span></div>
 <div class="field"><label>샘플 이름</label><input data-field="name" placeholder="예: 한카리아스 기합의띠"></div>
 <div class="mini-grid"><div class="field"><label>포켓몬 · 한글/영문 검색</label><input data-field="species" data-list="species" placeholder="한카리아스" autocomplete="off"></div><div class="field"><label>성격</label><select data-field="nature"></select></div></div>
-<div class="mini-grid"><div class="field"><label>도구 · 한글/영문 검색</label><input data-field="item" data-list="items" placeholder="기합의띠"></div><div class="field"><label>특성 · 해당 포켓몬의 특성만 표시</label><select data-field="ability"><option value="">포켓몬을 선택해 주세요</option></select></div></div>
+<div class="mini-grid"><div class="field"><label>도구 · 한글/영문 검색</label><input data-field="item" data-list="items" placeholder="기합의띠"></div><div class="field"><label>특성 · 선택한 포켓몬 폼 기준</label><select data-field="ability"><option value="">포켓몬을 선택해 주세요</option></select></div></div>
+<div class="field mega-pre-wrap" hidden>
+<label>메가진화 전 특성 (진화 전 상태에 적용)</label>
+<select data-field="preMegaAbility"><option value="">특성 선택</option></select>
+<div class="help">메가진화 후 특성은 위 칸에 표시되며, 실제 배틀 엔진이 메가진화할 때 자동으로 적용해.</div>
+</div>
 <div class="mini-grid move-grid"></div>
 <div class="field" style="margin-top:12px"><label>SP 투자 (HP / 공격 / 방어 / 특공 / 특방 / 스피드)</label><div class="sp-grid"></div></div>
 </section>
@@ -85,7 +90,12 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 <div class="poke-head"><div class="poke-name">포켓몬 B</div><span class="side-pill">오른쪽</span></div>
 <div class="field"><label>샘플 이름</label><input data-field="name" placeholder="예: 냉동펀치 메가메타그로스"></div>
 <div class="mini-grid"><div class="field"><label>포켓몬 · 한글/영문 검색</label><input data-field="species" data-list="species" placeholder="메타그로스" autocomplete="off"></div><div class="field"><label>성격</label><select data-field="nature"></select></div></div>
-<div class="mini-grid"><div class="field"><label>도구 · 한글/영문 검색</label><input data-field="item" data-list="items" placeholder="메타그로스나이트"></div><div class="field"><label>특성 · 해당 포켓몬의 특성만 표시</label><select data-field="ability"><option value="">포켓몬을 선택해 주세요</option></select></div></div>
+<div class="mini-grid"><div class="field"><label>도구 · 한글/영문 검색</label><input data-field="item" data-list="items" placeholder="메타그로스나이트"></div><div class="field"><label>특성 · 선택한 포켓몬 폼 기준</label><select data-field="ability"><option value="">포켓몬을 선택해 주세요</option></select></div></div>
+<div class="field mega-pre-wrap" hidden>
+<label>메가진화 전 특성 (진화 전 상태에 적용)</label>
+<select data-field="preMegaAbility"><option value="">특성 선택</option></select>
+<div class="help">메가진화 후 특성은 위 칸에 표시되며, 실제 배틀 엔진이 메가진화할 때 자동으로 적용해.</div>
+</div>
 <div class="mini-grid move-grid"></div>
 <div class="field" style="margin-top:12px"><label>SP 투자 (HP / 공격 / 방어 / 특공 / 특방 / 스피드)</label><div class="sp-grid"></div></div>
 </section>
@@ -158,19 +168,45 @@ function korean(kind,value){
  return entry?displayEntry(kind,entry):value;
 }
 function setAbilities(root,preferred){
- const el=getField(root,'ability');
+ if(!catalog)return; // Preserve saved sets until the Korean catalog arrives.
+ const el=getField(root,'ability'),pre=getField(root,'preMegaAbility');
  const poke=findEntry('species',getField(root,'species').value);
- const old=preferred||el.value||root.dataset.pendingAbility||'';
- el.replaceChildren();
- const hint=document.createElement('option');hint.value='';hint.textContent=poke?'특성을 선택해 주세요':'먼저 포켓몬을 선택해 주세요';el.appendChild(hint);
- if(poke)for(const a of poke.abilities||[]){
+ const old=preferred||root.dataset.pendingAbility||el.value||'';
+ const baseWanted=root.dataset.pendingPreMegaAbility||'';
+ const mega=!!poke?.isMega;
+ root.querySelector('.mega-pre-wrap').hidden=!mega;
+ const label=el.closest('.field').querySelector('label');
+ label.textContent=mega?'메가진화 후 특성 (자동 적용)':'특성';
+ const options=(select,abilities,placeholder)=>{
+  select.replaceChildren();
+  const hint=document.createElement('option');hint.value='';hint.textContent=placeholder;select.appendChild(hint);
+  for(const a of abilities||[]){
    const option=document.createElement('option');option.value=a.en;
-   option.textContent=a.ko===a.en?a.ko:a.ko+' · '+a.en;el.appendChild(option)
+   option.textContent=a.ko===a.en?a.ko:a.ko+' · '+a.en;
+   select.appendChild(option)
+  }
+ };
+ options(el,poke?.abilities,poke?'특성을 선택해 주세요':'먼저 포켓몬을 선택해 주세요');
+ const choose=(select,pref,defaultFirst)=>{
+  const found=[...select.options].find(o=>o.value&&normalized(o.value)===normalized(pref));
+  if(found)select.value=found.value;
+  else select.value=defaultFirst?[...select.options].find(o=>o.value)?.value||'':'';
+ };
+ if(mega){
+  options(pre,poke.baseAbilities,'메가진화 전 특성을 선택해 주세요');
+  choose(el,old,true);
+  const oldIsPre=(poke.baseAbilities||[]).some(x=>normalized(x.en)===normalized(old));
+  choose(pre,baseWanted||(oldIsPre?old:''),true);
+  el.disabled=true; // Mega-Z ability is determined by the forme, not user choice.
+  root.dataset.pendingPreMegaAbility=pre.value;
+ }else{
+  choose(el,old,(poke?.abilities||[]).length===1);
+  pre.replaceChildren();
+  el.disabled=false;
+  root.dataset.pendingPreMegaAbility='';
  }
- const chosen=[...el.options].find(o=>normalized(o.value)===normalized(old)||normalized(o.textContent.split(' · ')[0])===normalized(old));
- if(chosen)el.value=chosen.value;
- else if(poke?.abilities?.length===1)el.value=poke.abilities[0].en;
- else el.value='';
+ // Keep post-Mega as a visible selected ability; server maps the base ability
+ // back to the non-Mega Pokémon until the Mega Stone activates.
  root.dataset.pendingAbility=el.value||'';
 }
 function apply(root,s){
@@ -178,9 +214,11 @@ function apply(root,s){
  root.querySelectorAll('[data-move]').forEach((el,i)=>el.value=s.moves?.[i]||'');
  spKeys.forEach(k=>root.querySelector('[data-sp="'+k+'"]').value=s.evs?.[k]??0);
  root.dataset.pendingAbility=s.ability||'';
+ root.dataset.pendingPreMegaAbility=s.preMegaAbility||'';
  if(catalog){
   for(const k of ['species','item'])getField(root,k).value=korean(k==='species'?'species':'items',getField(root,k).value);
   root.querySelectorAll('[data-move]').forEach(el=>el.value=korean('moves',el.value));
+  root.dataset.lastSpecies=findEntry('species',getField(root,'species').value)?.id||'';
  }
  setAbilities(root,s.ability);
 }
@@ -190,6 +228,8 @@ function collect(root){
  x.nature=getField(root,'nature').value;
  x.item=canonical('items',getField(root,'item').value);
  x.ability=getField(root,'ability').value||root.dataset.pendingAbility||'';
+ const poke=findEntry('species',getField(root,'species').value);
+ if(poke?.isMega)x.preMegaAbility=getField(root,'preMegaAbility').value||root.dataset.pendingPreMegaAbility||'';
  x.moves=Array.from(root.querySelectorAll('[data-move]')).map(el=>el.value.trim()).filter(Boolean).map(v=>canonical('moves',v));
  x.evs={};spKeys.forEach(k=>x.evs[k]=Number(root.querySelector('[data-sp="'+k+'"]').value)||0);return x
 }
@@ -240,7 +280,7 @@ function onSpeciesChanged(input){
  const previous=root.dataset.lastSpecies;
  if(poke&&previous!==poke.id){
    const item=getField(root,'item');
-   if(poke.megaItem && !item.value.trim())item.value=korean('items',poke.megaItem);
+   if(poke.megaItem)item.value=korean('items',poke.megaItem);
    setAbilities(root,'');
    root.dataset.lastSpecies=poke.id;
  }else if(!poke){setAbilities(root,'');root.dataset.lastSpecies=''}
@@ -251,7 +291,10 @@ document.querySelectorAll('[data-list]').forEach(el=>{
  el.addEventListener('focus',()=>updateSuggestions(el));
  el.addEventListener('change',()=>{if(el.dataset.list==='species')onSpeciesChanged(el)})
 });
-for(const root of [left,right])getField(root,'ability').addEventListener('change',e=>{root.dataset.pendingAbility=e.target.value;try{store()}catch(err){}});
+for(const root of [left,right]){
+ getField(root,'ability').addEventListener('change',e=>{root.dataset.pendingAbility=e.target.value;try{store()}catch(err){}});
+ getField(root,'preMegaAbility').addEventListener('change',e=>{root.dataset.pendingPreMegaAbility=e.target.value;try{store()}catch(err){}});
+}
 loadCatalog().catch(()=>{});
 function sideOf(v){const m=String(v||'').match(/\bp([12])a?:/);return m?'p'+m[1]:null}
 function hpInfo(raw,old){const text=String(raw||'');const m=text.match(/(\d+)\/(\d+)/);if(m)return {now:Number(m[1]),max:Number(m[2])};if(/(?:^|\s)0 fnt/.test(text))return {now:0,max:old?.max||0};return null}
@@ -349,6 +392,7 @@ document.getElementById('run').onclick=async()=>{
  if(!a.species||!b.species||a.moves.length===0||b.moves.length===0){out.textContent='양쪽 포켓몬 이름과 기술을 최소 1개씩 입력해 줘.';return}
  for(const s of [a,b])if(Object.values(s.evs).some(v=>v<0||v>32)||Object.values(s.evs).reduce((x,y)=>x+y,0)>66){out.textContent='SP는 각 능력치 최대 32, 합계 최대 66으로 입력해 줘.';return}
  if(!a.ability||!b.ability){out.textContent='양쪽 포켓몬의 특성을 선택해 줘.';return}
+ if((a.preMegaAbility!==undefined&&!a.preMegaAbility)||(b.preMegaAbility!==undefined&&!b.preMegaAbility)){out.textContent='메가진화 전 특성도 선택해 줘.';return}
  store();btn.disabled=true;btn.textContent='대면 계산 중...';
  try{
   const res=await fetch('/api/duel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({a,b,maxTurns:Number(document.getElementById('max-turns').value)})});
