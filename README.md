@@ -75,3 +75,55 @@ sampling uncertainty. In controlled regression scenarios, the optional
 `MEGA_TIMING_MAX_SAMPLES=5` setting verifies decisions under the CPU-like
 sampling limit on both A/B orientations. This does not hardcode Sceptile
 or a move as the chosen action.
+
+
+## Server-side permanent sample vault
+
+The `sample-library` branch is a separate GitHub storage branch that
+does not deploy as the website's `main` branch changes. Each update writes
+`data/samples.enc.json` using GitHub's contents API and a SHA check. All
+names, species/forms, items, moves, EV/SP investments, nature and both Mega
+abilities are saved together. There are no storage files on Render's
+ephemeral local filesystem. Saved samples can be loaded from other devices.
+
+The main repository is **public**. The dedicated storage file contains only
+AES-256-GCM encrypted JSON (scrypt-derived key with fresh salt and nonce)
+and should not be committed as plaintext. Source commits and web deployment
+don't reset this data. The GitHub repository's commit history can be used
+for recovery if a sample is deleted accidentally.
+
+**Required one-time Render environment variables** in the existing
+`champions-singles-lab` web service:
+
+- `SAMPLES_GITHUB_TOKEN`: a **fine-grained GitHub personal access token**
+  with **Contents: Read and write** on
+  `cj01963794-glitch/champions-singles-lab` only. Generate the token in
+  GitHub settings and paste it **directly into Render → Environment**,
+  not in chat or any source file.
+- `SAMPLES_ACCESS_KEY`: a strong, memorable random password at least
+  16 characters long. Keep it private and stable. This both authorizes
+  vault access and derives the encryption key. **Changing or losing the
+  password prevents decrypting previously stored samples.**
+
+Optional variables (not needed for the default branch):
+`SAMPLES_GITHUB_REPO` and `SAMPLES_GITHUB_BRANCH`.
+
+Restart/redeploy the Render service after adding environment variables,
+then visit the site, unlock **내 영구 샘플 보관함**, and save A or B.
+The password is held only in memory and browser `sessionStorage`, never
+`localStorage`. Sample contents are fetched from GitHub through the
+server and not stored in the browser-specific draft cache unless loaded
+into an editor.
+
+The vault's authenticated endpoints are
+`GET /api/sample-library` and `POST /api/sample-library`; both require
+`X-Samples-Key`. The public status endpoint
+`GET /api/sample-library/status` only reveals whether setup is done.
+Save and delete use GitHub's file SHA for concurrent modification
+protection, with up to three retry attempts.
+
+This approach avoids paying for an expiring Render Free Postgres instance
+or a nonpersistent Render Free Key Value instance. The availability of the
+vault still depends on GitHub, the token's validity and the lifetime of
+the GitHub repository. No database can guarantee literal perpetuity; make
+separate backups of valuable sets when appropriate.
