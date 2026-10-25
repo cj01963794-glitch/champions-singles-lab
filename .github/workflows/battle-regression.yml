@@ -41,6 +41,10 @@ jobs:
           git checkout --detach FETCH_HEAD
           npm install --omit=optional --no-audit --no-fund
           npm run build
+      - name: Inspect all Korean text coverage
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/localization-audit.cjs
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown

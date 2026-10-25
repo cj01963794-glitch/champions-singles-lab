@@ -1205,5 +1205,5 @@ return server;
 }
 if(require.main===module)startServer();
 module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
- continuationMove,estimatedDirectDamage};
+ continuationMove,estimatedDirectDamage,catalog,koData,koName,dex};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}
