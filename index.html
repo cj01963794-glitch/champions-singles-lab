@@ -101,7 +101,7 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 </section>
 </div>
 <div class="panel"><div class="btnrow"><label for="max-turns" style="display:flex;align-items:center;gap:8px;margin:0">최대 턴 <select id="max-turns" style="width:auto;min-width:90px"><option value="30">30턴</option><option value="60">60턴</option><option value="120" selected>120턴</option><option value="200">200턴</option></select></label><label for="rng-mode" style="display:flex;align-items:center;gap:8px;margin:0">실전 난수 <select id="rng-mode" style="width:auto;min-width:160px"><option value="random" selected>매번 새로 뽑기</option><option value="replay">이전 결과 재현</option></select></label><button id="run">대면 시뮬레이션 실행</button><button id="swap" class="secondary">양측 샘플 바꾸기</button><button id="restore" class="secondary">기본 예시로 복구</button></div><div class="help" style="margin-top:10px">포켓몬·도구·기술은 한글/영문으로 검색할 수 있고, 특성은 해당 포켓몬의 목록에서 선택해. 계산에는 영문 내부 ID를 사용해. 두 샘플은 브라우저에 자동 보관돼. 난수는 매 실행 새로 생성되며, 동일 결과를 다시 보고 싶으면 '이전 결과 재현'을 선택해.</div><div id="err" class="error" style="margin-top:10px"></div></div>
-<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플과 최대 턴수를 선택하고 <b>대면 시뮬레이션 실행</b>을 누르면 1턴부터 종료 턴까지 기록을 볼 수 있어.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="policy-info" class="note" style="display:none"></div><div id="rng-info" class="help" style="margin:8px 0 16px"></div><div id="stop-info" class="note" style="display:none"></div><div id="timeline"></div><div class="note">주의: 턴마다 한 단계 앞을 평가하는 시험용 행동 선택기라서 잘못된 기술을 선택할 수 있어. 이 승패를 대면 성능 순위로 사용해서는 안 돼.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
+<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플과 최대 턴수를 선택하고 <b>대면 시뮬레이션 실행</b>을 누르면 1턴부터 종료 턴까지 기록을 볼 수 있어.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="policy-info" class="note" style="display:none"></div><details id="counterfactual-info" class="note" style="display:none"><summary>턴별 AI 선택과 상대 행동에 따른 대안 보기</summary><div id="counterfactual-lines" style="margin-top:8px"></div></details><div id="rng-info" class="help" style="margin:8px 0 16px"></div><div id="stop-info" class="note" style="display:none"></div><div id="timeline"></div><div class="note">주의: 턴마다 한 단계 앞을 평가하는 시험용 행동 선택기라서 잘못된 기술을 선택할 수 있어. 이 승패를 대면 성능 순위로 사용해서는 안 돼.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
 <footer>Engine: Pokémon Showdown · Mod: Champions · 1v1 Singles · 계산 결과는 아직 검증 중</footer>
 </main>
 <datalist id="suggest-species"></datalist><datalist id="suggest-items"></datalist><datalist id="suggest-moves"></datalist>
@@ -381,6 +381,29 @@ function renderResult(raw,a,b){
     +(v.ambiguous?' (차이가 작아 첫 턴 피해를 보조 기준으로 적용)':'');
   }
  }else{policy.style.display='none'}
+
+ const cfInfo=document.getElementById('counterfactual-info');
+ const cfLines=document.getElementById('counterfactual-lines');
+ const moveLabel=(sample,action)=>{
+  const ix=Number(String(action||'').match(/move (\d+)/)?.[1]||0)-1;
+  return ix>=0?(korean('moves',sample.moves[ix])||sample.moves[ix]||'기술 미상'):'기술 미상';
+ };
+ const reviews=(raw.decisionDetails||[]).filter(d=>d.counterfactual);
+ if(reviews.length){
+  cfInfo.style.display='block';
+  cfLines.innerHTML=reviews.slice(0,6).map(d=>{
+   const c=d.counterfactual;
+   const actor=c.side==='p2'?b:a,opponent=c.side==='p2'?a:b;
+   const actual=c.side==='p2'?d.right:d.left;
+   const oppActual=c.side==='p2'?d.left:d.right;
+   const threat=c.opponentThreatIfReactive?
+    ' 다만 다른 선택인 '+h(moveLabel(opponent,c.opponentThreatIfReactive))+'에 대한 위험도 고려했어.':'';
+   return '<div style="margin-bottom:8px">'+d.turn+'턴: '+
+    h(sampleLabel(actor))+'은 '+h(moveLabel(actor,actual))+'을 선택했지만, 상대가 '+
+    h(moveLabel(opponent,oppActual))+'을 사용할 것을 미리 알았다면 '+
+    h(moveLabel(actor,c.bestAgainstChosen))+'이 유리했어.'+threat+'</div>';
+  }).join('')+'<div class="help">양쪽 행동은 동시에 선택돼. 이는 실제 상대 기술을 미리 알았을 때의 비교이며, 최적 승률을 증명하는 값이 아니야.</div>';
+ }else{cfInfo.style.display='none';cfLines.textContent=''}
  const x=parseBattle(raw.log||[]);
  const w=raw.winner==='Left'?sampleLabel(a):raw.winner==='Right'?sampleLabel(b):raw.winner==='draw'?'무승부':'승패 미확정';
  document.getElementById('result-title').textContent=sampleLabel(a)+' vs '+sampleLabel(b);
