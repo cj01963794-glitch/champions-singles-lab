@@ -89,6 +89,12 @@ const catalog={
  abilities:dex.abilities.all().filter(x=>x.exists).map(x=>({id:x.id,en:x.name,ko:koName('Abilities',x)}))
 };
 console.log('[CATALOG]',Object.fromEntries(Object.entries(catalog).map(([k,v])=>[k,v.length])));
+console.log('[KO-CHECK]',JSON.stringify({
+ garchomp:catalog.species.find(x=>x.en==='Garchomp'),
+ megametagross:catalog.species.find(x=>x.en==='Metagross-Mega'),
+ earthquake:catalog.moves.find(x=>x.en==='Earthquake'),
+ focusSash:catalog.items.find(x=>x.en==='Focus Sash')
+}));
 
 const port=Number(process.env.PORT)||10000;
 const server=http.createServer(async(req,res)=>{
