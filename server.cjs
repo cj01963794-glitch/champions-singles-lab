@@ -673,7 +673,11 @@ function probabilisticAttackSearch(B,planned,turn,deadline){
   Math.pow((selected.wins-selected.losses)/n,2)-
   Math.pow((runner.wins-runner.losses)/n,2))/n);
  const significant=margin>Math.max(0.07,1.25*independentStderr);
- return {side,chosen:significant?selected.action:null,ambiguous:!significant,
+ // When there are enough sampled completed fights, the empirical best move
+ // is a better decision rule than reverting to biased one-turn HP minimax.
+ // Still flag close estimates as uncertain in the user interface.
+ const usable=(significant||(n>=96&&margin>=0.015));
+ return {side,chosen:usable?selected.action:null,ambiguous:!significant,
   comparedAgainst:opposingMove,samples:n,
   candidates:rank.map(o=>({action:o.action,winPct:Math.round(1000*o.wins/n)/10,
    lossPct:Math.round(1000*o.losses/n)/10,
@@ -692,9 +696,30 @@ function simulation(a,b,depth=120,rngSeed){
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
   let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null;
+  // High-variance direct attack races need stochastic terminal outcomes BEFORE
+  // the legacy two-sample 2-turn planner can bias the choice. Keep long-term
+  // defense/setup scenarios on the tactical planner below.
+  const openingRace=t<2 && !defensePlanSide(B)?probabilisticRaceSide(B):null;
+  if(openingRace && Date.now()<globalDeadline-12500){
+   const shallow=evalOneTurn(B,t,4,globalDeadline-500);
+   if(shallow){
+    choice={left:shallow.left,right:shallow.right};
+    depthUsed=3;
+    attackAudit=probabilisticAttackSearch(B,choice,t,
+     Math.min(Date.now()+12500,globalDeadline-1600));
+    if(attackAudit?.chosen){
+     const foe=attackAudit.side==='p1'?'right':'left';
+     choice[attackAudit.side==='p1'?'left':'right']=attackAudit.chosen;
+     // The opponent's best reply used for all rollouts must be the same
+     // response used in the actual two-player simulation.
+     if(attackAudit.comparedAgainst)choice[foe]=attackAudit.comparedAgainst;
+    }
+   }
+  }
+
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
-  if(t<6 && hasTacticalMove(B) && Date.now()-started<10000){
+  if(!choice && t<6 && hasTacticalMove(B) && Date.now()-started<10000){
    const deadline=Math.min(Date.now()+6500,globalDeadline-2200);
    const deep=evalTwoTurn(B,t,deadline);
    if(deep){
@@ -755,12 +780,17 @@ function simulation(a,b,depth=120,rngSeed){
   }
   // Probabilistic checks override only well-separated attack choices,
   // leaving the existing tactical planner and defensive setup untouched.
-  if(t<2 && !longPlan && Date.now()<globalDeadline-3800){
+  if(t<2 && !attackAudit && !longPlan && Date.now()<globalDeadline-3800){
    const auditDeadline=Math.min(Date.now()+7500,globalDeadline-900);
    attackAudit=probabilisticAttackSearch(B,choice,t,auditDeadline);
    if(attackAudit?.chosen){
-    if(attackAudit.side==='p1')choice.left=attackAudit.chosen;
-    else choice.right=attackAudit.chosen;
+    if(attackAudit.side==='p1'){
+     choice.left=attackAudit.chosen;
+     if(attackAudit.comparedAgainst)choice.right=attackAudit.comparedAgainst;
+    }else{
+     choice.right=attackAudit.chosen;
+     if(attackAudit.comparedAgainst)choice.left=attackAudit.comparedAgainst;
+    }
    }
   }
   B.makeChoices(choice.left,choice.right);
