@@ -124,7 +124,9 @@ let catalog=null;
 function normalized(s){return String(s||'').normalize('NFKC').trim().toLocaleLowerCase()}
 function matches(kind,value){
  if(!catalog||!value)return [];
- const q=normalized(value);
+ const raw=String(value).trim();
+ const qualified=raw.match(/\s\[([^\]]+)\]$/);
+ const q=normalized(qualified?qualified[1]:raw);
  return (catalog[kind]||[]).filter(x=>normalized(x.en)===q||normalized(x.ko)===q||normalized(x.id)===q)
 }
 function findEntry(kind,value){
@@ -144,10 +146,16 @@ function canonical(kind,value){
  if(!entry)throw Error('"'+value+'"은(는) 등록된 '+({species:'포켓몬',moves:'기술',items:'도구'}[kind]||kind)+' 이름이 아니야. 목록에서 선택해 줘.');
  return entry.en;
 }
+function displayEntry(kind,entry){
+ if(!catalog)return entry.ko||entry.en;
+ const ko=entry.ko||entry.en;
+ const duplicated=(catalog[kind]||[]).some(x=>x.id!==entry.id&&x.ko===entry.ko);
+ return duplicated?ko+' ['+entry.en+']':ko;
+}
 function korean(kind,value){
  if(!catalog||!value)return value||'';
  const entry=findEntry(kind,value);
- return entry?(entry.ko||entry.en):value;
+ return entry?displayEntry(kind,entry):value;
 }
 function setAbilities(root,preferred){
  const el=getField(root,'ability');
@@ -189,7 +197,8 @@ function translateExisting(root){
  const p=getField(root,'species'),item=getField(root,'item');
  p.value=korean('species',p.value);item.value=korean('items',item.value);
  root.querySelectorAll('[data-move]').forEach(el=>el.value=korean('moves',el.value));
- setAbilities(root,root.dataset.pendingAbility)
+ setAbilities(root,root.dataset.pendingAbility);
+ root.dataset.lastSpecies=findEntry('species',p.value)?.id||''
 }
 function store(){try{localStorage.setItem('champions-duel-samples-v1',JSON.stringify([collect(left),collect(right)]))}catch(e){}}
 const roots=[left,right];
@@ -220,7 +229,7 @@ async function updateSuggestions(input){
  if(!q)return;
  const arr=(catalog[kind]||[]).filter(x=>(normalized(x.ko).includes(q)||normalized(x.en).includes(q)||normalized(x.id).includes(q)))
  .sort((a,b)=>Number(normalized(b.ko)===q)-Number(normalized(a.ko)===q)||Number(normalized(b.ko).startsWith(q))-Number(normalized(a.ko).startsWith(q))).slice(0,30);
- for(const x of arr){const option=document.createElement('option');option.value=x.ko||x.en;
+ for(const x of arr){const option=document.createElement('option');option.value=displayEntry(kind,x);
   option.label=x.en;option.textContent=x.en;list.appendChild(option)}
  input.setAttribute('list','suggest-'+kind);
 }
@@ -326,6 +335,7 @@ document.getElementById('run').onclick=async()=>{
  const a=collect(left),b=collect(right);
  if(!a.species||!b.species||a.moves.length===0||b.moves.length===0){out.textContent='양쪽 포켓몬 이름과 기술을 최소 1개씩 입력해 줘.';return}
  for(const s of [a,b])if(Object.values(s.evs).some(v=>v<0||v>32)||Object.values(s.evs).reduce((x,y)=>x+y,0)>66){out.textContent='SP는 각 능력치 최대 32, 합계 최대 66으로 입력해 줘.';return}
+ if(!a.ability||!b.ability){out.textContent='양쪽 포켓몬의 특성을 선택해 줘.';return}
  store();btn.disabled=true;btn.textContent='대면 계산 중...';
  try{
   const res=await fetch('/api/duel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({a,b})});
