@@ -426,6 +426,21 @@ function usefulAttack(B,side,actions){
  }
  return candidate||actions[0];
 }
+// Rough damage is only a lookahead-action heuristic. Every real rollout
+// still uses Pokémon Showdown for damage, type, items and ability effects.
+function estimatedDirectDamage(B,side,action){
+ if(!action)return 0;
+ const attacker=B.getSide(side).pokemon[0],defender=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const move=B.dex.moves.get(actionInfo(B,side,action).id);
+ if(!move.exists||move.category==='Status'||move.basePower<=0)return 0;
+ const {effectiveness,stab}=attackMatchup(B,attacker,defender,move,action);
+ if(!effectiveness)return 0;
+ const attack=approximateCombatStat(attacker,move.category==='Physical'?'atk':'spa');
+ const defense=approximateCombatStat(defender,move.category==='Physical'?'def':'spd');
+ const level=attacker.level||50;
+ const base=Math.floor(Math.floor((Math.floor(2*level/5+2)*move.basePower*attack/Math.max(1,defense))/50)+2);
+ return Math.max(0,Math.floor(base*stab*effectiveness*0.925));
+}
 function continuationMove(B,side){
  const actions=legal(B,side);
  if(!actions.length)return null;
@@ -436,6 +451,12 @@ function continuationMove(B,side){
  const atk=strategyMove(B,side,actions,'atk');
  const hp=p.hp/Math.max(1,p.maxhp);
  const physical=physicalPressure(B,side==='p1'?'p2':'p1',side);
+ // Terminal progress outranks indiscriminate repeat boosting. In the old
+ // sampled continuation, Leaf Blade -> Swords Dance and Swords Dance ->
+ // Swords Dance incorrectly erased legitimate 2HKO/setup->KO lines.
+ const directAttack=usefulAttack(B,side,actions);
+ const projected=estimatedDirectDamage(B,side,directAttack);
+ if(directAttack && projected>0 && projected>=0.78*foe.hp)return directAttack;
  // Heal when actually threatened. Do not spend every full-HP turn using
  // Roost while an opponent is strengthening.
  if(heal && hp<0.57 && (!def || p.boosts.def>=foe.boosts.atk || hp<0.34))return heal;
@@ -1147,5 +1168,6 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
 return server;
 }
 if(require.main===module)startServer();
-module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix};
+module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
+ continuationMove,estimatedDirectDamage};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}

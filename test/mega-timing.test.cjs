@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
-const {battle,legal,simulation,Sim}=require('../server.cjs');
+const {battle,legal,simulation,Sim,continuationMove,estimatedDirectDamage}=require('../server.cjs');
 const {exactAttackRace}=require('../attack-race.cjs');
 const {makeTacticalSearch}=require('../tactical-race.cjs');
 
@@ -103,21 +103,28 @@ test('decision policy must consider retaining Scrappy to attack Ghost',()=>{
 });
 
 
-test('diagnostic: actual Sceptile vs Sitrus Primarina opening choices',()=>{
+test('Sceptile can select Leaf Blade instead of blindly boosting again',()=>{
+ const pp={...prim,item:'Sitrus Berry'};
+ const firstHit=battle(sceptile,pp,'1579,3137,6027,8191');
+ firstHit.makeChoices('move 2','move 1');
+ assert.ok(!firstHit.ended);
+ assert.ok(firstHit.p2.pokemon[0].hp<firstHit.p2.pokemon[0].maxhp);
+ assert.ok(estimatedDirectDamage(firstHit,'p1','move 2')>0);
+ assert.equal(continuationMove(firstHit,'p1'),'move 2',
+  'finishing a damaged enemy must outrank an arbitrary first Swords Dance');
+ const boosted=battle(sceptile,pp,'1579,3137,6027,8191');
+ boosted.makeChoices('move 1','move 1');
+ assert.ok(!boosted.ended);
+ assert.equal(boosted.p1.pokemon[0].boosts.atk,2);
+ assert.equal(continuationMove(boosted,'p1'),'move 2',
+  'Swords Dance followed by a potentially lethal hit must not repeat Swords Dance');
+});
+test('Sceptile vs Sitrus Primarina avoids gratuitous opening Rock Slide',()=>{
  const pp={...prim,item:'Sitrus Berry'};
  const result=simulation(sceptile,pp,4,'1579,3137,6027,8191');
- const d=result.decisionDetails[0];
- console.log('[SCEPTILE-REGRESSION]',JSON.stringify({
-  choices:result.choices,winner:result.winner,
-  start:{left:d.left,right:d.right},
-  audit:d.megaTimingAudit?{
-   samples:d.megaTimingAudit.samples,
-   leftActions:d.megaTimingAudit.leftActions,
-   rightActions:d.megaTimingAudit.rightActions,
-   candidates:d.megaTimingAudit.candidates,
-   payoff:d.megaTimingAudit.payoff.map((r,i)=>({
-    action:d.megaTimingAudit.leftActions[i],
-    chances:r.map((c,j)=>[d.megaTimingAudit.rightActions[j],c.winPct])
-   }))}:null
- }).slice(0,21000));
+ assert.ok(result.choices.length>0);
+ assert.ok(['move 1','move 2','move 1 mega','move 2 mega'].includes(result.choices[0][0]),
+  'root must favor Leaf Blade or Swords Dance over arbitrary Rock Slide');
+ assert.equal(result.decisionDetails[0].megaTimingConsidered,true);
+ assert.ok(result.decisionDetails[0].megaTimingAudit?.samples>=24);
 });

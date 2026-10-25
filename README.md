@@ -54,3 +54,13 @@ observed outcomes. Only then, if their observed first-turn damage
 meaningfully differs, it uses direct damage as a tie-breaker. This is
 explicitly marked as a heuristic and does not imply mathematical proof of
 higher win probability.
+
+
+Follow-up tactic fix: the optional-Mega paired rollouts no longer force
+arbitrary repeated attack boosts when the strongest legal attack is already
+in plausible finishing range. This corrects the former Leaf Blade -> Swords
+Dance and Swords Dance -> Swords Dance continuations that systematically
+undervalued direct 2HKO/setup->KO lines. The rough projected-damage gate is
+an *action-selection heuristic only*; battle outcomes still come from
+Showdown and are not certified optimal win rates. The Sceptile / Bold
+Sitrus Primarina matchup is a regression case.
