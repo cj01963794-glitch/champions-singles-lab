@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1221">
+<title>챔피언즈 싱글 대면 분석기</title>
+<style>
+:root {color-scheme:dark;--bg:#0b1221;--panel:#151f33;--surface:#1b2940;--line:#314159;--text:#eff4ff;--muted:#a1b1ca;--accent:#80a8ff;--green:#4ed7ad;--red:#f38b9c;--amber:#f1c67b}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 90% -10%,#1d3560 0%,transparent 44%),var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1080px;margin:auto;padding:24px 16px 74px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}
+.brand{font-weight:800;letter-spacing:-.6px;font-size:23px}
+.subtitle{font-size:13px;color:var(--muted);margin-top:3px}
+.status{border:1px solid var(--line);border-radius:100px;padding:6px 11px;color:var(--muted);font-size:12px;white-space:nowrap}
+.status.ok{color:var(--green);border-color:#266351}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:19px;margin-bottom:18px;box-shadow:0 12px 26px #01061329}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.poke-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.poke-name{font-size:19px;font-weight:750}
+.side-pill{background:#293b59;color:#b9d0fb;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700}
+label{display:block;margin-bottom:5px;color:#bdcce2;font-size:12px;font-weight:650}
+.field{margin-bottom:12px}
+input,select,textarea{width:100%;border:1px solid #40506b;border-radius:9px;background:#101a2b;color:var(--text);font:inherit;padding:10px 11px;min-width:0;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px #80a8ff2a}
+.mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sp-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.sp-grid input{padding:9px 4px;text-align:center}
+.sp-grid label{text-align:center;font-size:11px}
+h1,h2,h3,p{margin-top:0}
+h2{font-size:18px;letter-spacing:-.2px}
+p{color:var(--muted)}
+button{border:0;border-radius:10px;background:#5685ff;color:#fff;font-weight:750;font:inherit;padding:13px 18px;cursor:pointer}
+button:disabled{opacity:.55;cursor:progress}
+.btnrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.secondary{background:#283954;color:#dce8ff;font-size:13px;padding:10px 14px}
+.help{font-size:12px;color:var(--muted)}
+.note{background:#202d3f;border-left:3px solid var(--amber);border-radius:7px;padding:10px 12px;color:#d4e1f1;font-size:12px;margin:15px 0}
+.result-title{font-size:23px;font-weight:820}
+.result-winner{background:#173e37;color:#7ee5bc;display:inline-flex;font-size:13px;font-weight:800;padding:5px 11px;border-radius:30px}
+.result-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.hp-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.hp-name{font-size:14px;font-weight:750;margin-bottom:4px;overflow-wrap:anywhere}
+.hp-label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.bar{height:11px;background:#39455b;border-radius:50px;overflow:hidden}
+.fill{height:100%;background:var(--green);transition:width .2s}
+.fill.low{background:var(--red)}
+.fill.medium{background:var(--amber)}
+.turn{border:1px solid #33415a;border-radius:13px;overflow:hidden;margin:15px 0;background:#121d30}
+.turn-head{background:#23324b;padding:9px 14px;font-size:13px;font-weight:800;color:#cfdefa}
+.turn-body{padding:10px 14px}
+.action{padding:10px 0;border-bottom:1px solid #30405b}
+.action:last-child{border:0}
+.actor{font-weight:800;color:#c0d5ff}
+.move{font-weight:850}
+.details{margin:6px 0 0 11px;padding-left:11px;border-left:2px solid #3b5874;color:#bcd1e4;font-size:13px}
+.ko{color:var(--red);font-weight:750}
+.turn-intro{color:#c1cde1;font-size:13px;padding:6px 0}
+.success{color:var(--green)}
+.error{color:var(--red);font-weight:650}
+details{margin-top:15px}
+summary{cursor:pointer;color:#aec8ff;font-size:13px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0c1422;border:1px solid var(--line);border-radius:10px;padding:12px;max-height:260px;overflow:auto;font-size:11px}
+footer{color:var(--muted);font-size:12px;margin-top:25px}
+#result{display:none}
+#empty{border:1px dashed #3d4c64;border-radius:13px;padding:18px;text-align:center;color:var(--muted)}
+@media(max-width:700px){.grid,.hp-row{grid-template-columns:1fr}main{padding:17px 12px 50px}.top{align-items:flex-start}.status{font-size:10px}.panel{padding:15px}.brand{font-size:20px}}
+</style>
+</head>
+<body>
+<main>
+<header class="top"><div><div class="brand">⚔️ 챔피언즈 싱글 대면 분석기</div><div class="subtitle">두 실전 샘플을 입력하고 턴별 대면 결과 확인</div></div><span id="status" class="status">엔진 확인 중</span></header>
+<div class="note"><b>실험 버전</b> — 기술 효과는 Pokémon Showdown의 챔피언즈 규칙으로 처리하지만, 자동 기술 선택은 아직 최적 전략으로 검증되지 않았어. 아래 승패는 이 시뮬레이션에서 실제로 나온 결과이며, 포켓몬의 종합 대면 승률을 뜻하지 않아.</div>
+<div class="grid">
+<section class="panel" id="left-editor">
+<div class="poke-head"><div class="poke-name">포켓몬 A</div><span class="side-pill">왼쪽</span></div>
+<div class="field"><label>샘플 이름</label><input data-field="name" placeholder="예: 한카리아스 기합의띠"></div>
+<div class="mini-grid"><div class="field"><label>포켓몬 (영문)</label><input data-field="species" data-list="species" placeholder="Garchomp" autocomplete="off"></div><div class="field"><label>성격</label><select data-field="nature"></select></div></div>
+<div class="mini-grid"><div class="field"><label>도구 (영문)</label><input data-field="item" data-list="items" placeholder="Focus Sash"></div><div class="field"><label>특성 (영문)</label><input data-field="ability" placeholder="Rough Skin"></div></div>
+<div class="mini-grid move-grid"></div>
+<div class="field" style="margin-top:12px"><label>SP 투자 (HP / 공격 / 방어 / 특공 / 특방 / 스피드)</label><div class="sp-grid"></div></div>
+</section>
+<section class="panel" id="right-editor">
+<div class="poke-head"><div class="poke-name">포켓몬 B</div><span class="side-pill">오른쪽</span></div>
+<div class="field"><label>샘플 이름</label><input data-field="name" placeholder="예: 냉동펀치 메가메타그로스"></div>
+<div class="mini-grid"><div class="field"><label>포켓몬 (영문)</label><input data-field="species" data-list="species" placeholder="Metagross" autocomplete="off"></div><div class="field"><label>성격</label><select data-field="nature"></select></div></div>
+<div class="mini-grid"><div class="field"><label>도구 (영문)</label><input data-field="item" data-list="items" placeholder="Metagrossite"></div><div class="field"><label>특성 (영문)</label><input data-field="ability" placeholder="Clear Body"></div></div>
+<div class="mini-grid move-grid"></div>
+<div class="field" style="margin-top:12px"><label>SP 투자 (HP / 공격 / 방어 / 특공 / 특방 / 스피드)</label><div class="sp-grid"></div></div>
+</section>
+</div>
+<div class="panel"><div class="btnrow"><button id="run">대면 시뮬레이션 실행</button><button id="swap" class="secondary">양측 샘플 바꾸기</button><button id="restore" class="secondary">기본 예시로 복구</button></div><div class="help" style="margin-top:10px">기술·도구·포켓몬은 영문 이름으로 입력해 줘. 두 샘플은 이 브라우저에 자동 보관돼.</div><div id="err" class="error" style="margin-top:10px"></div></div>
+<section class="panel" id="results"><h2>대면 결과</h2><div id="empty">샘플을 확인하고 <b>대면 시뮬레이션 실행</b>을 누르면 읽기 쉬운 결과가 나타나.</div><div id="result"><div class="result-header"><div class="result-title" id="result-title"></div><span id="winner" class="result-winner"></span></div><div class="hp-row" id="hp"></div><div id="timeline"></div><div class="note">주의: 턴마다 한 단계 앞을 평가하는 시험용 행동 선택기라서 잘못된 기술을 선택할 수 있어. 이 승패를 대면 성능 순위로 사용해서는 안 돼.</div><details><summary>개발자용 원본 로그 보기 (필요할 때만)</summary><pre id="raw"></pre></details></div></section>
+<footer>Engine: Pokémon Showdown · Mod: Champions · 1v1 Singles · 계산 결과는 아직 검증 중</footer>
+</main>
+<datalist id="suggest-species"></datalist><datalist id="suggest-items"></datalist><datalist id="suggest-moves"></datalist>
+<script>
+'use strict';
+const presets=[
+ {name:'한카리아스 기합의띠',species:'Garchomp',nature:'Jolly',item:'Focus Sash',ability:'Rough Skin',moves:['Earthquake','Dragon Claw','Swords Dance','Stone Edge'],evs:{hp:2,atk:32,def:0,spa:0,spd:0,spe:32}},
+ {name:'메가메타그로스 냉동펀치',species:'Metagross',nature:'Jolly',item:'Metagrossite',ability:'Clear Body',moves:['Ice Punch','Bullet Punch','Meteor Mash','Earthquake'],evs:{hp:2,atk:32,def:0,spa:0,spd:0,spe:32}}
+];
+const natures=['Serious','Adamant','Jolly','Modest','Timid','Bold','Impish','Calm','Careful','Brave','Quiet','Relaxed','Sassy','Naive','Hasty','Mild','Rash','Lonely','Naughty','Gentle','Lax','Bashful','Hardy','Docile','Quirky'];
+const natureKo={Serious:'성실',Adamant:'고집',Jolly:'명랑',Modest:'조심',Timid:'겁쟁이',Bold:'대담',Impish:'장난꾸러기',Calm:'차분',Careful:'신중',Brave:'용감',Quiet:'냉정',Relaxed:'무사태평',Sassy:'건방',Naive:'천진난만',Hasty:'성급',Mild:'의젓',Rash:'덜렁',Lonely:'외로움',Naughty:'개구쟁이'};
+const spKeys=['hp','atk','def','spa','spd','spe'], spLabels=['HP','공격','방어','특공','특방','스피드'];
+const moveKo={'Earthquake':'지진','Ice Punch':'냉동펀치','Bullet Punch':'불릿펀치','Meteor Mash':'코멧펀치','Dragon Claw':'드래곤클로','Swords Dance':'칼춤','Stone Edge':'스톤에지','Shadow Claw':'섀도클로','Play Rough':'치근거리기','Shadow Sneak':'야습','Encore':'앙코르','Moonblast':'문포스','Sparkling Aria':'물거품아리아','Aqua Jet':'아쿠아제트','King’s Shield':'킹실드','King\'s Shield':'킹실드','Poltergeist':'폴터가이스트','Iron Defense':'철벽','Body Press':'바디프레스','Roost':'날개쉬기','Iron Head':'아이언헤드','Brave Bird':'브레이브버드','U-turn':'유턴','Curse':'저주','Calm Mind':'명상','Nasty Plot':'나쁜음모','Flash Cannon':'러스터캐논','Steel Beam':'철제광선','Outrage':'역린','Icicle Crash':'고드름떨구기','Thunder Fang':'번개엄니','Dragon Dance':'용의춤','Protect':'방어','Close Combat':'인파이트','Tackle':'몸통박치기','Quick Attack':'전광석화','Surf':'파도타기','Waterfall':'폭포오르기','Recover':'HP회복','Rest':'잠자기','Substitute':'대타출동','Taunt':'도발','Knock Off':'탁쳐서떨구기','Will-O-Wisp':'도깨비불','Toxic':'맹독','Leech Seed':'씨뿌리기','Focus Blast':'기합구슬','Aura Sphere':'파동탄','Draco Meteor':'용성군','Shadow Ball':'섀도볼','Air Slash':'에어슬래시','Crunch':'깨물어부수기','Facade':'객기','Thunderbolt':'10만볼트','Psychic':'사이코키네시스','Hyper Voice':'하이퍼보이스','Scale Shot':'스케일샷'};
+const abilityKo={'Rough Skin':'까칠한피부','Clear Body':'클리어바디','Intimidate':'위협','Levitate':'부유','Disguise':'탈','Pressure':'프레셔','Sturdy':'옹골참','Speed Boost':'가속','Multiscale':'멀티스케일'};
+const statKo={atk:'공격',def:'방어',spa:'특수공격',spd:'특수방어',spe:'스피드',accuracy:'명중률',evasion:'회피율'};
+const statusKo={brn:'화상',par:'마비',slp:'잠듦',psn:'독',tox:'맹독',frz:'얼음'};
+const left=document.getElementById('left-editor'),right=document.getElementById('right-editor');
+function h(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function getField(root,k){return root.querySelector('[data-field="'+k+'"]');}
+for(const root of [left,right]){
+ const sel=getField(root,'nature');
+ natures.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=(natureKo[n]?natureKo[n]+' · ':'')+n;sel.appendChild(o)});
+ const moves=root.querySelector('.move-grid');
+ for(let i=0;i<4;i++){const wrap=document.createElement('div');wrap.className='field';wrap.innerHTML='<label>기술 '+(i+1)+'</label><input data-move="'+i+'" data-list="moves" placeholder="Move '+(i+1)+'" autocomplete="off">';moves.appendChild(wrap)}
+ const sp=root.querySelector('.sp-grid');
+ spKeys.forEach((k,i)=>{const w=document.createElement('div');w.innerHTML='<label>'+spLabels[i]+'</label><input data-sp="'+k+'" type="number" min="0" max="32" step="1" value="0">';sp.appendChild(w)});
+}
+function apply(root,s){for(const k of ['name','species','nature','item','ability'])getField(root,k).value=s[k]||'';root.querySelectorAll('[data-move]').forEach((el,i)=>el.value=s.moves?.[i]||'');spKeys.forEach(k=>root.querySelector('[data-sp="'+k+'"]').value=s.evs?.[k]??0)}
+function collect(root){const x={};for(const k of ['name','species','nature','item','ability'])x[k]=getField(root,k).value.trim();x.moves=Array.from(root.querySelectorAll('[data-move]')).map(el=>el.value.trim()).filter(Boolean);x.evs={};spKeys.forEach(k=>x.evs[k]=Number(root.querySelector('[data-sp="'+k+'"]').value)||0);return x}
+function store(){try{localStorage.setItem('champions-duel-samples-v1',JSON.stringify([collect(left),collect(right)]))}catch(e){}}
+const roots=[left,right];
+for(const root of roots)root.addEventListener('input',store);
+document.getElementById('swap').onclick=()=>{const a=collect(left),b=collect(right);apply(left,b);apply(right,a);store()};
+document.getElementById('restore').onclick=()=>{apply(left,presets[0]);apply(right,presets[1]);store()};
+try{const saved=JSON.parse(localStorage.getItem('champions-duel-samples-v1'));if(Array.isArray(saved)&&saved.length===2){apply(left,saved[0]);apply(right,saved[1])}else throw Error('empty')}catch(e){apply(left,presets[0]);apply(right,presets[1])}
+let catalog=null;
+fetch('/api/health').then(r=>r.json()).then(d=>{const x=document.getElementById('status');x.textContent=d.ok&&d.mod==='champions'?'● 챔피언즈 엔진 연결됨':'● 엔진 점검 필요';if(d.ok)x.classList.add('ok')}).catch(()=>document.getElementById('status').textContent='● 연결 확인 실패');
+async function updateSuggestions(input){
+ const kind=input.dataset.list;if(!kind)return;
+ if(!catalog){try{catalog=await(await fetch('/api/catalog')).json()}catch(e){return}}
+ const list=document.getElementById('suggest-'+kind);if(!list)return;list.innerHTML='';
+ const q=input.value.toLowerCase();if(q.length<1)return;
+ const arr=(catalog[kind]||[]).filter(x=>x.toLowerCase().includes(q)).slice(0,25);
+ arr.forEach(x=>{const o=document.createElement('option');o.value=x;list.appendChild(o)});
+ input.setAttribute('list','suggest-'+kind);
+}
+document.querySelectorAll('[data-list]').forEach(el=>{el.addEventListener('input',()=>updateSuggestions(el));el.addEventListener('focus',()=>updateSuggestions(el))});
+function sideOf(v){const m=String(v||'').match(/\bp([12])a?:/);return m?'p'+m[1]:null}
+function hpInfo(raw,old){const text=String(raw||'');const m=text.match(/(\d+)\/(\d+)/);if(m)return {now:Number(m[1]),max:Number(m[2])};if(/(?:^|\s)0 fnt/.test(text))return {now:0,max:old?.max||0};return null}
+function unSplit(log){const out=[];for(let i=0;i<log.length;i++){if(log[i].startsWith('|split|')&&i+2<log.length){out.push(log[i+1]);i+=2}else out.push(log[i])}return out}
+function printActor(s){return s==='p1'?'A · '+(collect(left).name||collect(left).species):s==='p2'?'B · '+(collect(right).name||collect(right).species):s||'포켓몬'}
+function parseBattle(log){
+ const state={p1:null,p2:null},started={p1:null,p2:null},turns=[];let turn=null,action=null;
+ function detail(txt,kind){if(!turn)return;const x={text:txt,kind:kind||''};if(action)action.details.push(x);else turn.intro.push(x)}
+ const lines=unSplit(log);
+ for(const ln of lines){
+  if(!ln.startsWith('|'))continue;const v=ln.split('|');const cmd=v[1];
+  if(cmd==='switch'||cmd==='drag'||cmd==='replace'){
+   const side=sideOf(v[2]);if(side){state[side]=hpInfo(v[4],state[side]);if(!started[side])started[side]=state[side]?{...state[side]}:null}continue
+  }
+  if(cmd==='turn'){turn={number:Number(v[2]),intro:[],actions:[]};turns.push(turn);action=null;continue}
+  if(!turn)continue;
+  if(cmd==='move'){
+   action={actor:sideOf(v[2]),move:v[3],details:[]};turn.actions.push(action);continue
+  }
+  if(cmd==='-mega'){detail((sideOf(v[2])==='p1'?'A':'B')+'가 메가진화: '+String(v[4]||v[3]));continue}
+  if(cmd==='-terastallize'){detail(printActor(sideOf(v[2]))+' 테라스탈: '+v[3]);continue}
+  if(cmd==='-damage'||cmd==='-heal'){
+   const side=sideOf(v[2]);if(!side)continue;
+   const before=state[side],after=hpInfo(v[3],before);if(!after)continue;state[side]=after;
+   const delta=before?Math.abs(before.now-after.now):null;
+   const source=v.slice(4).join('|');const sourceAbility=source.match(/ability:\s*([^|]+)/i);
+   const sourceItem=source.match(/item:\s*([^|]+)/i);
+   let msg=printActor(side)+' HP '+(before?before.now:'?')+' → '+after.now+' / '+after.max;
+   if(delta!==null)msg+=' ('+delta+(cmd==='-heal'?' 회복':' 피해')+')';
+   if(sourceAbility)msg+=' · '+(abilityKo[sourceAbility[1]]||sourceAbility[1])+' 발동';
+   else if(sourceItem)msg+=' · '+sourceItem[1]+' 효과';
+   else if(source.includes('[from]'))msg+=' · 추가 피해/효과';
+   detail(msg,after.now===0?'ko':'');continue
+  }
+  if(cmd==='-supereffective'){detail('효과가 굉장했다');continue}
+  if(cmd==='-resisted'){detail('효과가 별로였다');continue}
+  if(cmd==='-immune'){detail('효과 없음 (무효)');continue}
+  if(cmd==='-crit'){detail('급소에 맞았다');continue}
+  if(cmd==='-boost'||cmd==='-unboost'){
+   const amt=Number(v[4])||0;detail(printActor(sideOf(v[2]))+' '+(statKo[v[3]]||v[3])+' '+(cmd==='-boost'?'+':'−')+amt+'랭크');continue
+  }
+  if(cmd==='-setboost'){detail(printActor(sideOf(v[2]))+' '+(statKo[v[3]]||v[3])+' '+v[4]+'랭크 설정');continue}
+  if(cmd==='-status'){detail(printActor(sideOf(v[2]))+' '+(statusKo[v[3]]||v[3])+' 상태');continue}
+  if(cmd==='-curestatus'){detail(printActor(sideOf(v[2]))+' 상태이상 회복');continue}
+  if(cmd==='-miss'){detail('기술이 빗나갔다');continue}
+  if(cmd==='-fail'){detail('기술 사용 실패');continue}
+  if(cmd==='-activate'){detail('특성·도구 또는 상태 효과 발동: '+v.slice(3).join(' ').replace(/\[from\]/g,''));continue}
+  if(cmd==='-enditem'){detail(printActor(sideOf(v[2]))+' '+v[3]+' 소모/제거');continue}
+  if(cmd==='-start'){detail(printActor(sideOf(v[2]))+' '+v[3]+' 상태 시작');continue}
+  if(cmd==='-end'){detail(printActor(sideOf(v[2]))+' '+v[3]+' 상태 종료');continue}
+  if(cmd==='-weather'){if(v[2]&&v[2]!=='none')detail('날씨: '+v[2]);continue}
+  if(cmd==='cant'){detail(printActor(sideOf(v[2]))+' 행동 불가: '+v.slice(3).join(' '));continue}
+  if(cmd==='faint'){detail(printActor(sideOf(v[2]))+' 기절','ko');continue}
+ }
+ return {state,started,turns};
+}
+function hpCard(label,hp,original){const now=hp?.now??0,max=hp?.max||original?.max||1,pct=Math.max(0,Math.min(100,now/max*100)),cl=pct<=20?'low':pct<=50?'medium':'';return '<div><div class="hp-name">'+h(label)+'</div><div class="hp-label">남은 HP '+now+' / '+max+' · '+pct.toFixed(1)+'%</div><div class="bar"><div class="fill '+cl+'" style="width:'+pct+'%"></div></div></div>'}
+function renderResult(raw,a,b){
+ const x=parseBattle(raw.log||[]);
+ const w=raw.winner==='Left'?a.name||a.species:raw.winner==='Right'?b.name||b.species:raw.winner==='draw'?'무승부':'승패 미확정';
+ document.getElementById('result-title').textContent=(a.name||a.species)+' vs '+(b.name||b.species);
+ document.getElementById('winner').textContent=raw.winner==='draw'?'무승부':raw.winner==='unresolved'?'미확정':w+' 승리';
+ document.getElementById('hp').innerHTML=hpCard('A · '+(a.name||a.species),x.state.p1,x.started.p1)+hpCard('B · '+(b.name||b.species),x.state.p2,x.started.p2);
+ const html=[];
+ for(const t of x.turns){
+  let s='<section class="turn"><div class="turn-head">'+t.number+'턴</div><div class="turn-body">';
+  for(const e of t.intro)s+='<div class="turn-intro">'+h(e.text)+'</div>';
+  for(const ac of t.actions){
+   s+='<div class="action"><div><span class="actor">'+h(printActor(ac.actor))+'</span>의 <span class="move">'+h(moveKo[ac.move]||ac.move)+'</span></div>';
+   if(ac.details.length){s+='<div class="details">';for(const d of ac.details)s+='<div class="'+(d.kind==='ko'?'ko':'')+'">'+h(d.text)+'</div>';s+='</div>'}
+   s+='</div>';
+  }
+  html.push(s+'</div></section>');
+ }
+ document.getElementById('timeline').innerHTML=html.join('')||'<p>턴 로그를 찾지 못했어. 원본 로그를 확인해 줘.</p>';
+ document.getElementById('raw').textContent=JSON.stringify(raw,null,2);
+ document.getElementById('result').style.display='block';document.getElementById('empty').style.display='none';
+}
+document.getElementById('run').onclick=async()=>{
+ const btn=document.getElementById('run'),out=document.getElementById('err');out.textContent='';
+ const a=collect(left),b=collect(right);
+ if(!a.species||!b.species||a.moves.length===0||b.moves.length===0){out.textContent='양쪽 포켓몬 이름과 기술을 최소 1개씩 입력해 줘.';return}
+ for(const s of [a,b])if(Object.values(s.evs).some(v=>v<0||v>32)||Object.values(s.evs).reduce((x,y)=>x+y,0)>66){out.textContent='SP는 각 능력치 최대 32, 합계 최대 66으로 입력해 줘.';return}
+ store();btn.disabled=true;btn.textContent='대면 계산 중...';
+ try{
+  const res=await fetch('/api/duel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({a,b})});
+  const data=await res.json();
+  if(!res.ok)throw Error(data.error||'서버 오류');
+  renderResult(data,a,b);
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(e){out.textContent='계산 실패: '+e.message}
+ finally{btn.disabled=false;btn.textContent='대면 시뮬레이션 실행'}
+};
+</script>
+</body>
+</html>
