@@ -358,7 +358,7 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
-if(process.env.MATCHUP_DIAGNOSTIC==='1'){
+if(true){
  const run=(bNature,bSp,pNature,pSp)=>{
  try{
  const bx={species:'Baxcalibur-Mega',item:'Baxcalibrite',nature:bNature,ability:'Thermal Exchange',preMegaAbility:'Thermal Exchange',moves:['Swords Dance','Thunder Fang','Earthquake','Ice Shard'],evs:bSp};
