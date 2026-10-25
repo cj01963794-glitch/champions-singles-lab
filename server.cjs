@@ -155,6 +155,58 @@ function attackMatchup(B,attacker,defender,move,action=''){
 // Only the second ply is beam-pruned for CPU cost; the root still considers
 // every legal move, including every setup option. This pruning ranks coverage
 // and move roles but never scores the final result without Showdown simulation.
+// A Dragon move against a fixed Fairy (or a Normal move against a Ghost)
+// contributes no damage, not even an opportunity to break Disguise. When
+// sampled victories all tie at zero, minimax previously picked the first
+// listed attack. This protects all players/turns, not individual species.
+// Conservative exceptions preserve alternate type-changing move mechanics.
+const typeChangingAbilities=new Set([
+ 'aerilate','pixilate','refrigerate','galvanize','normalize','liquidvoice'
+]);
+const specialTypeMoves=new Set([
+ 'judgment','multiattack','technoblast','weatherball','terrainpulse',
+ 'revelationdance','terablast','naturalgift','hiddenpower','hiddenpowerfire',
+ 'flyingpress','thousandarrows','photongeyser'
+]);
+function provablyImmuneAttack(B,side,action){
+ const enemySide=side==='p1'?'p2':'p1';
+ const enemy=B.getSide(enemySide),us=B.getSide(side);
+ const defender=enemy?.pokemon?.[0],attacker=us?.pokemon?.[0];
+ if(!attacker||!defender||!action)return false;
+ // Opponent may Mega-evolve into another defensive typing in the same
+ // simultaneous move. Never prune under this uncertainty.
+ if(enemy.activeRequest?.active?.[0]?.canMegaEvo)return false;
+ if(defender.item&&['ringtarget','ironball'].includes(defender.item))return false;
+ if(B.field?.pseudoWeather?.gravity||
+  Object.keys(defender.volatiles||{}).some(x=>
+   ['smackdown','ingrain','foresight','miracleeye'].includes(x)))return false;
+ const slot=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
+ const m=B.dex.moves.get(attacker.moveSlots[slot]?.id);
+ if(!m.exists||m.category==='Status'||m.basePower<=0||
+   specialTypeMoves.has(m.id)||m.onTryHit||m.onEffectiveness)return false;
+ let ability=attacker.ability;
+ if(String(action).endsWith(' mega')){
+  const evolution=B.actions.canMegaEvo(attacker);
+  if(evolution){
+   const form=B.dex.species.get(evolution);
+   if(form.exists)ability=form.abilities['0']||ability;
+  }
+ }
+ if(typeChangingAbilities.has(id(ability)))return false;
+ return attackMatchup(B,attacker,defender,m,action).effectiveness===0;
+}
+function strategicLegal(B,side){
+ const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a));
+ // Keep raw legal options available if there are no attacks able to hit.
+ return filtered.some(a=>moveIsAttack(B,side,a))?filtered:all;
+}
+function avoidImmuneChoice(B,side,choice){
+ if(!provablyImmuneAttack(B,side,choice))return choice;
+ const hits=strategicLegal(B,side).filter(a=>moveIsAttack(B,side,a) &&
+  !provablyImmuneAttack(B,side,a));
+ if(!hits.length)return choice;
+ return usefulAttack(B,side,hits);
+}
 function followChoiceBeam(B,side,actions,limit=2){
  if(actions.length<=limit)return actions;
  const active=B.getSide(side).pokemon[0];
@@ -200,7 +252,7 @@ function followChoiceBeam(B,side,actions,limit=2){
 
 function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
  if(position.ended)return {value:score(position)};
- const L0=legal(position,'p1'),R0=legal(position,'p2');
+ const L0=strategicLegal(position,'p1'),R0=strategicLegal(position,'p2');
  const L=beamLimit?followChoiceBeam(position,'p1',L0,
   L0.some(a=>a.endsWith(' mega'))?Math.max(4,beamLimit):beamLimit):L0;
  const R=beamLimit?followChoiceBeam(position,'p2',R0,
@@ -232,7 +284,7 @@ function hasTacticalMove(B){
  });
 }
 function evalTwoTurn(position,turn,deadline){
- const L=legal(position,'p1'),R=legal(position,'p2');
+ const L=strategicLegal(position,'p1'),R=strategicLegal(position,'p2');
  if(!L.length||!R.length)return null;
  const saved=JSON.stringify(position.toJSON());
  const matrix=Array.from({length:L.length},()=>Array(R.length).fill(0));
@@ -645,7 +697,7 @@ function raceFollowupChoice(B,side,turn){
 
 function probabilisticAttackSearch(B,planned,turn,deadline){
  if(!probabilisticRaceSide(B))return null;
- return sampledRace(B,planned,turn,deadline,{Sim,legal,seed:verificationSeed,resolveMatrix,
+ return sampledRace(B,planned,turn,deadline,{Sim,legal:strategicLegal,seed:verificationSeed,resolveMatrix,
   followup:(branch,side,t)=>legal(branch,side).some(a=>!moveIsAttack(branch,side,a))?continuationMove(branch,side):
    raceFollowupChoice(branch,side,t)});
 }
@@ -722,7 +774,7 @@ function simulation(a,b,depth=120,rngSeed){
     Math.max(4,Math.min(48,Math.floor(configuredCap))):48;
    megaTimingAudit=sampledRace(B,null,t,
     Math.min(Date.now()+10000,globalDeadline-9000),
-    {Sim,legal,seed:verificationSeed,maxSamples:maxMegaSamples,minSamples:4,resolveMatrix,
+    {Sim,legal:strategicLegal,seed:verificationSeed,maxSamples:maxMegaSamples,minSamples:4,resolveMatrix,
      attackDamageTieBreak:true,
      followup:(branch,side)=>continuationMove(branch,side)});
    if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
@@ -809,10 +861,19 @@ function simulation(a,b,depth=120,rngSeed){
     }
    }
   }
+  // Certified/sampled planners may still return tied all-loss actions.
+  // Never execute a known type-immune attack when a real hit is possible.
+  const oldLeft=choice.left,oldRight=choice.right;
+  choice.left=avoidImmuneChoice(B,'p1',choice.left);
+  choice.right=avoidImmuneChoice(B,'p2',choice.right);
+  const immunityCorrection=[
+   ...(oldLeft!==choice.left?[{side:'p1',from:oldLeft,to:choice.left}]:[]),
+   ...(oldRight!==choice.right?[{side:'p2',from:oldRight,to:choice.right}]:[])
+  ];
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,megaTimingConsidered:megaPending,
-   ...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(megaTimingAudit?{megaTimingAudit}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
+   ...(immunityCorrection.length?{immunityCorrection}:{}),...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(megaTimingAudit?{megaTimingAudit}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
@@ -1225,5 +1286,5 @@ return server;
 }
 if(require.main===module)startServer();
 module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
- continuationMove,estimatedDirectDamage,catalog,koData,koName,dex};
+ continuationMove,estimatedDirectDamage,provablyImmuneAttack,strategicLegal,avoidImmuneChoice,catalog,koData,koName,dex};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}
