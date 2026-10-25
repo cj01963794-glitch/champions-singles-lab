@@ -27,7 +27,7 @@ function validate(input){
  return {name:input.name||species,species,nature:nature.name,ability:input.ability||dex.species.get(species).abilities['0'],item,moves,evs,level:50};
 }
 function battle(a,b){
- const B=new Sim.Battle({formatid:FORMAT});
+ const B=new Sim.Battle({formatid:FORMAT,seed:'1579,3137,6027,8191'});
  B.setPlayer('p1',{name:'Left',team:[validate(a)]});B.setPlayer('p2',{name:'Right',team:[validate(b)]});
  for(const k of ['p1','p2']){const s=B.getSide(k);if(s.activeRequest?.teamPreview)B.choose(k,'team 1')}
  return B;
