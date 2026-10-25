@@ -380,6 +380,16 @@ function renderResult(raw,a,b){
     '. 상대 첫 행동을 고정하고 2턴까지 반복한 관측 승리율이야. 실제 확정 승률은 아니야.'
     +(v.ambiguous?' (차이가 작아 첫 턴 피해를 보조 기준으로 적용)':'');
   }
+  const longRoutes=(raw.decisionDetails||[]).filter(d=>d.longPlan?.chosen);
+  if(longRoutes.length){
+   const path=longRoutes.map(d=>{
+    const sample=d.longPlan.side==='p1'?a:b;
+    return d.turn+'턴 '+decision(sample,d.longPlan.chosen);
+   }).join(' → ');
+   policy.textContent+=' · 장기 수순 검토: '+path+'. '+
+    '방어·회복·공격의 장기적인 연결을 탐색했어. '+
+    '이 경로가 실제 승리를 보장하거나 정확한 승률을 뜻하지는 않아.';
+  }
  }else{policy.style.display='none'}
 
  const cfInfo=document.getElementById('counterfactual-info');
