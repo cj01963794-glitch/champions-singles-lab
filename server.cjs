@@ -241,7 +241,7 @@ function verifyChanceOutcomes(B,planned,turn,deadline){
  const other=side==='p2'?planned.left:planned.right;
  const saved=JSON.stringify(B.toJSON());
  const stats=candidates.map(x=>({action:x.choice,wins:0,losses:0,draws:0,unfinished:0,
-   hpTotal:0,samples:0,scoreTotal:0}));
+   hpTotal:0,firstDamage:0,samples:0,scoreTotal:0}));
  const maxSamples=28,minimum=14;
  for(let n=0;n<maxSamples;n++){
   if(Date.now()>deadline)break;
@@ -254,6 +254,9 @@ function verifyChanceOutcomes(B,planned,turn,deadline){
    const a=side==='p1'?candidates[c].choice:other;
    const b=side==='p2'?candidates[c].choice:other;
    branch.makeChoices(a,b);
+   const target=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+   const targetAfter=branch.getSide(side==='p1'?'p2':'p1').pokemon[0];
+   stats[c].firstDamage+=(target.hp-targetAfter.hp)/target.maxhp;
    if(!branch.ended){
     // Use a bounded best-response evaluation, rather than a hard-coded
     // attack (e.g. Earthquake), to preserve setup/priority move interactions.
@@ -285,15 +288,20 @@ function verifyChanceOutcomes(B,planned,turn,deadline){
  // If the win-rate gap is too close to confidently distinguish on the
  // available budget, retain a conservative tie-break toward immediate damage
  // (no arbitrary bonus for freeze or status effects).
- if(Math.abs(scoreOf(leader)-scoreOf(runner))<0.04)return {
-  side,chosen:null,samples:leader.samples,
-  candidates:stats.map(x=>({action:x.action,winPct:Math.round(100*(side==='p2'?x.losses:x.wins)/x.samples),
+ if(Math.abs(scoreOf(leader)-scoreOf(runner))<0.04){
+  const bestDamage=[...stats].sort((a,b)=>b.firstDamage/a.samples-a.firstDamage/b.samples);
+  const margin=bestDamage[0].firstDamage/bestDamage[0].samples-
+    bestDamage[1].firstDamage/bestDamage[1].samples;
+  const chosen=margin>=0.04?bestDamage[0].action:null;
+  return {side,chosen,samples:leader.samples,
+   candidates:stats.map(x=>({action:x.action,winPct:Math.round(100*(side==='p2'?x.losses:x.wins)/x.samples),
     lostPct:Math.round(100*(side==='p2'?x.wins:x.losses)/x.samples),
-    n:x.samples})),ambiguous:true
- };
+    avgFirstDamagePct:Math.round(100*x.firstDamage/x.samples),n:x.samples})),ambiguous:true
+  };
+ }
  return {side,chosen:leader.action,samples:leader.samples,ambiguous:false,
   candidates:stats.map(x=>({action:x.action,winPct:Math.round(100*(side==='p2'?x.losses:x.wins)/x.samples),
-   lostPct:Math.round(100*(side==='p2'?x.wins:x.losses)/x.samples),n:x.samples}))};
+   lostPct:Math.round(100*(side==='p2'?x.wins:x.losses)/x.samples),avgFirstDamagePct:Math.round(100*x.firstDamage/x.samples),n:x.samples}))};
 }
 
 function simulation(a,b,depth=120,rngSeed){
