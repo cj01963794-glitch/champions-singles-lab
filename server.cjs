@@ -1,5 +1,6 @@
 'use strict';
 const http=require('node:http');
+const {randomBytes}=require('node:crypto');
 const Sim=require(process.env.SHOWDOWN_PACKAGE_PATH || 'pokemon-showdown');
 const FORMAT='gen9championscustomgame';
 const dex=Sim.Dex.forFormat(FORMAT);
@@ -45,8 +46,8 @@ function validate(input){
  if(!nature.exists)throw Error('Unknown nature');
  return {name:input.name||species,species,nature:nature.name,ability:preAbility,item,moves,evs,level:50};
 }
-function battle(a,b){
- const B=new Sim.Battle({formatid:FORMAT,seed:'1579,3137,6027,8191'});
+function battle(a,b,seed='1579,3137,6027,8191'){
+ const B=new Sim.Battle({formatid:FORMAT,seed});
  B.setPlayer('p1',{name:'Left',team:[validate(a)]});B.setPlayer('p2',{name:'Right',team:[validate(b)]});
  for(const k of ['p1','p2']){const s=B.getSide(k);if(s.activeRequest?.teamPreview)B.choose(k,'team 1')}
  return B;
@@ -67,9 +68,20 @@ const policySeed=(turn,sample)=>{
  const i=sample+1,t=turn+1;
  return [11017+3701*i+131*t,23011+4219*i+337*t,33013+2749*i+271*t,41017+5563*i+193*t].map(x=>x%65536).join(',');
 };
-function simulation(a,b,depth=120){
+function newRngSeed(){
+ const bytes=randomBytes(8);
+ return [0,2,4,6].map(i=>bytes.readUInt16BE(i)).join(',');
+}
+function checkedRngSeed(s){
+ if(s==null||s==='')return newRngSeed();
+ if(typeof s!=='string'||!/^\d{1,5}(,\d{1,5}){3}$/.test(s)||s.split(',').some(x=>Number(x)>65535))
+  throw Error('Invalid RNG seed');
+ return s;
+}
+function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
- const B=battle(a,b),choices=[];
+ const actualSeed=checkedRngSeed(rngSeed);
+ const B=battle(a,b,actualSeed),choices=[];
  const started=Date.now();
  let stopReason='';
  for(let t=0;t<depth&&!B.ended;t++){
@@ -110,6 +122,7 @@ function simulation(a,b,depth=120){
   winner:B.ended?(B.winner||'draw'):'unresolved',
   stopReason:B.ended?'battle_ended':stopReason,
   policy:'averaged-rng-shallow-minimax',
+  rngSeed:actualSeed,
   log:B.log,
   choices,turns:choices.length,maxTurns:depth
  };
@@ -242,7 +255,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(pathname==='/api/health'&&req.method==='GET')return respond(res,{ok:true,engine:'pokemon-showdown',mod:dex.currentMod});
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
-  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120))}
+  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed))}
   return respond(res,{error:'Not found',method:req.method,path:pathname},404);
  }catch(e){console.error('[REQUEST_ERROR]',e.stack||e);return respond(res,{error:String(e.message||e)},400)}
 });
