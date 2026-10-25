@@ -256,7 +256,8 @@ loadCatalog().catch(()=>{});
 function sideOf(v){const m=String(v||'').match(/\bp([12])a?:/);return m?'p'+m[1]:null}
 function hpInfo(raw,old){const text=String(raw||'');const m=text.match(/(\d+)\/(\d+)/);if(m)return {now:Number(m[1]),max:Number(m[2])};if(/(?:^|\s)0 fnt/.test(text))return {now:0,max:old?.max||0};return null}
 function unSplit(log){const out=[];for(let i=0;i<log.length;i++){if(log[i].startsWith('|split|')&&i+2<log.length){out.push(log[i+1]);i+=2}else out.push(log[i])}return out}
-function printActor(s){return s==='p1'?'A · '+(collect(left).name||collect(left).species):s==='p2'?'B · '+(collect(right).name||collect(right).species):s||'포켓몬'}
+function sampleLabel(x){return x.name||korean('species',x.species)||x.species}
+function printActor(s){return s==='p1'?'A · '+sampleLabel(collect(left)):s==='p2'?'B · '+sampleLabel(collect(right)):s||'포켓몬'}
 function parseBattle(log){
  const state={p1:null,p2:null},started={p1:null,p2:null},turns=[];let turn=null,action=null;
  function detail(txt,kind){if(!turn)return;const x={text:txt,kind:kind||''};if(action)action.details.push(x);else turn.intro.push(x)}
@@ -281,8 +282,8 @@ function parseBattle(log){
    const sourceItem=source.match(/item:\s*([^|]+)/i);
    let msg=printActor(side)+' HP '+(before?before.now:'?')+' → '+after.now+' / '+after.max;
    if(delta!==null)msg+=' ('+delta+(cmd==='-heal'?' 회복':' 피해')+')';
-   if(sourceAbility)msg+=' · '+(abilityKo[sourceAbility[1]]||sourceAbility[1])+' 발동';
-   else if(sourceItem)msg+=' · '+sourceItem[1]+' 효과';
+   if(sourceAbility)msg+=' · '+(korean('abilities',sourceAbility[1])||abilityKo[sourceAbility[1]]||sourceAbility[1])+' 발동';
+   else if(sourceItem)msg+=' · '+korean('items',sourceItem[1])+' 효과';
    else if(source.includes('[from]'))msg+=' · 추가 피해/효과';
    detail(msg,after.now===0?'ko':'');continue
   }
@@ -311,10 +312,10 @@ function parseBattle(log){
 function hpCard(label,hp,original){const now=hp?.now??0,max=hp?.max||original?.max||1,pct=Math.max(0,Math.min(100,now/max*100)),cl=pct<=20?'low':pct<=50?'medium':'';return '<div><div class="hp-name">'+h(label)+'</div><div class="hp-label">남은 HP '+now+' / '+max+' · '+pct.toFixed(1)+'%</div><div class="bar"><div class="fill '+cl+'" style="width:'+pct+'%"></div></div></div>'}
 function renderResult(raw,a,b){
  const x=parseBattle(raw.log||[]);
- const w=raw.winner==='Left'?a.name||a.species:raw.winner==='Right'?b.name||b.species:raw.winner==='draw'?'무승부':'승패 미확정';
- document.getElementById('result-title').textContent=(a.name||a.species)+' vs '+(b.name||b.species);
+ const w=raw.winner==='Left'?sampleLabel(a):raw.winner==='Right'?sampleLabel(b):raw.winner==='draw'?'무승부':'승패 미확정';
+ document.getElementById('result-title').textContent=sampleLabel(a)+' vs '+sampleLabel(b);
  document.getElementById('winner').textContent=raw.winner==='draw'?'무승부':raw.winner==='unresolved'?'미확정':w+' 승리';
- document.getElementById('hp').innerHTML=hpCard('A · '+(a.name||a.species),x.state.p1,x.started.p1)+hpCard('B · '+(b.name||b.species),x.state.p2,x.started.p2);
+ document.getElementById('hp').innerHTML=hpCard('A · '+sampleLabel(a),x.state.p1,x.started.p1)+hpCard('B · '+sampleLabel(b),x.state.p2,x.started.p2);
  const html=[];
  for(const t of x.turns){
   let s='<section class="turn"><div class="turn-head">'+t.number+'턴</div><div class="turn-body">';
