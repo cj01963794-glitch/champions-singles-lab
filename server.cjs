@@ -207,6 +207,27 @@ function avoidImmuneChoice(B,side,choice){
  if(!hits.length)return choice;
  return usefulAttack(B,side,hits);
 }
+// Upgrade a tied same-move decision to Mega only when it cannot change
+// typing or ability and the stats relevant to this attack do not decline.
+// The rule does not interfere with beneficial delayed Megas (Sceptile),
+// Scrappy-vs-Ghost timing (Kangaskhan), or non-tied outcome estimates.
+function dominatesBaseOnMega(B,side,action){
+ if(!action||String(action).endsWith(' mega')||
+  B.field?.pseudoWeather?.trickroom)return false;
+ const p=B.getSide(side)?.pokemon?.[0];
+ if(!p)return false;
+ const evolution=B.actions.canMegaEvo(p);
+ if(!evolution)return false;
+ const form=B.dex.species.get(evolution),base=p.species;
+ if(!form.exists||id(p.ability)!==id(form.abilities?.['0'])||
+  p.getTypes().join(',')!==form.types.join(',')||
+  p.getTypes().join(',')!==base.types.join(','))return false;
+ const move=B.dex.moves.get(actionInfo(B,side,action).id);
+ if(!move.exists||move.category==='Status')return false;
+ const attackStat=move.category==='Physical'?'atk':'spa';
+ return ['hp','def','spd','spe',attackStat].every(k=>
+  Number(form.baseStats?.[k])>=Number(base.baseStats?.[k]));
+}
 function followChoiceBeam(B,side,actions,limit=2){
  if(actions.length<=limit)return actions;
  const active=B.getSide(side).pokemon[0];
@@ -800,7 +821,7 @@ function simulation(a,b,depth=120,rngSeed){
    megaTimingAudit=sampledRace(B,null,t,
     Math.min(Date.now()+10000,globalDeadline-9000),
     {Sim,legal:strategicLegal,seed:verificationSeed,maxSamples:maxMegaSamples,minSamples:4,resolveMatrix,
-     attackDamageTieBreak:true,
+     attackDamageTieBreak:true,preferMegaTie:dominatesBaseOnMega,
      followup:(branch,side)=>continuationMove(branch,side)});
    if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
