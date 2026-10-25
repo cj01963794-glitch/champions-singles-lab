@@ -64,3 +64,25 @@ test('supported Mega formes retain their Korean form distinctions',()=>{
   ['Garchomp-Mega-Z','메가한카리아스Z']
  ])assert.equal(translated(name),ko);
 });
+
+test('official Pokémon selection excludes unused Showdown CAP fan data',()=>{
+ assert.equal(catalog.species.some(x=>dex.species.get(x.id).num<=0),false);
+ assert.equal(catalog.species.some(x=>x.en==='Crucibelle-Mega'),false);
+ for(const [kind,en] of [['moves','Paleo Wave'],['items','Crucibellite'],
+  ['abilities','Mountaineer']]){
+  assert.equal(catalog[kind].some(x=>x.en===en),false);
+ }
+});
+test('playable formes from the same Pokémon keep distinct Korean names',()=>{
+ const byBase=new Map();
+ for(const x of catalog.species){
+  const base=dex.species.get(x.id).baseSpecies;
+  const seen=byBase.get(base)||new Map();
+  const old=seen.get(x.ko);
+  assert.equal(old,undefined,
+   base+' has two indistinguishable Korean form labels: '+old+' and '+x.en+
+   ' both '+x.ko);
+  seen.set(x.ko,x.en);
+  byBase.set(base,seen);
+ }
+});
