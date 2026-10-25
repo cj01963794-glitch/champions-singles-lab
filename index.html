@@ -76,6 +76,8 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 #library-password{max-width:320px}
 #library-search{margin-bottom:8px}
 @media(max-width:700px){.library-layout{grid-template-columns:1fr}}
+.library-sortrow{display:flex;align-items:center;justify-content:space-between;gap:9px;margin:12px 0 5px;flex-wrap:wrap}
+.library-sortrow label{margin:0}.library-sortrow select{width:auto;min-width:144px;padding:8px 9px;font-size:12px}
 @media(max-width:700px){.grid,.hp-row{grid-template-columns:1fr}main{padding:17px 12px 50px}.top{align-items:flex-start}.status{font-size:10px}.panel{padding:15px}.brand{font-size:20px}}
 </style>
 </head>
@@ -95,7 +97,13 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 <div>
 <label for="library-search">저장된 샘플 검색</label>
 <input id="library-search" placeholder="포켓몬 또는 샘플 이름" autocomplete="off">
+<div class="library-sortrow">
 <label for="library-items">샘플 목록 <span id="library-count"></span></label>
+<select id="library-sort" aria-label="샘플 목록 정렬 기준">
+<option value="pokemon" selected>포켓몬 이름순 (가나다)</option>
+<option value="recent">최근 저장순</option>
+<option value="sample">샘플 이름순 (가나다)</option>
+</select></div>
 <select id="library-items" size="7" aria-label="저장된 샘플 목록"></select>
 </div>
 <div>
@@ -302,7 +310,7 @@ function loadCatalog(){
  if(catalogPromise)return catalogPromise;
  catalogPromise=fetch('/api/catalog').then(r=>{if(!r.ok)throw Error('catalog '+r.status);return r.json()}).then(data=>{
   if(!Array.isArray(data.species)||!Array.isArray(data.abilities))throw Error('새 목록을 불러오지 못했어');
-  catalog=data;for(const root of [left,right])translateExisting(root);
+  catalog=data;for(const root of [left,right])translateExisting(root);if(libraryItems.length)renderLibraryItems();
   document.getElementById('status').textContent='● 챔피언즈 엔진 · 한글 도감 준비됨';
   document.getElementById('status').classList.add('ok');
   return catalog;
@@ -430,19 +438,29 @@ async function libraryRequest(method,payload){
 function selectedLibraryItem(){
  return libraryItems.find(x=>x.id===libraryEl('library-items').value)||null;
 }
+const libraryCollator=new Intl.Collator('ko-KR',{sensitivity:'base',numeric:true});
+function librarySpecies(entry){
+ return korean('species',entry.sample.species)||entry.sample.species||'';
+}
 function renderLibraryItems(preferred){
  const q=normalized(libraryEl('library-search').value);
+ const sort=libraryEl('library-sort').value;
  const sel=libraryEl('library-items'),selected=preferred||sel.value;
  sel.replaceChildren();
- const filtered=[...libraryItems]
-  .sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)))
-  .filter(x=>normalized(x.sample.name).includes(q)||
+ const filtered=[...libraryItems].filter(x=>
+   normalized(x.sample.name).includes(q)||
    normalized(x.sample.species).includes(q)||
-   normalized(korean('species',x.sample.species)).includes(q));
+   normalized(librarySpecies(x)).includes(q));
+ const recent=(a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));
+ const pokemon=(a,b)=>libraryCollator.compare(librarySpecies(a),librarySpecies(b));
+ const sample=(a,b)=>libraryCollator.compare(a.sample.name,b.sample.name);
+ filtered.sort((a,b)=>sort==='recent'?recent(a,b):
+   sort==='sample'?sample(a,b)||pokemon(a,b)||recent(a,b):
+   pokemon(a,b)||sample(a,b)||recent(a,b));
  for(const entry of filtered){
   const option=document.createElement('option');
   option.value=entry.id;
-  option.textContent=entry.sample.name+' · '+korean('species',entry.sample.species);
+  option.textContent=librarySpecies(entry)+' · '+entry.sample.name;
   sel.appendChild(option);
  }
  if(filtered.some(x=>x.id===selected))sel.value=selected;
@@ -450,7 +468,7 @@ function renderLibraryItems(preferred){
  libraryEl('library-count').textContent='('+filtered.length+'/'+libraryItems.length+'개)';
  const current=selectedLibraryItem();
  libraryEl('library-selected-info').textContent=current?
-  '선택: '+current.sample.name+' · '+korean('species',current.sample.species)+' · '+
+  '선택: '+librarySpecies(current)+' · '+current.sample.name+' · '+
   (natureKo[current.sample.nature]||current.sample.nature)+' · '+
   current.sample.moves.map(x=>korean('moves',x)).join(' / '):
   '보관함에 샘플이 없거나 검색 결과가 없어.';
@@ -519,6 +537,7 @@ libraryEl('library-password').addEventListener('keydown',e=>{
  if(e.key==='Enter')libraryTask(unlockLibrary);
 });
 libraryEl('library-search').addEventListener('input',()=>renderLibraryItems());
+libraryEl('library-sort').addEventListener('change',()=>renderLibraryItems());
 libraryEl('library-items').addEventListener('change',()=>renderLibraryItems());
 for(const [button,func] of [
  ['library-load-a',()=>loadLibrary(left)],['library-load-b',()=>loadLibrary(right)],
