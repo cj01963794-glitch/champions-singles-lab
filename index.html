@@ -66,6 +66,16 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0c1422;border:1px so
 footer{color:var(--muted);font-size:12px;margin-top:25px}
 #result{display:none}
 #empty{border:1px dashed #3d4c64;border-radius:13px;padding:18px;text-align:center;color:var(--muted)}
+.library-layout{display:grid;grid-template-columns:minmax(210px,1fr) minmax(0,1.6fr);gap:14px}
+.library-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.library-actions button{font-size:12px;padding:9px 12px}
+#library-items{min-height:184px;margin-top:7px}
+#library-message{margin-top:10px;font-size:12px;min-height:20px}
+#library-lock{max-width:530px}
+#library-lock .btnrow{margin-top:8px}
+#library-password{max-width:320px}
+#library-search{margin-bottom:8px}
+@media(max-width:700px){.library-layout{grid-template-columns:1fr}}
 @media(max-width:700px){.grid,.hp-row{grid-template-columns:1fr}main{padding:17px 12px 50px}.top{align-items:flex-start}.status{font-size:10px}.panel{padding:15px}.brand{font-size:20px}}
 </style>
 </head>
@@ -73,6 +83,44 @@ footer{color:var(--muted);font-size:12px;margin-top:25px}
 <main>
 <header class="top"><div><div class="brand">⚔️ 챔피언즈 싱글 대면 분석기</div><div class="subtitle">두 실전 샘플을 입력하고 턴별 대면 결과 확인</div></div><span id="status" class="status">엔진 확인 중</span></header>
 <div class="note"><b>실험 버전</b> — 기술 효과는 Pokémon Showdown의 챔피언즈 규칙으로 처리하지만, 자동 기술 선택은 아직 최적 전략으로 검증되지 않았어. 아래 승패는 이 시뮬레이션에서 실제로 나온 결과이며, 포켓몬의 종합 대면 승률을 뜻하지 않아.</div>
+<section class="panel" id="sample-library">
+<h2>📁 내 영구 샘플 보관함</h2>
+<p class="help">저장한 샘플은 사이트 서버에서 GitHub 보관함으로 암호화해 저장해. 같은 비밀번호로 접속하면 기기가 달라도 불러올 수 있어. 단순히 브라우저에 저장하는 기능과 달라.</p>
+<div id="library-lock">
+<label for="library-password">보관함 비밀번호</label>
+<div class="btnrow"><input id="library-password" type="password" autocomplete="off" placeholder="설정한 보관함 비밀번호"><button type="button" id="library-unlock" class="secondary">보관함 열기</button></div>
+</div>
+<div id="library-content" hidden>
+<div class="library-layout">
+<div>
+<label for="library-search">저장된 샘플 검색</label>
+<input id="library-search" placeholder="포켓몬 또는 샘플 이름" autocomplete="off">
+<label for="library-items">샘플 목록 <span id="library-count"></span></label>
+<select id="library-items" size="7" aria-label="저장된 샘플 목록"></select>
+</div>
+<div>
+<div class="help" id="library-selected-info">저장된 샘플을 선택하면 불러올 수 있어.</div>
+<div class="library-actions">
+<button type="button" id="library-load-a" class="secondary">선택 샘플 → A</button>
+<button type="button" id="library-load-b" class="secondary">선택 샘플 → B</button>
+</div>
+<div class="library-actions">
+<button type="button" id="library-save-a">현재 A 새로 저장</button>
+<button type="button" id="library-save-b">현재 B 새로 저장</button>
+</div>
+<div class="library-actions">
+<button type="button" id="library-update-a" class="secondary">선택 샘플을 A로 덮어쓰기</button>
+<button type="button" id="library-update-b" class="secondary">선택 샘플을 B로 덮어쓰기</button>
+</div>
+<div class="library-actions">
+<button type="button" id="library-delete" class="secondary">선택 샘플 삭제</button>
+<button type="button" id="library-refresh" class="secondary">목록 새로고침</button>
+</div>
+</div>
+</div>
+</div>
+<div id="library-message" class="help" aria-live="polite">영구 보관함 연결 상태를 확인하고 있어.</div>
+</section>
 <div class="grid">
 <section class="panel" id="left-editor">
 <div class="poke-head"><div class="poke-name">포켓몬 A</div><span class="side-pill">왼쪽</span></div>
@@ -360,6 +408,138 @@ function parseBattle(log){
  return {state,started,turns};
 }
 function hpCard(label,hp,original){const now=hp?.now??0,max=hp?.max||original?.max||1,pct=Math.max(0,Math.min(100,now/max*100)),cl=pct<=20?'low':pct<=50?'medium':'';return '<div><div class="hp-name">'+h(label)+'</div><div class="hp-label">남은 HP '+now+' / '+max+' · '+pct.toFixed(1)+'%</div><div class="bar"><div class="fill '+cl+'" style="width:'+pct+'%"></div></div></div>'}
+
+/* Permanent sample vault. Never store the vault key in localStorage;
+   only samples' draft editors use the existing browser autosave. */
+let libraryKey='';
+let libraryItems=[];
+const libraryEl=id=>document.getElementById(id);
+function libraryMessage(message,error=false){
+ const x=libraryEl('library-message');x.textContent=message;x.className=error?'error':'help';
+}
+async function libraryRequest(method,payload){
+ if(!libraryKey)throw Error('먼저 보관함 비밀번호를 입력해 줘.');
+ const options={method,headers:{'X-Samples-Key':libraryKey,
+  ...(payload?{'Content-Type':'application/json'}:{})},
+  ...(payload?{body:JSON.stringify(payload)}:{})};
+ const response=await fetch('/api/sample-library',options);
+ let data;try{data=await response.json()}catch(e){throw Error('저장소의 응답을 읽을 수 없어.')}
+ if(!response.ok)throw Error(data.error||'보관함 연결 오류');
+ return data;
+}
+function selectedLibraryItem(){
+ return libraryItems.find(x=>x.id===libraryEl('library-items').value)||null;
+}
+function renderLibraryItems(preferred){
+ const q=normalized(libraryEl('library-search').value);
+ const sel=libraryEl('library-items'),selected=preferred||sel.value;
+ sel.replaceChildren();
+ const filtered=[...libraryItems]
+  .sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)))
+  .filter(x=>normalized(x.sample.name).includes(q)||
+   normalized(x.sample.species).includes(q)||
+   normalized(korean('species',x.sample.species)).includes(q));
+ for(const entry of filtered){
+  const option=document.createElement('option');
+  option.value=entry.id;
+  option.textContent=entry.sample.name+' · '+korean('species',entry.sample.species);
+  sel.appendChild(option);
+ }
+ if(filtered.some(x=>x.id===selected))sel.value=selected;
+ else if(filtered.length)sel.value=filtered[0].id;
+ libraryEl('library-count').textContent='('+filtered.length+'/'+libraryItems.length+'개)';
+ const current=selectedLibraryItem();
+ libraryEl('library-selected-info').textContent=current?
+  '선택: '+current.sample.name+' · '+korean('species',current.sample.species)+' · '+
+  (natureKo[current.sample.nature]||current.sample.nature)+' · '+
+  current.sample.moves.map(x=>korean('moves',x)).join(' / '):
+  '보관함에 샘플이 없거나 검색 결과가 없어.';
+}
+async function refreshLibrary(preferred){
+ const data=await libraryRequest('GET');
+ libraryItems=data.items||[];
+ renderLibraryItems(preferred);
+ libraryMessage(libraryItems.length+'개 샘플이 서버에 영구 저장되어 있어.');
+}
+async function unlockLibrary(){
+ const input=libraryEl('library-password');
+ libraryKey=input.value||libraryKey;
+ if(!libraryKey){libraryMessage('보관함 비밀번호를 입력해 줘.',true);return}
+ try{
+  await refreshLibrary();
+  libraryEl('library-lock').hidden=true;
+  libraryEl('library-content').hidden=false;
+  input.value='';
+  try{sessionStorage.setItem('champions-library-session-key',libraryKey)}catch(e){}
+ }catch(e){
+  libraryKey='';libraryMessage('보관함을 열 수 없어: '+e.message,true);
+ }
+}
+async function libraryTask(work){
+ try{await work()}catch(e){libraryMessage(e.message,true)}
+}
+async function saveLibrary(root,replaceId){
+ const sample=collect(root);
+ if(!sample.name)throw Error('샘플 이름을 먼저 입력해 줘.');
+ let id=replaceId||'';
+ if(!id){
+  const same=libraryItems.find(x=>normalized(x.sample.name)===normalized(sample.name));
+  if(same){
+   if(!confirm('"'+same.sample.name+'" 이름으로 저장된 샘플이 있어. 덮어쓸까?'))return;
+   id=same.id;
+  }
+ }else{
+  const old=libraryItems.find(x=>x.id===id);
+  if(!old)throw Error('덮어쓸 샘플을 먼저 선택해 줘.');
+  if(!confirm('"'+old.sample.name+'" 샘플을 현재 편집 중인 "'+sample.name+'" 정보로 덮어쓸까?'))return;
+ }
+ const result=await libraryRequest('POST',{action:'save',id,sample});
+ libraryItems=result.items||[];
+ renderLibraryItems(result.id);
+ libraryMessage('"'+sample.name+'" 샘플을 서버에 저장했어.');
+}
+async function loadLibrary(root){
+ const entry=selectedLibraryItem();
+ if(!entry)throw Error('불러올 샘플을 선택해 줘.');
+ try{await loadCatalog()}catch(e){} // English IDs remain usable if the catalog is offline.
+ apply(root,entry.sample);store();
+ libraryMessage('"'+entry.sample.name+'" 샘플을 '+(root===left?'A':'B')+' 칸에 불러왔어.');
+}
+async function deleteLibrary(){
+ const entry=selectedLibraryItem();
+ if(!entry)throw Error('삭제할 샘플을 선택해 줘.');
+ if(!confirm('"'+entry.sample.name+'" 샘플을 영구 보관함에서 삭제할까?'))return;
+ const result=await libraryRequest('POST',{action:'delete',id:entry.id});
+ libraryItems=result.items||[];
+ renderLibraryItems();
+ libraryMessage('선택한 샘플을 보관함에서 삭제했어.');
+}
+libraryEl('library-unlock').onclick=()=>libraryTask(unlockLibrary);
+libraryEl('library-password').addEventListener('keydown',e=>{
+ if(e.key==='Enter')libraryTask(unlockLibrary);
+});
+libraryEl('library-search').addEventListener('input',()=>renderLibraryItems());
+libraryEl('library-items').addEventListener('change',()=>renderLibraryItems());
+for(const [button,func] of [
+ ['library-load-a',()=>loadLibrary(left)],['library-load-b',()=>loadLibrary(right)],
+ ['library-save-a',()=>saveLibrary(left)],['library-save-b',()=>saveLibrary(right)],
+ ['library-update-a',()=>saveLibrary(left,selectedLibraryItem()?.id)],
+ ['library-update-b',()=>saveLibrary(right,selectedLibraryItem()?.id)],
+ ['library-delete',deleteLibrary],['library-refresh',()=>refreshLibrary()]
+])libraryEl(button).onclick=()=>libraryTask(func);
+fetch('/api/sample-library/status').then(r=>r.json()).then(d=>{
+ if(!d.enabled){
+  libraryEl('library-lock').hidden=true;
+  libraryMessage('영구 보관함의 서버 저장소 설정이 아직 완료되지 않았어. 관리자 설정 후 사용할 수 있어.',true);
+  return;
+ }
+ libraryMessage('서버 영구 보관함 준비 완료. 비밀번호로 열어 줘.');
+ try{
+  const cached=sessionStorage.getItem('champions-library-session-key');
+  if(cached){libraryKey=cached;libraryTask(unlockLibrary)}
+ }catch(e){}
+}).catch(()=>libraryMessage('보관함 서버 연결을 확인할 수 없어.',true));
+
 let lastRngSeed=null;
 function renderResult(raw,a,b){
  lastRngSeed=raw.rngSeed||null;
