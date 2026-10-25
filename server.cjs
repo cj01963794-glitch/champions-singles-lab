@@ -521,15 +521,42 @@ function probabilisticRaceSide(B){
    return !!(m.flags?.recharge||m.flags?.charge||m.self?.volatileStatus==='mustrecharge'||
     (typeof m.accuracy==='number'&&m.accuracy<100)||m.critRatio>1);
   });
-  if(highVariance||foe.item==='airballoon')return {side,attacks};
+  if(highVariance)return {side,attacks};
  }
  return null;
 }
+// Evaluate rival opening actions before comparing candidate first moves.
+// Both players choose simultaneously; blindly freezing the low-depth minimax
+// answer (e.g. Aqua Jet instead of Moonblast) fabricates an easy opponent.
+function strongestOpeningResponse(B,side,attacks,planned,turn,deadline){
+ const foeSide=side==='p1'?'p2':'p1';
+ const opposing=legal(B,foeSide);
+ if(opposing.length<=1)return opposing[0]||(side==='p1'?planned.right:planned.left);
+ const original=JSON.stringify(B.toJSON());
+ const tested=[];
+ for(const response of opposing){
+  if(Date.now()>deadline)break;
+  let total=0,count=0;
+  for(let n=0;n<6;n++)for(const attack of attacks){
+   if(Date.now()>deadline)break;
+   const branch=Sim.Battle.fromJSON(original);
+   branch.resetRNG(verificationSeed(turn,n,65));
+   branch.makeChoices(side==='p1'?attack:response,
+    side==='p2'?attack:response);
+   total+=(side==='p1'?1:-1)*score(branch);
+   count++;
+  }
+  if(count===6*attacks.length)tested.push({action:response,value:total/count});
+ }
+ tested.sort((a,b)=>a.value-b.value);
+ return tested[0]?.action||(side==='p1'?planned.right:planned.left);
+}
+
 function probabilisticAttackSearch(B,planned,turn,deadline){
  const race=probabilisticRaceSide(B);
  if(!race)return null;
  const side=race.side,foeSide=side==='p1'?'p2':'p1';
- const opposingMove=side==='p1'?planned.right:planned.left;
+ const opposingMove=strongestOpeningResponse(B,side,race.attacks,planned,turn,deadline);
  // Preserve opponent's current best-response estimate. After the first turn,
  // both sides reconsider using real Showdown battle state at every turn.
  const snapshot=JSON.stringify(B.toJSON());
