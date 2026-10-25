@@ -54,7 +54,7 @@ jobs:
       - name: Diagnose saved Focus Sash Garchomp versus Mega Dragonite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
-        run: node scripts/garchomp-dragonite-diagnostic.cjs
+        run: node scripts/garchomp-dragonite-diagnostic.cjs --verify-live
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
