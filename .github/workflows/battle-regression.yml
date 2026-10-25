@@ -12,6 +12,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Probe public Render deployment
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error
+          host = "https://champions-singles-lab.onrender.com"
+          for endpoint in ["/api/health", "/"]:
+              try:
+                  req = urllib.request.Request(host + endpoint, headers={"User-Agent":"Champions-Lab-CI/1.0","Cache-Control":"no-cache"})
+                  with urllib.request.urlopen(req, timeout=65) as r:
+                      body = r.read(120000).decode("utf-8","replace")
+                      print("[LIVE-PROBE] endpoint=",endpoint,"status=",r.status)
+                      if endpoint == "/api/health": print("[LIVE-HEALTH]",body[:1500])
+                      else:
+                          print("[LIVE-MARKERS] megaTimingAudit=", "megaTimingAudit" in body,
+                                "timingUI=", "메가진화 즉시 실행과 보류" in body,
+                                "preMegaLog=", "openingEvents" in body)
+              except Exception as e:
+                  print("[LIVE-ERROR] endpoint=",endpoint,repr(e))
+          PY
       - name: Build pinned Champions showdown engine
         run: |
           mkdir -p /tmp/showdown
