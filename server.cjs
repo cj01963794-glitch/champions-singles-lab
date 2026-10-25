@@ -373,6 +373,34 @@ const server=http.createServer(async(req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
  console.log('[START] Listening on',port,'Showdown mod:',dex.currentMod);
 
+if(true){
+ try{
+  const gold={name:'조심HC 풍선 타부자고',species:'Gholdengo',item:'Air Balloon',ability:'Good as Gold',nature:'Modest',
+   evs:{hp:32,spa:32,spe:2},moves:['Make It Rain','Dazzling Gleam','Shadow Ball','Nasty Plot']};
+  const meta={name:'고집AS 메가메타그로스',species:'Metagross-Mega',item:'Metagrossite',ability:'Tough Claws',preMegaAbility:'Clear Body',
+   nature:'Adamant',evs:{hp:2,atk:32,spe:32},moves:['Ice Punch','Psychic Fangs','Bullet Punch','Earthquake']};
+  const B=battle(gold,meta);
+  const start=Date.now();
+  const L=legal(B,'p1'),R=legal(B,'p2');
+  const shallow=evalOneTurn(B,0,4,Date.now()+4000);
+  const deep=evalTwoTurn(B,0,Date.now()+13000);
+  const summaries=(d)=>d?{
+   firstLeft:d.left,firstRight:d.right,
+   rows:d.matrix?.map((row,i)=>({p1:L[i],vsR:row.map((v,j)=>({p2:R[j],v:Math.round(v)}))})),
+   immediate:d.immediate?.map((row,i)=>({p1:L[i],vsR:row.map((v,j)=>({p2:R[j],v:Math.round(v)}))}))
+  }:null;
+  const moves=[];
+  for(const action of ['move 1 mega','move 2 mega','move 3 mega','move 4 mega']){
+   const tmp=battle(gold,meta);tmp.makeChoices('move 4',action);
+   const g=tmp.getSide('p1').pokemon[0],m=tmp.getSide('p2').pokemon[0];
+   moves.push({move:action,hpGold:g.hp,hpMeta:m.hp,goldItem:g.item,
+    logs:tmp.log.filter(x=>/^\|move\||^\|-damage\||^\|-start\||^\|-enditem\||^\|-status\||^\|-miss\||^\|-mega\|/.test(x)).slice(-10)});
+  }
+  console.log('[META-GOLD-REASON]',JSON.stringify({duration:Date.now()-start,shallow:summaries(shallow),deep:summaries(deep),moves}));
+ }catch(e){console.error('[META-GOLD-DIAG-ERROR]',e.stack||e)}
+}
+
+
 if(process.env.MATCHUP_DIAGNOSTIC==='1'){
  const run=(bNature,bSp,pNature,pSp)=>{
  try{
