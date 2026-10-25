@@ -110,7 +110,7 @@ function buildModel(B,Sim,deadline,horizon){
   for(let low=0;low<(profiles[side].lowHP?2:1);low++){
    const damages=new Map();let accuracy=1,critChance=0;
    const rolls=[];
-   for(const crit of [false,true])for(let roll=0;roll<16;roll++){
+   for(const crit of [false,true]){
     if(Date.now()>deadline)return null;
     const probe=Sim.Battle.fromJSON(snapshot);
     const us=probe.sides[side].pokemon[0],them=probe.sides[1-side].pokemon[0];
@@ -119,16 +119,24 @@ function buildModel(B,Sim,deadline,horizon){
      if(den===100){accuracy=num/den;return true}
      critChance=num/den;return num>=den||crit;
     };
+    let roll=0,measured=false;
     probe.randomizer=damage=>Math.floor(Math.floor(damage)*(100-roll)/100);
-    let damage=0;
     const original=probe.actions.getDamage;
     probe.actions.getDamage=function(source,target,...args){
-     const result=original.call(this,source,target,...args);
-     if(source===us&&target===them&&typeof result==='number')damage=result;
-     return result;
+     if(source!==us||target!==them)return original.call(this,source,target,...args);
+     // The guard admits only passive damage effects. Evaluate all damage
+     // factors in the same real active-move context before any HP/item change,
+     // avoiding sixteen expensive full-battle deserializations per branch.
+     let first;
+     for(roll=0;roll<16;roll++){
+      const result=original.call(this,source,target,...args);
+      if(roll===0)first=result;
+      rolls.push({crit,damage:typeof result==='number'?result:0});
+     }
+     measured=true;return first;
     };
     probe.actions.runMove(move.id,us,1);
-    rolls.push({crit,damage});
+    if(!measured)for(let i=0;i<16;i++)rolls.push({crit,damage:0});
    }
    for(const entry of rolls){
     const weight=(entry.crit?critChance:1-critChance)*accuracy/16;

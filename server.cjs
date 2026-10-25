@@ -587,7 +587,7 @@ function raceFollowupChoice(B,side,turn){
 function probabilisticAttackSearch(B,planned,turn,deadline){
  if(!probabilisticRaceSide(B))return null;
  return sampledRace(B,planned,turn,deadline,{Sim,legal,seed:verificationSeed,resolveMatrix,
-  followup:(branch,side,t)=>hasTacticalMove(branch)?continuationMove(branch,side):
+  followup:(branch,side,t)=>legal(branch,side).some(a=>!moveIsAttack(branch,side,a))?continuationMove(branch,side):
    raceFollowupChoice(branch,side,t)});
 }
 
@@ -608,7 +608,7 @@ function simulation(a,b,depth=120,rngSeed){
   // allowed to override the existing planner. Other mechanics use the fallback.
   if(t<4 && Date.now()<globalDeadline-9000){
    exactSearch=exactAttackRace(B,{Sim,horizon:3,
-    deadline:Math.min(Date.now()+3000,globalDeadline-8000)});
+    deadline:Math.min(Date.now()+(t===0?5000:2000),globalDeadline-8000)});
    if(exactSearch?.certified){
     choice={left:exactSearch.left,right:exactSearch.right};depthUsed=3;
    }
