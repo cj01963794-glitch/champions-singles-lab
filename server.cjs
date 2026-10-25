@@ -124,37 +124,50 @@ document.getElementById('q').oninput=async e=>{if(!catalog)catalog=await(await f
 </script></body></html>`}
 
 const koData=dex.loadTextData('ko');
-const nativeBaseName=(en)=>{
- const base=dex.species.get(en);
- const name=koData.Pokedex?.[base.id]?.name;
- return (name&&name!==base.name)?name:null;
+// The source's Korean text may localize "baseSpecies" or "forme" without
+// localizing "name", especially for gendered and regional forms.
+const verifiedKoreanBaseExceptions={floette:'플라엣테'};
+const nativeBaseName=(english)=>{
+ const species=dex.species.get(english);
+ const ancestor=dex.species.get(species.baseSpecies||english);
+ for(const obj of [species,ancestor]){
+  const data=koData.Pokedex?.[obj.id]||{};
+  if(data.name&&/[가-힣]/.test(data.name))return data.name;
+  if(data.baseSpecies&&/[가-힣]/.test(data.baseSpecies))return data.baseSpecies;
+ }
+ return verifiedKoreanBaseExceptions[ancestor.id]||null;
 };
 const megaSuffix=(forme)=>{
  const m=/^Mega(?:-([XYZ]))?$/i.exec(forme||'');
  return m?(m[1]||''):'';
 };
 const koName=(type,obj)=>{
- const official=koData[type]?.[obj.id]?.name;
- if(official && official!==obj.name)return official;
- // All Mega formes (Mega, Mega-X/Y/Z) share a compositional Korean
- // naming convention. The official translation always takes precedence.
- if(type==='Pokedex'&&obj.isMega&&obj.baseSpecies){
+ const data=koData[type]?.[obj.id]||{};
+ const official=data.name;
+ if(official&&official!==obj.name)return official;
+ if(type==='Pokedex'&&obj.isMega){
+  // Some Korean mega-form labels exist only in the "forme" field, and
+  // include important distinctions such as male/female, color, and posture.
+  if(data.forme&&/[가-힣]/.test(data.forme)&&data.forme.startsWith('메가'))return data.forme;
   const base=nativeBaseName(obj.baseSpecies);
-  if(base!==null&&/^Mega(?:-[XYZ])?$/i.test(obj.forme||'')){
-   return '메가'+base+megaSuffix(obj.forme);
+  if(base){
+   if(/^Mega(?:-[XYZ])?$/i.test(obj.forme||'')){
+    return '메가'+base+megaSuffix(obj.forme);
+   }
+   // Unlocalized irregular Mega-form labels are kept distinguishable.
+   const variant=(obj.forme||'').replace(/-?Mega$/i,'').replace(/^Mega-?/i,'');
+   return '메가'+base+(variant?' ('+variant+')':'');
   }
  }
- // The Korean Showdown text package leaves many Mega stones, including
- // older ones, untranslated. Derive them from actual engine item.megaStone
- // metadata rather than attempting to parse the English stone name.
  if(type==='Items'&&obj.megaStone&&typeof obj.megaStone==='object'){
   const pairs=Object.entries(obj.megaStone);
-  if(pairs.length===1){
-   const [englishBase,targetForm]=pairs[0];
-   const base=nativeBaseName(englishBase);
-   const target=dex.species.get(targetForm);
-   if(base!==null&&target.exists&&target.isMega&&/^Mega(?:-[XYZ])?$/i.test(target.forme||'')){
-    return base+'나이트'+megaSuffix(target.forme);
+  if(pairs.length){
+   const bases=[...new Set(pairs.map(([en])=>nativeBaseName(en)))];
+   const targets=pairs.map(([,target])=>dex.species.get(target));
+   if(bases.length===1&&bases[0]&&targets.every(t=>t.exists&&t.isMega)){
+    const suffixes=[...new Set(targets.map(t=>megaSuffix(t.forme)))];
+    const suffix=suffixes.length===1?suffixes[0]:'';
+    return bases[0]+'나이트'+suffix;
    }
   }
  }
@@ -181,14 +194,21 @@ const translationAudit=(()=>{
  const allStones=dex.items.all().filter(x=>x.exists&&x.megaStone&&Object.keys(x.megaStone).length>0);
  const uncapturedSpecies=allMega.filter(x=>!/[가-힣]/.test(koName('Pokedex',x)));
  const uncapturedStones=allStones.filter(x=>!/[가-힣]/.test(koName('Items',x)));
- const generatedSpecies=allMega.filter(x=>!koData.Pokedex?.[x.id]?.name&&/[가-힣]/.test(koName('Pokedex',x)));
- const generatedStones=allStones.filter(x=>!koData.Items?.[x.id]?.name&&/[가-힣]/.test(koName('Items',x)));
+ const generatedSpecies=allMega.filter(x=>!/[가-힣]/.test(koData.Pokedex?.[x.id]?.name||'')&&/[가-힣]/.test(koName('Pokedex',x)));
+ const generatedStones=allStones.filter(x=>!/[가-힣]/.test(koData.Items?.[x.id]?.name||'')&&/[가-힣]/.test(koName('Items',x)));
  return {
   totalMegaForms:allMega.length,totalMegaStones:allStones.length,
   generatedSpecies:generatedSpecies.length,generatedStones:generatedStones.length,
   untranslatedSpecies:uncapturedSpecies.map(x=>x.name),
   untranslatedStones:uncapturedStones.map(x=>x.name),
   sample:{
+   meowsticM:koName('Pokedex',dex.species.get('Meowstic-M-Mega')),
+   meowsticF:koName('Pokedex',dex.species.get('Meowstic-F-Mega')),
+   meowsticite:koName('Items',dex.items.get('Meowsticite')),
+   tatsugiriCurly:koName('Pokedex',dex.species.get('Tatsugiri-Curly-Mega')),
+   tatsugirinite:koName('Items',dex.items.get('Tatsugirinite')),
+   floettite:koName('Items',dex.items.get('Floettite')),
+   zygardite:koName('Items',dex.items.get('Zygardite')),
    delphox:koName('Pokedex',dex.species.get('Delphox-Mega')),
    delphoxite:koName('Items',dex.items.get('Delphoxite')),
    chandelure:koName('Pokedex',dex.species.get('Chandelure-Mega')),
