@@ -44,3 +44,23 @@ test('normal priority should not be used blindly against Ghost type immunity',()
  assert.equal(estimatedDirectDamage(b,'p1','move 4'),0);
  assert.notEqual(continuationMove(b,'p1'),'move 4');
 });
+
+test('bounded free-host samples still choose the Mega Draco -> priority plan on either side',()=>{
+ const previous=process.env.MEGA_TIMING_MAX_SAMPLES;
+ try{
+  for(const sampleCap of ['4','8','16']){
+   process.env.MEGA_TIMING_MAX_SAMPLES=sampleCap;
+   for(const [a,b,side] of [[dragonite,sash,0],[sash,dragonite,1]]){
+    const r=simulation(a,b,3,seed);
+    const first=r.choices?.[0]?.[side];
+    assert.equal(first,'move 1 mega',
+     'An immediate Mega Draco Meteor should be preferred to Flamethrower / delayed Mega: '+
+      JSON.stringify({sampleCap,side,choices:r.choices,sampled:r.decisionDetails?.[0]?.megaTimingAudit?.samples,
+       candidates:r.decisionDetails?.[0]?.megaTimingAudit?.candidates}));
+   }
+  }
+ }finally{
+  if(previous===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;
+  else process.env.MEGA_TIMING_MAX_SAMPLES=previous;
+ }
+});
