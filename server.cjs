@@ -734,7 +734,7 @@ server.listen(port,'0.0.0.0',()=>{
     evs:{hp:32,def:20,spa:14},moves:['Moonblast','Aqua Jet']};
    const reference=battle(sal,prim);
    const p=reference.getSide('p1').pokemon[0],q=reference.getSide('p2').pokemon[0];
-   console.log('[SAL-PRIM-STATS]',JSON.stringify({sal:{species:p.species.name,hp:p.hp,atk:p.getStat('atk'),spe:p.getStat('spe'),spd:p.getStat('spd'),ability:p.ability},prim:{hp:q.hp,def:q.getStat('def'),spa:q.getStat('spa'),atk:q.getStat('atk'),spe:q.getStat('spe'),status:q.status},initialLog:reference.log.slice(-10)}));
+   console.log('[SAL-PRIM-STATS]',JSON.stringify({sal:{species:p.species.name,hp:p.hp,atk:p.storedStats.atk,spe:p.storedStats.spe,spd:p.storedStats.spd,ability:p.ability},prim:{hp:q.hp,def:q.storedStats.def,spa:q.storedStats.spa,atk:q.storedStats.atk,spe:q.storedStats.spe,status:q.status},initialLog:reference.log.slice(-10)}));
    const saved=JSON.stringify(reference.toJSON());
    const tally={giga:{win:0,lose:0,unresolved:0,firstKO:0,firstMiss:0,firstNonKO:0,gigaFirstDamage:{},moonFirstDamage:{},primAfterFirstItem:{}},
     quake:{win:0,lose:0,unresolved:0,firstKO:0,firstMiss:0,firstNonKO:0,quakeFirstDamage:{},moonFirstDamage:{},primAfterFirstItem:{}}};
