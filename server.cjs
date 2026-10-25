@@ -738,7 +738,7 @@ server.listen(port,'0.0.0.0',()=>{
    const saved=JSON.stringify(reference.toJSON());
    const tally={giga:{win:0,lose:0,unresolved:0,firstKO:0,firstMiss:0,firstNonKO:0,gigaFirstDamage:{},moonFirstDamage:{},primAfterFirstItem:{}},
     quake:{win:0,lose:0,unresolved:0,firstKO:0,firstMiss:0,firstNonKO:0,quakeFirstDamage:{},moonFirstDamage:{},primAfterFirstItem:{}}};
-   const N=2400;
+   const N=160;
    const started=Date.now();
    for(let n=0;n<N;n++){
     for(const mode of ['giga','quake']){
