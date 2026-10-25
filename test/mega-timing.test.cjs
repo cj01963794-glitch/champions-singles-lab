@@ -101,3 +101,23 @@ test('decision policy must consider retaining Scrappy to attack Ghost',()=>{
  assert.equal(result.choices[0][0],'move 1');
  assert.equal(result.decisionDetails[0].megaTimingConsidered,true);
 });
+
+
+test('diagnostic: actual Sceptile vs Sitrus Primarina opening choices',()=>{
+ const pp={...prim,item:'Sitrus Berry'};
+ const result=simulation(sceptile,pp,4,'1579,3137,6027,8191');
+ const d=result.decisionDetails[0];
+ console.log('[SCEPTILE-REGRESSION]',JSON.stringify({
+  choices:result.choices,winner:result.winner,
+  start:{left:d.left,right:d.right},
+  audit:d.megaTimingAudit?{
+   samples:d.megaTimingAudit.samples,
+   leftActions:d.megaTimingAudit.leftActions,
+   rightActions:d.megaTimingAudit.rightActions,
+   candidates:d.megaTimingAudit.candidates,
+   payoff:d.megaTimingAudit.payoff.map((r,i)=>({
+    action:d.megaTimingAudit.leftActions[i],
+    chances:r.map((c,j)=>[d.megaTimingAudit.rightActions[j],c.winPct])
+   }))}:null
+ }).slice(0,21000));
+});
