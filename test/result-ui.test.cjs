@@ -55,6 +55,12 @@ test('result table distinguishes weighted probability bounds from sampled estima
   payoff:[[{winLowerPct:50,winUpperPct:60}]]}});
  assert.ok(sample.get('probability-matrix').innerHTML.includes('조합별 64회 표본'));
  assert.ok(sample.get('probability-matrix').innerHTML.includes('신뢰구간은 아니며'));
+ const megaTiming=render({left:'move 1',right:'move 1 mega',depth:5,megaTimingConsidered:true,
+  megaTimingAudit:{method:'sampled-joint-opening-game',applied:true,samples:24,
+   leftActions:['move 1'],rightActions:['move 1','move 1 mega'],
+   payoff:[[{winLowerPct:60,winUpperPct:80},{winLowerPct:40,winUpperPct:60}]]}});
+ assert.ok(megaTiming.get('policy-info').textContent.includes('메가진화 타이밍'));
+ assert.ok(megaTiming.get('probability-matrix').innerHTML.includes('메가진화'));
  const tactical=render({left:'move 1',right:'move 1',depth:2,tacticalProbability:{
   method:'bounded-tactical-probability-game',applicable:true,applied:true,horizon:2,
   leftActions:['move 1','move 2'],rightActions:['move 1'],dominatedLeftActions:['move 2'],

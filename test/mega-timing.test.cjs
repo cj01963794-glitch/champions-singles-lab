@@ -34,7 +34,7 @@ test('every move may delay or trigger Mega, but evolution is one-time',()=>{
  assert.equal(legal(B,'p2').length,4);
  const delayed=battle(sceptile,prim);
  delayed.makeChoices('move 1','move 1');
- assert.equal(delayed.p1.pokemon[0].species.isMega,false);
+ assert.equal(!!delayed.p1.pokemon[0].species.isMega,false);
  assert.deepEqual(delayed.p1.pokemon[0].getTypes(),['Grass']);
  if(!delayed.ended){
   assert.ok(legal(delayed,'p1').includes('move 2 mega'));
@@ -49,7 +49,7 @@ test('delaying Mega changes the first Moonblast outcome',()=>{
  const early=battle(sceptile,prim,'111,222,333,444');
  base.makeChoices('move 1','move 1');
  early.makeChoices('move 1 mega','move 1');
- assert.equal(base.p1.pokemon[0].species.isMega,false);
+ assert.equal(!!base.p1.pokemon[0].species.isMega,false);
  assert.equal(early.p1.pokemon[0].species.isMega,true);
  assert.ok(base.p1.pokemon[0].hp>early.p1.pokemon[0].hp);
 });
@@ -93,7 +93,7 @@ test('base-form Scrappy hits Ghost with Normal attacks, while immediate Mega can
  evolved.makeChoices('move 1 mega','move 1');
  assert.ok(before.p2.pokemon[0].hp<baseHP,'Scrappy bypasses Ghost immunity');
  assert.equal(evolved.p2.pokemon[0].hp,megaHP,'Parental Bond cannot bypass Ghost immunity');
- assert.equal(before.p1.pokemon[0].species.isMega,false);
+ assert.equal(!!before.p1.pokemon[0].species.isMega,false);
  assert.equal(evolved.p1.pokemon[0].species.isMega,true);
 });
 test('decision policy must consider retaining Scrappy to attack Ghost',()=>{

@@ -376,7 +376,7 @@ function renderResult(raw,a,b){
   const firstIsPlanned=first.depth>=2;
   policy.style.display='block';
   policy.textContent=(first.megaTimingConsidered?'메가진화 즉시 실행과 보류를 별도 행동으로 비교했어. ':'')+
-   (first.tacticalProbability?.applied?'첫 턴은 반동·랭크업·앙코르를 포함해 확률을 합산하고, 승률 하한을 기준으로 선택했어.':first.tacticalProbability&&!first.tacticalProbability.applicable?'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어.':first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?.applied?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
+   (first.megaTimingAudit?.applied?'첫 턴은 메가진화 타이밍을 포함한 모든 양측 행동 조합을 실제 쇼다운 배틀 표본으로 비교했어. 정확한 최적 승률은 아니야.':first.tacticalProbability?.applied?'첫 턴은 반동·랭크업·앙코르를 포함해 확률을 합산하고, 승률 하한을 기준으로 선택했어.':first.tacticalProbability&&!first.tacticalProbability.applicable?'확률 계산을 충분히 완료하지 못해 행동 선택을 보류했어.':first.exactSearch?.certified?'첫 턴은 명중·급소·16단계 데미지의 확률을 합산하고, 양측의 이후 선택까지 비교했어.':first.attackAudit?.applied?'첫 턴은 양측의 모든 첫 행동 조합을 난수 표본으로 비교했어.':firstIsPlanned?'첫 턴 행동은 2턴 뒤 결과까지 탐색했어.':'첫 턴은 현재 턴 결과를 기준으로 평가했어.')
    +' A: '+decision(a,first.left)+' · B: '+decision(b,first.right)
    +' (두 포켓몬 모두 최선의 대응을 시도하는 시험용 AI이며, 최적 승률을 보장하지는 않아.)';
   if(first.verification?.candidates?.length){
@@ -419,7 +419,7 @@ function renderResult(raw,a,b){
  let matrixBox=document.getElementById('probability-matrix');
  if(!matrixBox){matrixBox=document.createElement('div');matrixBox.id='probability-matrix';policy.after(matrixBox)}
  const exact=first?.exactSearch;
- const comparison=first?.tacticalProbability?.applicable?first.tacticalProbability:exact?.certified?exact:first?.attackAudit;
+ const comparison=first?.megaTimingAudit?.applied?first.megaTimingAudit:first?.tacticalProbability?.applicable?first.tacticalProbability:exact?.certified?exact:first?.attackAudit;
  if(comparison?.payoff){
   const format=c=>c.winLowerPct===c.winUpperPct?c.winLowerPct.toFixed(2)+'%':
    c.winLowerPct.toFixed(2)+'–'+c.winUpperPct.toFixed(2)+'%';

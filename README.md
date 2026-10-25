@@ -41,3 +41,9 @@ resolved by Showdown. Entry abilities such as Intimidate are applied by Showdown
 before turn one, and those pre-turn events now appear in the UI battle log.
 The added test cases cover Mega Kangaskhan's Scrappy and Mega Salamence /
 Mega Gyarados Intimidate.
+
+Optional-Mega openings now also attempt an all-actions paired Showdown battle
+audit rather than immediately preferring a two-turn HP score. The 10-second
+sampling cap and 24-paired-round minimum make this a **sample estimate** with
+unresolved-mass bounds, not an exact win-probability certification. If the
+sample is insufficient, the older limited tactical fallback remains.

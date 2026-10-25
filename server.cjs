@@ -639,7 +639,7 @@ function simulation(a,b,depth=120,rngSeed){
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
   const megaPending=hasPendingMega(B);
-  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null,tacticalProbability=null,attackAttempted=false;
+  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null,tacticalProbability=null,megaTimingAudit=null,attackAttempted=false;
   // A certified opening uses all outcome probabilities, not sampled seeds.
   // Unknown suffixes are [0,1] bounds, so only a provable pure equilibrium is
   // allowed to override the existing planner. Other mechanics use the fallback.
@@ -686,6 +686,20 @@ function simulation(a,b,depth=120,rngSeed){
    }
   }
 
+  // A short HP-only horizon can select tiny priority chip instead of a
+  // probable knockout. Estimate actual finished Showdown battle outcomes
+  // across every (move, optional Mega) simultaneous opening pair first.
+  if(!choice && megaPending && t===0 && Date.now()<globalDeadline-11500){
+   megaTimingAudit=sampledRace(B,null,t,
+    Math.min(Date.now()+10000,globalDeadline-9000),
+    {Sim,legal,seed:verificationSeed,resolveMatrix,maxSamples:48,minSamples:24,
+     followup:(branch,side)=>continuationMove(branch,side)});
+   const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
+   if(megaTimingAudit?.chosen && decisive){
+    choice={left:megaTimingAudit.left,right:megaTimingAudit.right};
+    depthUsed=5;megaTimingAudit.applied=true;
+   }else if(megaTimingAudit)megaTimingAudit.applied=false;
+  }
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
   if(!choice && t<6 && (hasTacticalMove(B)||megaPending) && Date.now()-started<10000){
@@ -766,7 +780,7 @@ function simulation(a,b,depth=120,rngSeed){
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,megaTimingConsidered:megaPending,
-   ...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
+   ...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(megaTimingAudit?{megaTimingAudit}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
