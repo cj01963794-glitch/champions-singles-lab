@@ -47,6 +47,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/localization-audit.cjs
+      - name: Diagnose stored Mimikyu and Mega Dragonite choices
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/dragonite-mimikyu-diagnostic.cjs
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
