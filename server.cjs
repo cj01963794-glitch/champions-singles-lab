@@ -504,6 +504,98 @@ function defensivePlanSearch(B,side,planned,turn,deadline){
   sampledOpponentActions:opponent};
 }
 
+
+// Probabilistic attack-race audit for high-variance opening moves. The regular
+// minimax planner remains responsible for setup, heal and defensive endgames.
+// Score *finished battles*, not an immediate HP differential or two lucky rolls.
+// Paired, independent seeded rollouts reduce variance; incomplete simulations
+// never count as a win. This is an estimate, not exhaustive exact enumeration.
+function probabilisticRaceSide(B){
+ for(const side of ['p1','p2']){
+  const actions=legal(B,side),opposite=side==='p1'?'p2':'p1';
+  const attacks=actions.filter(a=>moveIsAttack(B,side,a));
+  if(attacks.length<2||!legal(B,opposite).some(a=>moveIsAttack(B,opposite,a)))continue;
+  const foe=B.getSide(opposite).pokemon[0];
+  const highVariance=attacks.some(a=>{
+   const m=B.dex.moves.get(actionInfo(B,side,a).id);
+   return !!(m.flags?.recharge||m.flags?.charge||m.self?.volatileStatus==='mustrecharge'||
+    (typeof m.accuracy==='number'&&m.accuracy<100)||m.critRatio>1);
+  });
+  if(highVariance||foe.item==='airballoon')return {side,attacks};
+ }
+ return null;
+}
+function probabilisticAttackSearch(B,planned,turn,deadline){
+ const race=probabilisticRaceSide(B);
+ if(!race)return null;
+ const side=race.side,foeSide=side==='p1'?'p2':'p1';
+ const opposingMove=side==='p1'?planned.right:planned.left;
+ // Preserve opponent's current best-response estimate. After the first turn,
+ // both sides reconsider using real Showdown battle state at every turn.
+ const snapshot=JSON.stringify(B.toJSON());
+ const options=race.attacks.map(a=>({action:a,wins:0,losses:0,draws:0,unresolved:0,
+  hpTiebreak:0,n:0}));
+ const maxSamples=96,minSamples=32;
+ for(let n=0;n<maxSamples;n++){
+  if(Date.now()>deadline)break;
+  const firstSeed=verificationSeed(turn,n,71);
+  const round=[];
+  for(let i=0;i<options.length;i++){
+   if(Date.now()>deadline)break;
+   const branch=Sim.Battle.fromJSON(snapshot);
+   branch.resetRNG(firstSeed);
+   branch.makeChoices(side==='p1'?options[i].action:opposingMove,
+    side==='p2'?options[i].action:opposingMove);
+   for(let step=1;step<=4&&!branch.ended;step++){
+    if(Date.now()>deadline)break;
+    const reply=evalOneTurn(branch,turn+step,1,deadline,2);
+    if(!reply)break;
+    branch.makeChoices(reply.left,reply.right);
+   }
+   if(!branch.ended && Date.now()>deadline)break;
+   const us=branch.getSide(side).pokemon[0],them=branch.getSide(foeSide).pokemon[0];
+   const winner=branch.winner;
+   round.push({
+    result:branch.ended?(winner===(side==='p1'?'Left':'Right')?1:
+     winner===(side==='p1'?'Right':'Left')?-1:0):0,
+    ended:branch.ended,
+    hp:us.hp/us.maxhp-them.hp/them.maxhp
+   });
+  }
+  // Apply a sample only when all candidate actions were tested on the same seed.
+  if(round.length!==options.length)break;
+  for(let i=0;i<options.length;i++){
+   const st=options[i],o=round[i];
+   st.n++;
+   if(!o.ended)st.unresolved++;
+   else if(o.result===1)st.wins++;
+   else if(o.result===-1)st.losses++;
+   else st.draws++;
+   st.hpTiebreak+=o.hp;
+  }
+ }
+ if(options.some(o=>o.n<minSamples)||new Set(options.map(o=>o.n)).size!==1)return null;
+ // Only a completed battle is a demonstrated win. Incomplete results are
+ // neutral, not fake victories inferred from HP at the sampling horizon.
+ const rank=[...options].sort((a,b)=>(b.wins-b.losses)-(a.wins-a.losses)||
+  (b.wins-a.wins)||b.hpTiebreak-a.hpTiebreak);
+ const selected=rank[0],runner=rank[1],n=selected.n;
+ // Use a conservative paired-outcome uncertainty margin, avoiding choices
+ // flipped by small samples. If ambiguous, keep the existing planner result.
+ const margin=((selected.wins-selected.losses)-(runner.wins-runner.losses))/n;
+ const independentStderr=Math.sqrt(Math.max(0.000001,
+  (selected.wins+selected.losses)/n+
+  (runner.wins+runner.losses)/n-
+  Math.pow((selected.wins-selected.losses)/n,2)-
+  Math.pow((runner.wins-runner.losses)/n,2))/n);
+ const significant=margin>Math.max(0.07,1.25*independentStderr);
+ return {side,chosen:significant?selected.action:null,ambiguous:!significant,
+  comparedAgainst:opposingMove,samples:n,
+  candidates:rank.map(o=>({action:o.action,winPct:Math.round(1000*o.wins/n)/10,
+   lossPct:Math.round(1000*o.losses/n)/10,
+   unresolvedPct:Math.round(1000*o.unresolved/n)/10,n}))};
+}
+
 function simulation(a,b,depth=120,rngSeed){
  depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
  const actualSeed=checkedRngSeed(rngSeed);
@@ -515,7 +607,7 @@ function simulation(a,b,depth=120,rngSeed){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
-  let choice=null,depthUsed=1,verification=null,longPlan=null;
+  let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null;
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
   if(t<6 && hasTacticalMove(B) && Date.now()-started<10000){
@@ -577,10 +669,20 @@ function simulation(a,b,depth=120,rngSeed){
     else choice.right=longPlan.chosen;
    }
   }
+  // Probabilistic checks override only well-separated attack choices,
+  // leaving the existing tactical planner and defensive setup untouched.
+  if(t<2 && !longPlan && Date.now()<globalDeadline-3800){
+   const auditDeadline=Math.min(Date.now()+7500,globalDeadline-900);
+   attackAudit=probabilisticAttackSearch(B,choice,t,auditDeadline);
+   if(attackAudit?.chosen){
+    if(attackAudit.side==='p1')choice.left=attackAudit.chosen;
+    else choice.right=attackAudit.chosen;
+   }
+  }
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
-   ...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{})});
+   ...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {
