@@ -129,3 +129,28 @@ test('Sceptile vs Sitrus Primarina avoids gratuitous opening Rock Slide',()=>{
  assert.equal(result.decisionDetails[0].megaTimingConsidered,true);
  assert.ok(result.decisionDetails[0].megaTimingAudit?.samples>=24);
 });
+
+test('low-capacity Mega timing still uses actual paired battle outcomes instead of shallow flinch fallbacks',()=>{
+ const before=process.env.MEGA_TIMING_MAX_SAMPLES;
+ process.env.MEGA_TIMING_MAX_SAMPLES='5';
+ try{
+  const pp={...prim,item:'Sitrus Berry',moves:['Moonblast','Aqua Jet','Sparkling Aria','Encore']};
+  for(const [a,b,megaSide] of [
+   [sceptile,pp,'p1'],
+   [pp,sceptile,'p2']
+  ]){
+   const result=simulation(a,b,3,'1579,3137,6027,8191');
+   const d=result.decisionDetails[0];
+   const selection=megaSide==='p1'?d.left:d.right;
+   assert.equal(selection,'move 2',
+    'paired outcomes must prefer base-form Leaf Blade over a shallow Rock Slide');
+   assert.equal(d.megaTimingAudit?.applied,true);
+   assert.equal(d.megaTimingAudit?.lowSampleWarning,true);
+   assert.equal(d.megaTimingAudit?.samples,5);
+   assert.equal(d.depth,5);
+  }
+ }finally{
+  if(before===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;
+  else process.env.MEGA_TIMING_MAX_SAMPLES=before;
+ }
+});

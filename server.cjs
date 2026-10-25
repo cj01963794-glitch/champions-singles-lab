@@ -711,11 +711,19 @@ function simulation(a,b,depth=120,rngSeed){
   // probable knockout. Estimate actual finished Showdown battle outcomes
   // across every (move, optional Mega) simultaneous opening pair first.
   if(!choice && megaPending && t===0 && Date.now()<globalDeadline-11500){
+   // Render free instances can complete only ~5-14 paired rounds in 10s.
+   // Never discard those observed joint battle outcomes and then silently
+   // promote a lucky 1-turn HP/flinch roll to an "optimal" decision.
+   // Four paired rounds are a PROVISIONAL decision, not a win-rate proof.
+   const configuredCap=Number(process.env.MEGA_TIMING_MAX_SAMPLES);
+   const maxMegaSamples=Number.isFinite(configuredCap)&&configuredCap>=4?
+    Math.max(4,Math.min(48,Math.floor(configuredCap))):48;
    megaTimingAudit=sampledRace(B,null,t,
     Math.min(Date.now()+10000,globalDeadline-9000),
-    {Sim,legal,seed:verificationSeed,resolveMatrix,maxSamples:48,minSamples:24,
+    {Sim,legal,seed:verificationSeed,maxSamples:maxMegaSamples,minSamples:4,resolveMatrix,
      attackDamageTieBreak:true,
      followup:(branch,side)=>continuationMove(branch,side)});
+   if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
    if(megaTimingAudit?.chosen && decisive){
     choice={left:megaTimingAudit.left,right:megaTimingAudit.right};

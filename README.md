@@ -64,3 +64,14 @@ undervalued direct 2HKO/setup->KO lines. The rough projected-damage gate is
 an *action-selection heuristic only*; battle outcomes still come from
 Showdown and are not certified optimal win rates. The Sceptile / Bold
 Sitrus Primarina matchup is a regression case.
+
+
+Production CPU-bound Mega timing fix: a paired Showdown rollout is eligible
+as a **provisional** opening decision after 4 *complete* rounds for every
+action pair, rather than throwing out 5-14 rounds because it did not reach
+24. Samples below 24 carry `lowSampleWarning` in the response and UI. They
+are not exact probabilities, cannot certify optimality, and have high
+sampling uncertainty. In controlled regression scenarios, the optional
+`MEGA_TIMING_MAX_SAMPLES=5` setting verifies decisions under the CPU-like
+sampling limit on both A/B orientations. This does not hardcode Sceptile
+or a move as the chosen action.
