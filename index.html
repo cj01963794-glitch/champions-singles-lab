@@ -385,6 +385,22 @@ function parseBattle(log){
   if(cmd==='-ability'){detail(printActor(sideOf(v[2]))+' 특성 발동: '+(korean('abilities',v[3])||abilityKo[v[3]]||v[3]));continue}
   if(cmd==='-mega'){detail((sideOf(v[2])==='p1'?'A':'B')+'가 메가진화: '+String(v[4]||v[3]));continue}
   if(cmd==='-terastallize'){detail(printActor(sideOf(v[2]))+' 테라스탈: '+v[3]);continue}
+  // HP-setting moves such as Pain Split use a paired |-sethp| event
+  // rather than |-damage| or |-heal|. Update BOTH sides of the duel,
+  // including the HP panel and the turn-by-turn log.
+  if(cmd==='-sethp'){
+   for(let i=2;i+1<v.length;i+=2){
+    const side=sideOf(v[i]);if(!side)continue;
+    const before=state[side],after=hpInfo(v[i+1],before);
+    if(!after)continue;
+    state[side]=after;
+    const delta=before?after.now-before.now:null;
+    let msg=printActor(side)+' HP '+(before?before.now:'?')+' → '+after.now+' / '+after.max;
+    if(delta!==null)msg+=' ('+(delta>0?'+':'')+delta+' HP 변경)';
+    detail(msg,after.now===0?'ko':'');
+   }
+   continue;
+  }
   if(cmd==='-damage'||cmd==='-heal'){
    const side=sideOf(v[2]);if(!side)continue;
    const before=state[side],after=hpInfo(v[3],before);if(!after)continue;state[side]=after;
