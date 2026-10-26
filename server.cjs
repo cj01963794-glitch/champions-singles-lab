@@ -816,12 +816,28 @@ function simulation(a,b,depth=120,rngSeed){
  const started=Date.now(),globalDeadline=started+30000;
  let stopReason='',planned=0,fallbacks=0,extendedSearchCount=0;
  const decisionDetails=[];
+ const sustainedSides=new Set();
  for(let t=0;t<depth&&!B.ended;t++){
   if(Date.now()>globalDeadline){stopReason='compute_timeout';break}
   const L=legal(B,'p1'),R=legal(B,'p2');
   if(!L.length||!R.length){stopReason='no_available_actions';break}
   const megaPending=hasPendingMega(B);
   let choice=null,depthUsed=1,verification=null,longPlan=null,attackAudit=null,exactSearch=null,tacticalProbability=null,megaTimingAudit=null,attackAttempted=false;
+  // Once a long-horizon Monte Carlo route has demonstrated a material win
+  // chance from boosting + recovery, use its tested adaptive continuation
+  // policy. A 1-2 turn HP-only search otherwise discards the very strategy
+  // whose full sampled battle won. The opposing side still gets a fresh
+  // independent one-turn best response on every subsequent turn.
+  if(t>0 && sustainedSides.size){
+   const shallow=evalOneTurn(B,t,4,globalDeadline-850);
+   if(shallow){
+    choice={left:shallow.left,right:shallow.right};depthUsed=15;
+    for(const side of sustainedSides){
+     const next=continuationMove(B,side);
+     if(next)choice[side==='p1'?'left':'right']=next;
+    }
+   }
+  }
   // A certified opening uses all outcome probabilities, not sampled seeds.
   // Unknown suffixes are [0,1] bounds, so only a provable pure equilibrium is
   // allowed to override the existing planner. Other mechanics use the fallback.
@@ -892,7 +908,26 @@ function simulation(a,b,depth=120,rngSeed){
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
    if(megaTimingAudit?.chosen && decisive){
     choice={left:megaTimingAudit.left,right:megaTimingAudit.right};
-    depthUsed=5;megaTimingAudit.applied=true;
+    depthUsed=megaTimingAudit.sustainHorizon||5;megaTimingAudit.applied=true;
+    // Only retain a setup/recovery route with >=60% completed wins even
+    // against its worst observed opposing opener. Never commit to a route
+    // from unresolved horizons, or from a selected direct attack.
+    if(sustain && megaTimingAudit.samples>=4){
+     const matrix=megaTimingAudit.payoff;
+     for(const [side,field,actions] of [
+      ['p1','left',megaTimingAudit.leftActions],
+      ['p2','right',megaTimingAudit.rightActions]]){
+      const selected=choice[field],at=actions.indexOf(selected);
+      if(at<0||!strategyMove(B,side,strategicLegal(B,side),'heal'))continue;
+      const m=B.dex.moves.get(actionInfo(B,side,selected).id);
+      const boosts=m.boosts||m.self?.boosts||{};
+      if(m.category!=='Status'||m.target!=='self'||
+       !['atk','spa','def','spd'].some(k=>(boosts[k]||0)>0))continue;
+      const worst=side==='p1'?Math.min(...matrix[at].map(v=>v.winPct)):
+       Math.min(...matrix.map(row=>row[at].lossPct));
+      if(worst>=60)sustainedSides.add(side);
+     }
+    }
    }else if(megaTimingAudit)megaTimingAudit.applied=false;
   }
   // Planning runs when set-up, healing, disabling or a consumable Berry may
@@ -983,7 +1018,8 @@ function simulation(a,b,depth=120,rngSeed){
   ];
   B.makeChoices(choice.left,choice.right);
   choices.push([choice.left,choice.right]);
-  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,megaTimingConsidered:megaPending,
+  if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
+   ...(sustainedSides.size?{sustainRoute:[...sustainedSides]}:{}),megaTimingConsidered:megaPending,
    ...(immunityCorrection.length?{immunityCorrection}:{}),...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(megaTimingAudit?{megaTimingAudit}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
