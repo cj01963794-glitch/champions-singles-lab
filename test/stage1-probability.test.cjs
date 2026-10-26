@@ -52,3 +52,19 @@ test('stage1 engine has no fixed 2-turn HP/boost weighted evaluation',()=>{
  assert.equal(p.reward({ended:true,winner:'Left'}),1);
  assert.equal(p.reward({ended:true,winner:'Right'}),0);
 });
+
+test('rollout uses general immediate-KO mechanics rather than irrational follow-up moves',()=>{
+ const bulky=samples.get('원본H32B20C14누리레느');
+ const foe=samples.get('원본광각리베로에이스번');
+ const B=core.battle(bulky,foe,'47168,18538,47050,37854');
+ B.makeChoices('move 2','move 1'); // Natural Gunk Shot miss, Aria critical
+ assert.ok(!B.ended);
+ const L=core.legal(B,'p1');
+ const choice=p.immediateFinisher(B,deps,'p1',L);
+ console.log('[STAGE1-IMMEDIATE-TERMINAL]',JSON.stringify({hp:[
+  B.p1.pokemon[0].hp,B.p2.pokemon[0].hp],
+  left:L,choice:choice<0?null:L[choice],rival:
+   p.immediateFinisher(B,deps,'p2',core.legal(B,'p2'))}));
+ assert.equal(L[choice],'move 3',
+  'Aqua Jet should be found as a general priority immediate knockout, not species rule');
+});
