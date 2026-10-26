@@ -109,7 +109,7 @@ function buildPlans(B,deps,side){
   p.name=planLabel(p)+(firstSlot==null?'':':first-'+firstSlot);
   if(!seen.has(p.name)){seen.add(p.name);plans.push(p)}
  }
- const modes=S.all.some(isMega)?['immediate','delay']:['none'];
+ const modes=S.all.some(isMega)?['immediate','delay','hold']:['none'];
  // Every actually legal move has a candidate plan beginning with it.
  for(const a of S.all)add('forced-opening',moveIndex(a),isMega(a)?'immediate':'delay',null,null,moveIndex(a));
  // Adaptive damage-race choices can switch to priority finishers.
@@ -121,7 +121,8 @@ function buildPlans(B,deps,side){
   for(const mode of modes)add('setup',slot,mode,goal,null);
   if(heal.length)for(const h of [0.45,0.7]){
    add('setup-heal',slot,modes[0],goal,h);
-   if(modes.length>1)add('setup-heal',slot,'delay',goal,h);
+   if(modes.length>1){add('setup-heal',slot,'delay',goal,h);
+    add('setup-heal',slot,'after-build',goal,h)}
   }
  }
  for(const slot of disrupt){
@@ -162,6 +163,12 @@ function actionForPlan(B,deps,side,plan,turn){
  const wasMega=S.all.some(isMega)===false;
  let mega=plan.mega;
  if(mega==='delay'&&turn>0)mega='after-first';
+ if(mega==='hold')mega='delay';
+ if(mega==='after-build'){
+  const target=plan.stage||1,move=plan.slot==null?null:info(B,side,'move '+(plan.slot+1));
+  const vals=move?Object.entries(move.boosts||move.self?.boosts||{}).filter(([,v])=>v>0):[];
+  mega=turn>0&&vals.length&&vals.every(([stat])=>(p.boosts[stat]||0)>=target)?'immediate':'delay';
+ }
  const candidates=mega==='delay'&&S.all.some(isMega)?S.all.filter(a=>!isMega(a)):
   mega!=='none'&&S.all.some(isMega)?S.all.filter(isMega):S.all;
  const working=candidates.length?candidates:S.all;
