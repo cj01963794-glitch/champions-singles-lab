@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:03:28.777Z",
+  "generatedAt": "2026-10-26T12:04:57.578Z",
   "count": 26,
   "samples": [
     {
@@ -589,18 +589,18 @@
       }
     },
     {
-      "id": "d0b2b559-4593-4a74-92f1-4a78a4653bb5",
-      "updatedAt": "2026-10-26T12:03:11.174Z",
-      "name": "기띠 에써르(수컷)",
-      "species": "Indeedee",
-      "nature": "Timid",
+      "id": "6ddc20d6-7e2b-47de-a253-c0ef919b2779",
+      "updatedAt": "2026-10-26T12:04:54.785Z",
+      "name": "기충전 인텔리레온",
+      "species": "Inteleon",
+      "nature": "Modest",
       "item": "Focus Sash",
-      "ability": "Psychic Surge",
+      "ability": "Sniper",
       "moves": [
-        "Expanding Force",
-        "Mystical Fire",
-        "Dazzling Gleam",
-        "Encore"
+        "Snipe Shot",
+        "Ice Beam",
+        "Focus Energy",
+        "Vacuum Wave"
       ],
       "evs": {
         "hp": 2,
