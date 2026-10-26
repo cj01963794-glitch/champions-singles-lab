@@ -9,5 +9,7 @@
 | 2026-10-27 | Do not invent historical plan text. | Previous chat's exact 5-stage section was not retrievable verbatim in this session. | Accepted |
 | 2026-10-27 | Win-plan discovery should rely on general state transitions and opponent counterplay, not matchup-specific hardcoded scripts. | Generalizable play against changing opponents. | Design direction, not certified finished |
 
+| 2026-10-27 | Use an existing **single append-only transcript file** `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`; stop creating a new transcript per turn. Keep older files for link preservation. | User prefers one continually updated archive instead of proliferating backup files. | Accepted and implemented; GitHub update required for each backup, not automatic live sync |
+
 ## Recording future decisions
 Append date, proposer, accepted/rejected/experimental status, exact issue, alternatives, justification, affected files, supporting test evidence, relevant transcript path and commit SHA. Preserve reversals rather than deleting the original decision.
