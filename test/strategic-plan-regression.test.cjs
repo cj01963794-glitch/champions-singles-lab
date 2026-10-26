@@ -53,6 +53,18 @@ test('untrained counterplan matching exercises diverse historical failure classe
   assert.ok(core.legal(B,'p2').includes(res.rightActions[
    res.policyRight.indexOf(Math.max(...res.policyRight))]));
   assert.ok(res.leadingPlans.length>0&&res.bestCounterplans.length>0);
+  // Same opening move may have multiple candidate continuations, but the
+  // final selected distribution must not randomly abandon its better
+  // surviving plan for an inferior opener-only script.
+  for(const [plans,weights] of [[res.planBankLeft,res.planPolicyLeft],
+    [res.planBankRight,res.planPolicyRight]]){
+   const chosen=new Set();
+   for(let i=0;i<plans.length;i++)if(weights[i]>1e-8){
+    assert.ok(!chosen.has(plans[i].first),
+     'duplicate competing continuations for '+plans[i].first);
+    chosen.add(plans[i].first);
+   }
+  }
   console.log('[STRATEGIC-PLAN-REGRESSION]',JSON.stringify({match:a+' vs '+b,
    samples:res.samples,plans:res.planCounts,
    first:res.leftActions[res.policyLeft.indexOf(Math.max(...res.policyLeft))],
