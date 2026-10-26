@@ -1232,6 +1232,24 @@ function simulation(a,b,depth=120,rngSeed){
    });
    if(longReplies?.left&&longReplies?.right){
     choice={left:longReplies.left,right:longReplies.right};
+    // Rolling-horizon searches may keep promising to apply a disable or
+    // invest in offense "next turn", without EVER doing so. The next turn
+    // then recomputes the same tie and picks the first attack/Heal again.
+    // Prefer the adaptive continuation used INSIDE the successful rollout
+    // if its completed worst-case win rate is statistically indistinguishable
+    // from the newly selected action (<=5 percentage points). This is not
+    // a per-species script and cannot override a clear win-rate difference.
+    for(const [side,field,actions] of [
+     ['p1','left',longReplies.leftActions],
+     ['p2','right',longReplies.rightActions]]){
+     const baseline=continuationMove(B,side);
+     const proposed=choice[field],i=actions.indexOf(baseline),j=actions.indexOf(proposed);
+     if(!baseline||i<0||j<0||baseline===proposed)continue;
+     const worst=index=>side==='p1'?
+      Math.min(...longReplies.payoff[index].map(x=>x.winPct)):
+      Math.min(...longReplies.payoff.map(row=>row[index].lossPct));
+     if(worst(i)>=worst(j)-5.0001)choice[field]=baseline;
+    }
     depthUsed=12;
    }else{
     const l=continuationMove(B,'p1'),r=continuationMove(B,'p2');
