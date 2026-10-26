@@ -94,26 +94,24 @@ test('trace accuracy/critical RNG hooks on actual Libero Gunk Shot -> Aria',()=>
  }
 });
 
-test('experimental opponent misses + Aria crit win route outranks zero-win Encore, both orientations',()=>{
- const bulky={...prima,name:'H32 B20 C14 누리레느',
-  evs:{hp:32,atk:0,def:20,spa:14,spd:0,spe:0}};
- const sash={...cinder,name:'기합의띠 리베로 에이스번',item:'Focus Sash',
-  moves:['Gunk Shot','Pyro Ball','High Jump Kick','Sucker Punch']};
- for(const [name,left,right,side] of [
-  ['wide C32',prima,cinder,0],
-  ['wide bulky',bulky,cinder,0],
-  ['wide bulky reversed',cinder,bulky,1],
-  ['sash bulky',bulky,sash,0]
- ]){
-  const result=exp.simulateExperimental(left,right,1,baseSeed,deps);
-  console.log('[CINDER-RARE-WIN-CHECK]',JSON.stringify({name,choices:result.choices,
-   audit:result.decisionDetails[0]?.experimental?.rareWinAudits,
-   strategies:[result.decisionDetails[0]?.experimental?.policyLeft,
-    result.decisionDetails[0]?.experimental?.policyRight]}));
-  assert.equal(result.choices[0]?.[side],'move 2',
-   name+': choose the only measured rare-winning Sparkling Aria line');
-  assert.ok(result.decisionDetails[0]?.experimental?.rareWinAudits?.some(a=>
-   a.side===(side===0?'p1':'p2')&&a.action==='move 2'&&a.lowerBound>0),
-   name+': must demonstrate a strictly positive numeric probability');
- }
+test('rare-win evidence is diagnostic, never a forced action probability',()=>{
+ const {probeRareWin}=require('../engines/rare-win.cjs');
+ const B=core.battle(prima,cinder,baseSeed);
+ const options=['move 1','move 2','move 3','move 4'];
+ const route=probeRareWin(B,'p1',options,'move 1',deps,Date.now()+1800);
+ assert.ok(route?.some(x=>x.action==='move 2'&&x.lowerBound>0));
+ const result=exp.simulateExperimental(prima,cinder,1,baseSeed,deps);
+ const policy=result.decisionDetails[0]?.experimental;
+ assert.equal(policy?.rareWinAudits,undefined,
+  'conditional rare-win evidence must not directly replace Nash action probabilities');
+ assert.equal(policy?.policyLeft.length,4);
+ console.log('[CINDER-EXPERIMENT-PENDING-VALUE-SOLVER]',JSON.stringify({
+  action:result.choices[0]?.[0],leftPolicy:policy?.policyLeft,
+  provedConditionalRoute:route?.find(x=>x.action==='move 2'),
+  verifiedUnconditionalOptimality:false}));
 });
+
+// Outstanding acceptance criterion: implement a common stochastic game-value
+// solver comparing hit/miss, crit, damage rolls, opponent replies and wins
+// for ALL legal actions, not just the Cinderace scenario.
+test.todo('generic chance-aware minimax produces mathematically grounded win percentages across all move types');
