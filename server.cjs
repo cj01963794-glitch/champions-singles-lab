@@ -26,11 +26,20 @@ function validate(input){
  const evs={};for(const k of stats)evs[k]=Number(input.evs?.[k]??input.sp?.[k]??0);
  if(Object.values(evs).some(x=>!Number.isInteger(x)||x<0||x>32)||Object.values(evs).reduce((a,b)=>a+b,0)>66)throw Error('Invalid SP');
  const mega=!!spc.isMega;
- const species=mega?spc.baseSpecies:spc.name;
- const base=dex.species.get(species);
  const neededItem=mega?(spc.requiredItem||spc.requiredItems?.[0]||''):'';
  const item=input.item||neededItem||'';
  if(item&&!dex.items.get(item).exists)throw Error('Unknown item '+item);
+ // Some Mega formes evolve from a *specific* base forme rather than the
+ // normal species. e.g. Floettite maps Floette-Eternal -> Floette-Mega,
+ // while dex.species.get('Floette-Mega').baseSpecies is only "Floette".
+ // Resolve the battle starting species from the Mega Stone's actual mapping.
+ const stone=dex.items.get(item);
+ const megaSource=mega?Object.entries(stone.megaStone||{}).find(([,outcome])=>
+   dex.species.get(outcome).id===spc.id)?.[0]:null;
+ const species=mega?(megaSource||spc.baseSpecies):spc.name;
+ const base=dex.species.get(species);
+ if(mega && stone.megaStone && !megaSource)
+  throw Error(spc.name+' cannot Mega evolve with '+item);
  if(mega && neededItem && dex.items.get(item).id!==dex.items.get(neededItem).id)
   throw Error(spc.name+' needs '+neededItem+' to activate its Mega ability');
  const allowedPre=Object.values(base.abilities||{});
