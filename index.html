@@ -630,6 +630,21 @@ function renderResult(raw,a,b){
   }).join(', ');
   const certified=detail?.certified===true;
   const bounds=detail?.winBounds||[0,100];
+  const prettyPlan=(name,sample)=>{
+   if(!name)return '미선택';
+   const kind=name.split(':')[0],labels={
+    'setup-heal':'랭크업·회복 후 공격','setup':'랭크업 후 공격',
+    'disrupt-heal':'방해·회복 후 공격','disrupt':'방해 후 공격',
+    'sustain':'회복을 섞은 공격','attack':'직접 공격',
+    'forced-opening':'첫 기술 고정 후 대응'};
+   const hit=name.match(/^[^:]+:(\\d+)/),move=hit?sample.moves[Number(hit[1])]:null;
+   const mega=name.includes(':after-build')?'랭크업 후 메가':
+    name.includes(':hold')?'메가 보류 유지':
+    name.includes(':delay')?'첫 턴 메가 보류':
+    name.includes(':immediate')?'즉시 메가':'';
+   return (labels[kind]||kind)+(move?' ['+(korean('moves',move)||move)+']':'')+
+    (mega?' · '+mega:'');
+  };
   const method=detail?.estimateType==='bounded-game-tree'?'기술·피해 확률 합산 탐색':
    detail?.mode==='adversarial-contingent-plan-search'?'승리 플랜 생성 + 상대 반박 계획 검증':
    '실제 승패 기반 중요도표본 대전';
@@ -641,8 +656,8 @@ function renderResult(raw,a,b){
    (detail?.estimatedGameValuePct==null?'':' · 자가대전 정책 기준 참고치(최적 승률 아님): '+Number(detail.estimatedGameValuePct).toFixed(2)+'%')+
    (detail?.samples?' · 검증 대전 표본: '+detail.samples+'회':'')+
     (detail?.planCounts?' · 전략 후보: A '+detail.planCounts[0]+'개 / B '+detail.planCounts[1]+'개':'')+
-    (detail?.leadingPlans?.[0]?' · A 대표 플랜: '+detail.leadingPlans[0].name+' ('+detail.leadingPlans[0].selectionPct+'%)':'')+
-    (detail?.bestCounterplans?.[0]?' · B 대표 반박 플랜: '+detail.bestCounterplans[0].name+' ('+detail.bestCounterplans[0].selectionPct+'%)':'')+
+    (detail?.selectedPlanLeft?' · A 채택 계획: '+prettyPlan(detail.selectedPlanLeft,a):'')+
+    (detail?.selectedPlanRight?' · B 채택 계획: '+prettyPlan(detail.selectedPlanRight,b):'')+
    (detail?.unresolved?' · 미종료 표본: '+detail.unresolved+'회':'')+
    (detail?.warning?' · '+detail.warning:'')+
    '. 위 행동 비율은 혼합전략의 선택 비율이지, 기술별 승리 확률이 아니야.';
