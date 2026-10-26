@@ -324,6 +324,27 @@
         "spd": 2,
         "spe": 0
       }
+    },
+    {
+      "name": "기띠 왕큰부리",
+      "species": "Toucannon",
+      "nature": "Adamant",
+      "item": "Focus Sash",
+      "ability": "Skill Link",
+      "moves": [
+        "Bullet Seed",
+        "Rock Blast",
+        "Beak Blast",
+        "Encore"
+      ],
+      "evs": {
+        "hp": 4,
+        "atk": 30,
+        "def": 8,
+        "spa": 0,
+        "spd": 0,
+        "spe": 24
+      }
     }
   ],
   "cases": [
@@ -444,6 +465,20 @@
       "a": "HBC자뭉누리",
       "b": "",
       "issue": "Historical Mega Baxcalibur sample missing from current library",
+      "available": false
+    },
+    {
+      "id": "왕큰부리-아머까오",
+      "a": "기띠 왕큰부리",
+      "b": "울멧HB아머까오",
+      "issue": "Long battle log and endpoint must not silently truncate",
+      "available": true
+    },
+    {
+      "id": "메가마폭시-킬가르도",
+      "a": "",
+      "b": "",
+      "issue": "Past miss-rate anomaly; both historical saved sets absent",
       "available": false
     }
   ]
