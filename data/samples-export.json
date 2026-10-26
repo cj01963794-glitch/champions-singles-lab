@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T10:17:30.904Z",
-  "count": 18,
+  "generatedAt": "2026-10-26T10:33:25.003Z",
+  "count": 19,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -415,6 +415,29 @@
         "Earth Power",
         "Draco Meteor",
         "Power Gem"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "2c171a56-0a9e-49e4-93a2-de58288b9194",
+      "updatedAt": "2026-10-26T10:32:42.393Z",
+      "name": "기띠킬플",
+      "species": "Glimmora",
+      "nature": "Modest",
+      "item": "Focus Sash",
+      "ability": "Toxic Debris",
+      "moves": [
+        "Power Gem",
+        "Sludge Wave",
+        "Earth Power",
+        "Stealth Rock"
       ],
       "evs": {
         "hp": 2,
