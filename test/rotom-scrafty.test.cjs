@@ -46,3 +46,10 @@ test('Mega Scrafty Taunt acts before Rotom burn and prevents status',()=>{
  assert.equal(B.p2.pokemon[0].status,'');
  assert.ok(B.log.some(x=>x.includes('Taunt')));
 });
+
+test('status plus Pain Split qualifies for long-horizon planning against a physical booster',()=>{
+ const {needsSustainHorizon}=require('../server.cjs');
+ const B=battle(rot,scr,seed);
+ assert.equal(needsSustainHorizon(B),true,
+  'a wall with burn, Pain Split and Leftovers cannot be evaluated with attack-only five-turn horizon');
+});
