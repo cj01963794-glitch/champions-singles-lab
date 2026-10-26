@@ -15,6 +15,8 @@ test('diagnose current opening, both sides and seeds',()=>{
    const r=simulation(a,b,4,seed);
    const actions=r.decisionDetails[0]?.megaTimingAudit?.[rotom===0?'leftActions':'rightActions'];
    assert.ok(actions?.includes('move 3'),'Burn must be present in full-turn win-rate search, not pruned out');
+   console.log('[ROTOM-SALAMENCE-MATRIX]',JSON.stringify({seed,rotom,first:r.choices[0],
+    audit:r.decisionDetails[0]?.megaTimingAudit}));
    assert.equal(r.choices[0]?.[rotom],'move 3',
     'Against an unburned fast physical setup attacker, compare then prefer burn over repeated Volt Switch');
    console.log('[ROTOM-SALAMENCE-POLICY]',JSON.stringify({seed,rotom,choices:r.choices,stop:r.stopReason,
