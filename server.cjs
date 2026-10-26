@@ -240,8 +240,59 @@ function wastedOpeningEncore(B,side,action){
  }
  return true;
 }
+// Remove only a narrowly proven inferior direct-damage choice. This is not
+// a generic type-chart policy: both possible opponent Mega typings, accuracy,
+// physical/special category, priority, statuses and move side effects matter.
+// When these preconditions fail, keep both moves in the full battle search.
+function plainlyDominatedAttack(B,side,action,options){
+ const user=B.getSide(side)?.pokemon?.[0];
+ const otherSide=side==='p1'?'p2':'p1';
+ const foe=B.getSide(otherSide)?.pokemon?.[0];
+ if(!user||!foe||user.status||foe.status||B.field.weather||B.field.terrain)return false;
+ const unsafeAbilities=new Set(['protean','libero','normalize','aerilate','pixilate',
+  'refrigerate','galvanize','liquidvoice','wonderguard','waterabsorb',
+  'stormdrain','dryskin','flashfire','sapsipper','levitate','teravolt',
+  'turboblaze','moldbreaker','adaptability','technician']);
+ if(unsafeAbilities.has(id(user.ability))||unsafeAbilities.has(id(foe.ability)))return false;
+ const ix=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
+ const move=B.dex.moves.get(user.moveSlots[ix]?.id);
+ const eligible=m=>m.exists&&m.basePower>0&&m.category!=='Status'&&
+  typeof m.accuracy==='number'&&!m.multihit&&!m.recoil&&!m.drain&&
+  !m.selfdestruct&&!m.self&&!m.secondary&&!m.secondaries&&
+  !m.onBasePower&&!m.onModifyMove&&!m.onEffectiveness&&!m.onTryHit&&
+  !m.flags?.charge&&!m.flags?.recharge;
+ if(!eligible(move)||move.id==='freeze-dry'||move.id==='thousandarrows')return false;
+ const types=[foe.getTypes()];
+ const evolution=B.actions.canMegaEvo(foe);
+ if(evolution){const next=B.dex.species.get(evolution);if(next.exists)types.push(next.types)}
+ let attackTypes=user.getTypes();
+ if(String(action).endsWith(' mega')){
+  const ownMega=B.actions.canMegaEvo(user);
+  if(ownMega){const next=B.dex.species.get(ownMega);if(next.exists)attackTypes=next.types}
+ }
+ const strength=(m,defenderTypes)=>{
+  let effectiveness=1;
+  for(const type of defenderTypes){
+   if(B.dex.getImmunity(m.type,type)===false)return 0;
+   effectiveness*=2**B.dex.getEffectiveness(m.type,type);
+  }
+  return m.basePower*(attackTypes.includes(m.type)?1.5:1)*effectiveness*
+   m.accuracy/100;
+ };
+ return options.some(alt=>{
+  if(alt===action||String(alt).endsWith(' mega')!==String(action).endsWith(' mega'))return false;
+  const ai=Number(String(alt).match(/move (\d+)/)?.[1]||0)-1;
+  const better=B.dex.moves.get(user.moveSlots[ai]?.id);
+  if(!eligible(better)||better.category!==move.category||better.priority!==move.priority||
+    better.accuracy<move.accuracy)return false;
+  // Require at least 50% greater direct threat against every legal typing.
+  // Weak evidence must not erase utility moves or strategic timing choices.
+  return types.every(t=>strength(better,t)>=1.5*strength(move,t)+0.00001);
+ });
+}
 function strategicLegal(B,side){
- const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a)&&!wastedOpeningEncore(B,side,a));
+ const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a)&&!wastedOpeningEncore(B,side,a)&&
+  !plainlyDominatedAttack(B,side,a,all));
  // Keep raw legal options available if there are no attacks able to hit.
  return filtered.some(a=>moveIsAttack(B,side,a))?filtered:all;
 }
