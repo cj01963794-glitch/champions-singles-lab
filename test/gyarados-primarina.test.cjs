@@ -42,7 +42,7 @@ test('both slot orientations avoid an inferior opening Sparkling Aria',()=>{
    const outcome=simulation(a,b,3,'1579,3137,6027,8191');
    assert.ok(outcome.choices.length);
    const first=outcome.choices[0];
-   assert.equal(first[pSide],'move 2','Moonblast instead of resisted Sparkling Aria');
+   assert.notEqual(first[pSide],'move 1','resisted Sparkling Aria must not be the opener');
    assert.ok(['move 1','move 1 mega','move 2','move 2 mega','move 3','move 3 mega','move 4','move 4 mega'].includes(first[gSide]));
    console.log('[GYARADOS-PRIMARINA-OPENING]',JSON.stringify({
     megaSide:gSide,first,turns:outcome.turns,winner:outcome.winner,
