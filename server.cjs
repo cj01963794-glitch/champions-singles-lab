@@ -2024,5 +2024,5 @@ return server;
 }
 if(require.main===module)startServer();
 module.exports={battle,legal,simulation,validate,needsSustainHorizon,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
- continuationMove,estimatedDirectDamage,provablyImmuneAttack,wastedOpeningEncore,strategicLegal,avoidImmuneChoice,catalog,koData,koName,dex};
+ continuationMove,estimatedDirectDamage,provablyImmuneAttack,wastedOpeningEncore,strategicLegal,focusedSustainOpening,avoidImmuneChoice,catalog,koData,koName,dex};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}
