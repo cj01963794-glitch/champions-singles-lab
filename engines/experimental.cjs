@@ -5,7 +5,7 @@
 const crypto=require('node:crypto');
 const {seedFrom,pick,exactSupported,mixedPolicy}=require('./probability-planner.cjs');
 const {analyzePlans}=require('./adversarial-plan-search.cjs');
-const {buildPlans}=require('./strategic-plans.cjs');
+const {buildPlans,actionForPlan}=require('./strategic-plans.cjs');
 function readySeed(seed){
  if(seed==null||seed==='')return seedFrom(crypto.randomBytes(16).toString('hex'));
  if(!/^\d{1,5}(,\d{1,5}){3}$/.test(seed)||seed.split(',').some(n=>+n>65535))
@@ -47,21 +47,40 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps){
  const seed=readySeed(rngSeed),B=deps.battle(a,b,seed),choices=[],details=[];
  const totalDeadline=Date.now()+58000;
  let stopReason='',searchFallbacks=0;
+ let activePlans=null,firstSearch=null;
  for(let turn=0;turn<depth&&!B.ended;turn++){
   if(Date.now()>totalDeadline-180){stopReason='compute_timeout';break}
-  const budgetMs=Math.min(turn===0?9500:turn<3?3700:1450,
-   totalDeadline-Date.now()-120);
-  if(budgetMs<120){stopReason='compute_timeout';break}
-  const result=search(B,deps,budgetMs,seed,turn);
-  if(!result?.leftActions?.length||!result?.rightActions?.length){
-   stopReason='no_available_actions';break;
+  let result=null,left=null,right=null;
+  if(activePlans){
+   // The plan itself selects the continuation in response to changes in
+   // HP/PP/boosts/status. Do not abandon a successfully evaluated 8-turn
+   // strategy every turn due to a fresh noisy one-turn calculation.
+   left=actionForPlan(B,deps,'p1',activePlans.left,turn);
+   right=actionForPlan(B,deps,'p2',activePlans.right,turn);
   }
-  const left=choose(result.leftActions,result.policyLeft,seed+':p1:'+turn);
-  const right=choose(result.rightActions,result.policyRight,seed+':p2:'+turn);
+  if(!left||!right){
+   const budgetMs=Math.min(turn===0?9500:3700,totalDeadline-Date.now()-120);
+   if(budgetMs<120){stopReason='compute_timeout';break}
+   result=search(B,deps,budgetMs,seed,turn);
+   if(!result?.leftActions?.length||!result?.rightActions?.length){
+    stopReason='no_available_actions';break;
+   }
+   if(result.planBankLeft?.length&&result.planBankRight?.length){
+    const planL=choose(result.planBankLeft,result.planPolicyLeft,seed+':plan:p1:'+turn);
+    const planR=choose(result.planBankRight,result.planPolicyRight,seed+':plan:p2:'+turn);
+    activePlans={left:planL,right:planR};
+    left=actionForPlan(B,deps,'p1',planL,turn);
+    right=actionForPlan(B,deps,'p2',planR,turn);
+   }else{
+    left=choose(result.leftActions,result.policyLeft,seed+':p1:'+turn);
+    right=choose(result.rightActions,result.policyRight,seed+':p2:'+turn);
+   }
+   if(!result.certified)searchFallbacks++;
+   if(!firstSearch)firstSearch=result;
+  }
   if(!left||!right){stopReason='no_available_actions';break}
-  if(!result.certified)searchFallbacks++;
-  if(turn<20)details.push({turn:turn+1,left,right,depth:result.horizon||null,
-   experimental:{mode:result.method,utility:'terminal-win-probability',
+  if(turn<20)details.push({turn:turn+1,left,right,depth:result?.horizon||null,
+   experimental:result?{mode:result.method,utility:'terminal-win-probability',
     estimateType:result.strategyType||result.estimateType,
     certified:!!result.certified,
     winBounds:result.valueBounds,estimatedGameValuePct:result.estimatedGameValuePct??null,
@@ -69,17 +88,22 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps){
     unresolved:result.unresolved??null,coverage:result.coverage??null,
     planCounts:result.planCounts||null,
     planningHorizon:result.planningHorizon||null,
-    leadingPlans:result.leadingPlans||[],
-    bestCounterplans:result.bestCounterplans||[],
+    leadingPlans:result.leadingPlans||[],bestCounterplans:result.bestCounterplans||[],
+    selectedPlanLeft:activePlans?.left?.name||null,
+    selectedPlanRight:activePlans?.right?.name||null,
     actionsLeft:result.leftActions,actionsRight:result.rightActions,
     policyLeft:result.policyLeft.map(x=>Math.round(x*1000)/1000),
     policyRight:result.policyRight.map(x=>Math.round(x*1000)/1000),
-    payoff:result.payoff,warning:result.warning||null}});
+    payoff:result.payoff,warning:result.warning||null
+   }:{mode:'conditional-plan-continuation',utility:'terminal-win-probability',
+    selectedPlanLeft:activePlans?.left?.name||null,
+    selectedPlanRight:activePlans?.right?.name||null,
+    certified:false,warning:'앞서 상대 반박에 대조한 조건부 계획을 연속 실행'}});
   B.makeChoices(left,right);choices.push([left,right]);
  }
  if(B.ended)stopReason='battle_ended';
  else if(!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
- return {model:'experimental',engineVersion:'stage1b-contingent-plans',
+ return {model:'experimental',engineVersion:'stage1b-persistent-contingent-plans',
   winner:B.ended?(B.winner||'draw'):'unresolved',stopReason,
   policy:'goal-generated-adversarial-contingent-plans',rngSeed:seed,
   log:B.log,choices,turns:choices.length,maxTurns:depth,
