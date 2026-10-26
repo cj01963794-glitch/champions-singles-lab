@@ -1972,7 +1972,7 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
     let body='';res.on('data',c=>body+=c);res.on('end',()=>{
       let data={};try{data=JSON.parse(body)}catch(e){}
       const turns=Array.isArray(data.log)?data.log.filter(v=>v.startsWith('|turn|')).map(v=>Number(v.slice(6))):[];
-      resolve({status:res.statusCode,type:res.headers['content-type'],turns:data.turns,stopReason:data.stopReason,choices:data.choices?.slice(0,3),seed:data.rngSeed,
+      resolve({status:res.statusCode,type:res.headers['content-type'],model:data.model,turns:data.turns,stopReason:data.stopReason,choices:data.choices?.slice(0,3),seed:data.rngSeed,
        root:{depth:data.decisionDetails?.[0]?.depth,
         samples:data.decisionDetails?.[0]?.megaTimingAudit?.samples,
         options:[data.decisionDetails?.[0]?.megaTimingAudit?.leftActions,
@@ -1990,6 +1990,9 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
     ['home','/?source=smoketest','GET'],
     ['health','/api/health','GET'],
     ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}],
+    ['experimental-selector','/api/duel','POST',{
+      model:'experimental',a:samples[0],b:samples[1],
+      maxTurns:2,rngSeed:'1579,3137,6027,8191'}],
     ...[0,1].map(index=>{
      const rotom={name:'HB불로톰',species:'Rotom-Heat',nature:'Bold',
       item:'Leftovers',ability:'Levitate',
