@@ -1463,7 +1463,18 @@ const server=http.createServer(async(req,res)=>{
    }
   }
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
-  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);return respond(res,simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed))}
+  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);const result=simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed);
+if([x.a?.species,x.b?.species].map(id).includes('floettemega')&&
+ [x.a?.species,x.b?.species].map(id).includes('mimikyu'))
+ console.log('[LIVE_DUEL_TRACE]',JSON.stringify({build:process.env.RENDER_GIT_COMMIT,
+  seed:result.rngSeed,side:[x.a.species,x.b.species],
+  choices:result.choices.slice(0,3),
+  moves:[x.a.moves,x.b.moves],evs:[x.a.evs,x.b.evs],
+  second:result.decisionDetails[1]&&{
+   depth:result.decisionDetails[1].depth,
+   audit:result.decisionDetails[1].exposedSetupAudit
+  }}));
+return respond(res,result)}
   return respond(res,{error:'Not found',method:req.method,path:pathname},404);
  }catch(e){console.error('[REQUEST_ERROR]',e.stack||e);return respond(res,{error:String(e.message||e)},400)}
 });
