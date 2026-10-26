@@ -12,7 +12,7 @@ test('first-turn Indeedee Encore fails before Mimikyu can use Swords Dance',()=>
  const b=battle(e,m,seed);
  assert.equal(b.p1.pokemon[0].getStat('spe'),147);
  assert.equal(b.p2.pokemon[0].getStat('spe'),118);
- assert.equal(b.p2.pokemon[0].lastMove,undefined);
+ assert.equal(b.p2.pokemon[0].lastMove,null);
  b.makeChoices('move 4','move 3');
  assert.ok(b.log.some(x=>x.startsWith('|-fail|')&&x.includes('기띠에써르')),
   'Showdown confirms Encore acted before Mimikyu and failed');
