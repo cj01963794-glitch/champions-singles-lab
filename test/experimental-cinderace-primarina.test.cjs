@@ -93,3 +93,27 @@ test('trace accuracy/critical RNG hooks on actual Libero Gunk Shot -> Aria',()=>
    log:B.log.filter(x=>/\\|move\\||\\|-miss\\||\\|-crit\\||\\|-damage\\|/.test(x)).slice(-12)}));
  }
 });
+
+test('experimental opponent misses + Aria crit win route outranks zero-win Encore, both orientations',()=>{
+ const bulky={...prima,name:'H32 B20 C14 누리레느',
+  evs:{hp:32,atk:0,def:20,spa:14,spd:0,spe:0}};
+ const sash={...cinder,name:'기합의띠 리베로 에이스번',item:'Focus Sash',
+  moves:['Gunk Shot','Pyro Ball','High Jump Kick','Sucker Punch']};
+ for(const [name,left,right,side] of [
+  ['wide C32',prima,cinder,0],
+  ['wide bulky',bulky,cinder,0],
+  ['wide bulky reversed',cinder,bulky,1],
+  ['sash bulky',bulky,sash,0]
+ ]){
+  const result=exp.simulateExperimental(left,right,1,baseSeed,deps);
+  console.log('[CINDER-RARE-WIN-CHECK]',JSON.stringify({name,choices:result.choices,
+   audit:result.decisionDetails[0]?.experimental?.rareWinAudits,
+   strategies:[result.decisionDetails[0]?.experimental?.policyLeft,
+    result.decisionDetails[0]?.experimental?.policyRight]}));
+  assert.equal(result.choices[0]?.[side],'move 2',
+   name+': choose the only measured rare-winning Sparkling Aria line');
+  assert.ok(result.decisionDetails[0]?.experimental?.rareWinAudits?.some(a=>
+   a.side===(side===0?'p1':'p2')&&a.action==='move 2'&&a.lowerBound>0),
+   name+': must demonstrate a strictly positive numeric probability');
+ }
+});
