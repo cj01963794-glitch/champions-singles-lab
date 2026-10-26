@@ -195,17 +195,54 @@ function provablyImmuneAttack(B,side,action){
  if(typeChangingAbilities.has(id(ability)))return false;
  return attackMatchup(B,attacker,defender,m,action).effectiveness===0;
 }
+// Encore locks a move the target has ALREADY used. When the target has
+// no previous move and Encore's user must act first, its only apparent
+// opening value comes from target actions with genuinely higher priority.
+// Exclude priority attacks that are blocked by Psychic Terrain: opponents
+// can choose a normal move instead, so speculative Encore would waste a turn.
+// Do not forbid Encore after prior moves, against faster Pokémon, or against
+// actual priority setup such as Protect.
+function wastedOpeningEncore(B,side,action){
+ const us=B.getSide(side)?.pokemon?.[0];
+ const enemySide=side==='p1'?'p2':'p1';
+ const target=B.getSide(enemySide)?.pokemon?.[0];
+ if(!us||!target||!action||actionInfo(B,side,action).id!=='encore')return false;
+ if(target.lastMove?.id||target.lastMoveUsed||target.volatiles?.encore)return false;
+ if(B.field?.pseudoWeather?.trickroom)return false;
+ if(us.getStat('spe')<=target.getStat('spe'))return false;
+ // A Quick Claw / priority-changing ability can reverse apparent speed.
+ const special=new Set(['quickclaw','custapberry','quickdraw','prankster',
+  'galewings','triage','stall','myceliummight']);
+ if(special.has(id(us.item))||special.has(id(target.item))||
+  special.has(id(us.ability))||special.has(id(target.ability)))return false;
+ const encore=B.dex.moves.get('encore'),priority=encore.priority||0;
+ const active=B.getSide(enemySide)?.activeRequest?.active?.[0];
+ for(const choice of active?.moves||[]){
+  if(choice.disabled||choice.pp===0)continue;
+  const move=B.dex.moves.get(choice.id);
+  if(!move.exists||move.priority<=priority)continue;
+  // Psychic Terrain prevents a grounded target from being hit by positive
+  // priority attacks. The same failed move *can* be encored but is not a
+  // rational opening for the opponent in a one-on-one with other options.
+  if(B.field.terrain==='psychicterrain'&&move.category!=='Status'&&
+   ['normal','adjacentFoe','any'].includes(move.target)&&
+   typeof us.isGrounded==='function'&&us.isGrounded())continue;
+  return false;
+ }
+ return true;
+}
 function strategicLegal(B,side){
- const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a));
+ const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a)&&!wastedOpeningEncore(B,side,a));
  // Keep raw legal options available if there are no attacks able to hit.
  return filtered.some(a=>moveIsAttack(B,side,a))?filtered:all;
 }
 function avoidImmuneChoice(B,side,choice){
- if(!provablyImmuneAttack(B,side,choice))return choice;
- const hits=strategicLegal(B,side).filter(a=>moveIsAttack(B,side,a) &&
+ if(!provablyImmuneAttack(B,side,choice)&&!wastedOpeningEncore(B,side,choice))return choice;
+ const candidateMoves=strategicLegal(B,side);
+ const hits=candidateMoves.filter(a=>moveIsAttack(B,side,a) &&
   !provablyImmuneAttack(B,side,a));
- if(!hits.length)return choice;
- return usefulAttack(B,side,hits);
+ if(hits.length)return usefulAttack(B,side,hits);
+ return candidateMoves[0]||choice;
 }
 // Upgrade a tied same-move decision to Mega only when it cannot change
 // typing or ability and the stats relevant to this attack do not decline.
@@ -1332,5 +1369,5 @@ return server;
 }
 if(require.main===module)startServer();
 module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
- continuationMove,estimatedDirectDamage,provablyImmuneAttack,strategicLegal,avoidImmuneChoice,catalog,koData,koName,dex};
+ continuationMove,estimatedDirectDamage,provablyImmuneAttack,wastedOpeningEncore,strategicLegal,avoidImmuneChoice,catalog,koData,koName,dex};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}
