@@ -145,6 +145,26 @@ function attackMatchup(B,attacker,defender,move,action=''){
    if(form.exists){types=form.types;ability=id(form.abilities['0']||ability)}
   }
  }
+ // Defensive type immunities also come from abilities and items.
+ // The prior power-only heuristic erroneously preferred Ground moves into
+ // Levitate, manufacturing 100%-win rollouts for defensive opponents.
+ const defAbility=id(defender.ability);
+ const defItem=id(defender.item);
+ const abilityBypass=['moldbreaker','teravolt','turboblaze'].includes(ability);
+ const gravity=!!B.field?.pseudoWeather?.gravity;
+ const grounded=gravity||defItem==='ironball'||
+  !!defender.volatiles?.smackdown||!!defender.volatiles?.ingrain;
+ const abilityActive=!abilityBypass&&!defender.volatiles?.gastroacid;
+ if(move.category!=='Status' && move.id!=='thousandarrows'){
+  const blockedByAbility=abilityActive&&(
+   (move.type==='Ground'&&defAbility==='levitate'&&!grounded)||
+   (move.type==='Fire'&&defAbility==='flashfire')||
+   (move.type==='Water'&&['waterabsorb','stormdrain','dryskin'].includes(defAbility))||
+   (move.type==='Electric'&&['voltabsorb','lightningrod','motordrive'].includes(defAbility))||
+   (move.type==='Grass'&&defAbility==='sapsipper'));
+  const blockedByItem=move.type==='Ground'&&defItem==='airballoon'&&!gravity;
+  if(blockedByAbility||blockedByItem)return {effectiveness:0,stab:1};
+ }
  let effectiveness=1;
  for(const type of defender.getTypes()){
   // Scrappy / Mind's Eye allow Normal and Fighting hits on Ghost targets
@@ -215,7 +235,9 @@ function provablyImmuneAttack(B,side,action){
  // Recompute with the real species' Mega types, including cases where a
  // base-form immunity disappears or appears on optional evolution.
  return !megaAvailable||
-  attackMatchup(B,attacker,{getTypes:()=>foeMega.types},m,action).effectiveness===0;
+  attackMatchup(B,attacker,{getTypes:()=>foeMega.types,
+   ability:foeMega.abilities?.['0']||defender.ability,
+   item:defender.item,volatiles:defender.volatiles},m,action).effectiveness===0;
 }
 // Encore locks a move the target has ALREADY used. When the target has
 // no previous move and Encore's user must act first, its only apparent
