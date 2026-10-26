@@ -862,13 +862,26 @@ function physicalPressure(B,attacker,defender){
 function needsSustainHorizon(B){
  return ['p1','p2'].some(side=>{
   const own=legal(B,side),p=B.getSide(side)?.pokemon?.[0];
-  if(!p||!strategyMove(B,side,own,'heal')||!hasRealAttack(B,side))return false;
-  return own.some(action=>{
+  if(!p||!hasRealAttack(B,side))return false;
+  const hasHealing=!!strategyMove(B,side,own,'heal');
+  const hasBoostWithHeal=hasHealing&&own.some(action=>{
    const m=B.dex.moves.get(actionInfo(B,side,action).id);
    const boosts=m.boosts||m.self?.boosts||{};
    return m.category==='Status'&&m.target==='self'&&
     ['atk','spa','def','spd'].some(stat=>(boosts[stat]||0)>0);
   });
+  // Status + sustainable recovery is also a long-horizon strategy, even
+  // without Calm Mind / Iron Defense. Pain Split changes BOTH HP totals;
+  // passive Leftovers or conventional healing also sustains a wall.
+  const hasStatus=own.some(action=>{
+   const m=B.dex.moves.get(actionInfo(B,side,action).id);
+   return m.category==='Status'&&['brn','psn','tox','par'].includes(m.status);
+  });
+  const sustains=hasHealing||
+   own.some(action=>actionInfo(B,side,action).id==='painsplit')||
+   ['leftovers','blacksludge'].includes(id(p.item));
+  const foe=side==='p1'?'p2':'p1';
+  return hasBoostWithHeal||(hasStatus&&sustains&&physicalPressure(B,foe,side));
  });
 }
 function isRecoverySetup(B,side,action){
