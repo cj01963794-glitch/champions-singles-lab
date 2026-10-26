@@ -632,20 +632,6 @@ function renderResult(raw,a,b){
    ' · A 선택 확률: '+probabilities(a,detail?.actionsLeft,detail?.policyLeft)+
    ' · B 선택 확률: '+probabilities(b,detail?.actionsRight,detail?.policyRight)+
    '. 제한 턴 상태 가치의 균형으로, 최종 승률이나 최적 수순이 증명된 수치는 아니야.';
-  if(detail?.rareWinAudits?.length){
-   policy.textContent+=' · 희귀 승리 수순 검증: '+detail.rareWinAudits.map(x=>{
-    const own=x.side==='p1'?a:b,foe=x.side==='p1'?b:a;
-    const label=(sample,action)=>{
-     const ix=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
-     const name=sample.moves[ix]||action;
-     return korean('moves',name)||name;
-    };
-    return label(own,x.action)+' 선택: 상대 '+label(foe,x.against)+
-     ' 빗나감 → 급소 → 마무리 승리 분기를 확인 (해당 상대 기술 조건부 확률 약 '+
-     (x.lowerBound*100).toFixed(2)+'%).';
-   }).join(' ');
-   policy.textContent+=' 이 수치는 전체 대면 승률이 아니야.';
-  }
  }else if(first){
   const decision=(sample,token)=>{
    const idx=Number(String(token).match(/move (\d+)/)?.[1]||0)-1;
