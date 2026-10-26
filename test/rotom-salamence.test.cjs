@@ -13,6 +13,10 @@ test('diagnose current opening, both sides and seeds',()=>{
  for(const [a,b,rotom] of [[R,S,0],[S,R,1]]){
   for(const seed of ['1579,3137,6027,8191','9050,5038,6950,14342']){
    const r=simulation(a,b,4,seed);
+   const actions=r.decisionDetails[0]?.megaTimingAudit?.[rotom===0?'leftActions':'rightActions'];
+   assert.ok(actions?.includes('move 3'),'Burn must be present in full-turn win-rate search, not pruned out');
+   assert.equal(r.choices[0]?.[rotom],'move 3',
+    'Against an unburned fast physical setup attacker, compare then prefer burn over repeated Volt Switch');
    console.log('[ROTOM-SALAMENCE-POLICY]',JSON.stringify({seed,rotom,choices:r.choices,stop:r.stopReason,
     details:r.decisionDetails.slice(0,2).map(x=>({turn:x.turn,left:x.left,right:x.right,megaTiming:x.megaTimingAudit&&{
      samples:x.megaTimingAudit.samples,leftActions:x.megaTimingAudit.leftActions,rightActions:x.megaTimingAudit.rightActions
