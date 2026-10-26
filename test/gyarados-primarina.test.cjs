@@ -68,31 +68,47 @@ test('both slot orientations avoid an inferior opening Sparkling Aria',()=>{
  }
 });
 
-test('diagnostic: compare immediate and delayed Mega versus repeated Moonblast',()=>{
- // Paired deterministic seeds. This is a policy-vs-policy reference, NOT
- // a certified optimal response to every possible Primarina opening.
- const out={immediate:{win:0,loss:0,draw:0,unresolved:0,firstMiss:0},
-  delayed:{win:0,loss:0,draw:0,unresolved:0,firstMiss:0}};
- const N=384;
+test('diagnostic: branch on first Power Whip hit before evolving',()=>{
+ // Both opening options face the identical 100%-accurate Moonblast policy.
+ // Crucially, delayed evolution NEVER repeats an unevolved Power Whip:
+ // HIT -> Mega Earthquake; MISS -> Mega Power Whip.
+ const tally=()=>({wins:0,losses:0,draws:0,unresolved:0,
+  firstHit:0,firstMiss:0,winAfterHit:0,winAfterMiss:0,
+  initialSurvives:0,turnTwo:{megaEarthquake:0,megaPowerWhip:0,other:0}});
+ const out={immediate:tally(),adaptiveDelay:tally()};
+ const N=2048;
  for(let k=0;k<N;k++){
   const seed=[101+139*k,319+251*k,503+173*k,907+107*k]
    .map(v=>v%65536).join(',');
-  for(const mode of ['immediate','delayed']){
-   const B=battle(gyarados,primarina,seed);
+  for(const mode of ['immediate','adaptiveDelay']){
+   const B=battle(gyarados,primarina,seed),st=out[mode];
    B.makeChoices(mode==='immediate'?'move 1 mega':'move 1','move 2');
-   const g=B.p1.pokemon[0],p=B.p2.pokemon[0];
-   if(p.hp===p.maxhp)out[mode].firstMiss++;
-   for(let turn=1;turn<5&&!B.ended;turn++){
+   const p=B.p2.pokemon[0],g=B.p1.pokemon[0];
+   const hit=p.hp<p.maxhp;
+   if(hit)st.firstHit++;else st.firstMiss++;
+   if(g.hp>0)st.initialSurvives++;
+   for(let turn=1;turn<6&&!B.ended;turn++){
     const target=B.p2.pokemon[0];
-    const shouldFinish=target.hp/target.maxhp<=0.43;
-    const gMove=mode==='delayed'&&!g.species.isMega?
-     (shouldFinish?'move 2 mega':'move 1') :
-     (shouldFinish?'move 2':'move 1');
+    let gMove;
+    if(mode==='adaptiveDelay'&&!g.species.isMega){
+     gMove=turn===1&&hit?'move 2 mega':'move 1 mega';
+     if(turn===1)st.turnTwo[hit?'megaEarthquake':'megaPowerWhip']++;
+    }else{
+     // Make the same accuracy-aware follow-up available to both arms:
+     // Earthquake if its estimated minimum 40% damage finishes,
+     // otherwise use Power Whip for a stronger hit.
+     gMove=target.hp/target.maxhp<=0.40?'move 2':'move 1';
+     if(turn===1)st.turnTwo.other++;
+    }
     B.makeChoices(gMove,'move 2');
    }
-   const key=B.ended?(B.winner==='Left'?'win':B.winner==='Right'?'loss':'draw'):'unresolved';
-   out[mode][key]++;
+   const outcome=B.ended?(B.winner==='Left'?'wins':B.winner==='Right'?'losses':'draws'):'unresolved';
+   st[outcome]++;
+   if(outcome==='wins')st[hit?'winAfterHit':'winAfterMiss']++;
   }
  }
- console.log('[GYARADOS-MEGA-TIMING-DIAGNOSTIC]',JSON.stringify({N,out}));
+ console.log('[GYARADOS-MEGA-BRANCHED-COMPARISON]',JSON.stringify({N,out}));
+ assert.equal(out.adaptiveDelay.turnTwo.megaEarthquake+out.adaptiveDelay.turnTwo.megaPowerWhip,
+  out.adaptiveDelay.initialSurvives,
+  'all surviving nonterminal delayed cases evolve on turn 2');
 });
