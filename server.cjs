@@ -478,7 +478,7 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
  const boosts=move.boosts||move.self?.boosts||{};
  if(move.category!=='Status'||move.target!=='self'||
   !(boosts.spa>0||boosts.spd>0)||boosts.def>0||boosts.atk>0||
-  self.hp/self.maxhp>0.67)return null;
+  (self.hp/self.maxhp>0.67 && enemy.boosts.atk<2))return null;
  const attacks=strategicLegal(B,side).filter(a=>moveIsAttack(B,side,a));
  if(!attacks.length)return null;
  const attack=usefulAttack(B,side,attacks);
@@ -518,12 +518,13 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
     }
    }
   }
+  // Weak physical attacks should not veto an observed lethal threat.
+  // Compare outcomes only for actions with substantial immediate KO risk.
+  if(koOnHit<tested*0.48)continue;
   counts.setup.push(setupWins/N);
   counts.attack.push(attackWins/N);
-  // Only use this audit for actually dangerous matchups; missing or weak
-  // physical pressure is not a reason to discard a sustained setup plan.
-  if(koOnHit<tested*0.48)return null;
  }
+ if(!counts.setup.length)return null;
  const worstSetup=Math.min(...counts.setup),worstAttack=Math.min(...counts.attack);
  return {side,from:selected,to:attack,physicalThreats:threats,
   pairedSamples:N,setupWinEstimates:counts.setup,attackWinEstimates:counts.attack,
@@ -815,6 +816,21 @@ function continuationMove(B,side){
  const directAttack=usefulAttack(B,side,actions);
  const projected=estimatedDirectDamage(B,side,directAttack);
  if(directAttack && projected>0 && projected>=0.78*foe.hp)return directAttack;
+ // Inside rollouts, don't burn a turn on a special-defense-only boost
+ // when a physical attacker can imminently KO. Physical boost moves keep
+ // their normal setup choices, while Showdown still resolves real outcomes.
+ if(directAttack && atk){
+  const ownBoost=B.dex.moves.get(actionInfo(B,side,atk).id).boosts||{};
+  if((ownBoost.spa>0||ownBoost.spd>0)&&!(ownBoost.def>0||ownBoost.atk>0||ownBoost.spe>0)){
+   const oppSide=side==='p1'?'p2':'p1';
+   const lethalPhysical=legal(B,oppSide).some(move=>{
+    const m=B.dex.moves.get(actionInfo(B,oppSide,move).id);
+    return m.category==='Physical'&&m.basePower>0&&
+     estimatedDirectDamage(B,oppSide,move)*1.30>=p.hp;
+   });
+   if(lethalPhysical)return directAttack;
+  }
+ }
  // Heal when actually threatened. Do not spend every full-HP turn using
  // Roost while an opponent is strengthening.
  if(heal && hp<0.57 && (!def || p.boosts.def>=foe.boosts.atk || hp<0.34))return heal;
