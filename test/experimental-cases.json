@@ -1,0 +1,450 @@
+{
+  "source": "GitHub sample-library branch, samples-export.json",
+  "generatedFrom": "2026-10-26T13:06:27.546Z",
+  "totalLibrary": 30,
+  "sets": [
+    {
+      "name": "기띠고집한카",
+      "species": "Garchomp",
+      "nature": "Adamant",
+      "item": "Focus Sash",
+      "ability": "Rough Skin",
+      "moves": [
+        "Earthquake",
+        "Scale Shot",
+        "Fire Fang",
+        "Swords Dance"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "노자속기메갸라",
+      "species": "Gyarados-Mega",
+      "nature": "Adamant",
+      "item": "Gyaradosite",
+      "ability": "Mold Breaker",
+      "preMegaAbility": "Intimidate",
+      "moves": [
+        "Power Whip",
+        "Earthquake",
+        "Ice Fang",
+        "Dragon Dance"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "고집스카프한카",
+      "species": "Garchomp",
+      "nature": "Adamant",
+      "item": "Choice Scarf",
+      "ability": "Rough Skin",
+      "moves": [
+        "Earthquake",
+        "Outrage",
+        "Rock Slide",
+        "Fire Fang"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "초점HA따라큐",
+      "species": "Mimikyu",
+      "nature": "Adamant",
+      "item": "Scope Lens",
+      "ability": "Disguise",
+      "moves": [
+        "Shadow Claw",
+        "Play Rough",
+        "Swords Dance",
+        "Shadow Sneak"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 2
+      }
+    },
+    {
+      "name": "울멧HB아머까오",
+      "species": "Corviknight",
+      "nature": "Bold",
+      "item": "Rocky Helmet",
+      "ability": "Pressure",
+      "moves": [
+        "Iron Defense",
+        "Body Press",
+        "Roost",
+        "U-turn"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 0,
+        "spd": 2,
+        "spe": 0
+      }
+    },
+    {
+      "name": "HBC자뭉누리",
+      "species": "Primarina",
+      "nature": "Modest",
+      "item": "Sitrus Berry",
+      "ability": "Torrent",
+      "moves": [
+        "Sparkling Aria",
+        "Moonblast",
+        "Encore",
+        "Aqua Jet"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 20,
+        "spa": 14,
+        "spd": 0,
+        "spe": 0
+      }
+    },
+    {
+      "name": "조심CS메망나",
+      "species": "Dragonite-Mega",
+      "nature": "Modest",
+      "item": "Dragoninite",
+      "ability": "Multiscale",
+      "preMegaAbility": "Multiscale",
+      "moves": [
+        "Draco Meteor",
+        "Thunderbolt",
+        "Flamethrower",
+        "Extreme Speed"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "고집AS메메타",
+      "species": "Metagross-Mega",
+      "nature": "Adamant",
+      "item": "Metagrossite",
+      "ability": "Tough Claws",
+      "preMegaAbility": "Clear Body",
+      "moves": [
+        "Psychic Fangs",
+        "Ice Punch",
+        "Earthquake",
+        "Bullet Punch"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "고집기띠에이스번",
+      "species": "Cinderace",
+      "nature": "Adamant",
+      "item": "Focus Sash",
+      "ability": "Libero",
+      "moves": [
+        "Pyro Ball",
+        "Gunk Shot",
+        "High Jump Kick",
+        "Sucker Punch"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "고집AS메만다",
+      "species": "Salamence-Mega",
+      "nature": "Adamant",
+      "item": "Salamencite",
+      "ability": "Aerilate",
+      "preMegaAbility": "Intimidate",
+      "moves": [
+        "Double-Edge",
+        "Earthquake",
+        "Dragon Dance",
+        "Roost"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "기띠에써르",
+      "species": "Indeedee",
+      "nature": "Modest",
+      "item": "Focus Sash",
+      "ability": "Psychic Surge",
+      "moves": [
+        "Expanding Force",
+        "Mystical Fire",
+        "Dazzling Gleam",
+        "Encore"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "HB와자몽",
+      "species": "Charizard-Mega-Y",
+      "nature": "Bold",
+      "item": "Charizardite Y",
+      "ability": "Drought",
+      "preMegaAbility": "Blaze",
+      "moves": [
+        "Flamethrower",
+        "Solar Beam",
+        "Dragon Pulse",
+        "Roost"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 2,
+        "spd": 0,
+        "spe": 0
+      }
+    },
+    {
+      "name": "HS명상메플라",
+      "species": "Floette-Mega",
+      "nature": "Timid",
+      "item": "Floettite",
+      "ability": "Fairy Aura",
+      "preMegaAbility": "Flower Veil",
+      "moves": [
+        "Moonblast",
+        "Synthesis",
+        "Draining Kiss",
+        "Calm Mind"
+      ],
+      "evs": {
+        "hp": 22,
+        "atk": 0,
+        "def": 11,
+        "spa": 1,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "name": "용춤 메가곤율거니",
+      "species": "Scrafty-Mega",
+      "nature": "Adamant",
+      "item": "Scraftinite",
+      "ability": "Intimidate",
+      "preMegaAbility": "Intimidate",
+      "moves": [
+        "Drain Punch",
+        "Knock Off",
+        "Dragon Dance",
+        "Taunt"
+      ],
+      "evs": {
+        "hp": 19,
+        "atk": 21,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 26
+      }
+    },
+    {
+      "name": "HB불로톰",
+      "species": "Rotom-Heat",
+      "nature": "Bold",
+      "item": "Leftovers",
+      "ability": "Levitate",
+      "moves": [
+        "Volt Switch",
+        "Overheat",
+        "Will-O-Wisp",
+        "Pain Split"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 0,
+        "spd": 2,
+        "spe": 0
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "누리레느-에이스번",
+      "a": "HBC자뭉누리",
+      "b": "고집기띠에이스번",
+      "issue": "Historical Wide Lens Libero variant differs; evaluate but no fixed action asserted",
+      "available": true
+    },
+    {
+      "id": "누리레느-메갸라도스",
+      "a": "HBC자뭉누리",
+      "b": "노자속기메갸라",
+      "issue": "Compare delayed Mega and type-resisted Water vs Fairy",
+      "available": true
+    },
+    {
+      "id": "따라큐-아머까오",
+      "a": "초점HA따라큐",
+      "b": "울멧HB아머까오",
+      "issue": "Avoid repetitive full HP Roost; keep Iron Defense win routes",
+      "available": true
+    },
+    {
+      "id": "망나뇽-따라큐",
+      "a": "조심CS메망나",
+      "b": "초점HA따라큐",
+      "issue": "Respect Fairy immunity and disguise",
+      "available": true
+    },
+    {
+      "id": "에써르-따라큐",
+      "a": "기띠에써르",
+      "b": "초점HA따라큐",
+      "issue": "No first-turn Encore on unacted opponent",
+      "available": true
+    },
+    {
+      "id": "플라엣테-리자몽Y",
+      "a": "HS명상메플라",
+      "b": "HB와자몽",
+      "issue": "Preserve long Calm Mind plus healing chances",
+      "available": true
+    },
+    {
+      "id": "플라엣테-따라큐",
+      "a": "HS명상메플라",
+      "b": "초점HA따라큐",
+      "issue": "Respect threat of physical KO when choosing Calm Mind",
+      "available": true
+    },
+    {
+      "id": "메메타-곤율거니",
+      "a": "고집AS메메타",
+      "b": "용춤 메가곤율거니",
+      "issue": "Do not choose Psychic Fangs versus Dark typing",
+      "available": true
+    },
+    {
+      "id": "로토무-보만다",
+      "a": "HB불로톰",
+      "b": "고집AS메만다",
+      "issue": "Choose sustainable burn and adversarial setup plan",
+      "available": true
+    },
+    {
+      "id": "로토무-곤율거니",
+      "a": "HB불로톰",
+      "b": "용춤 메가곤율거니",
+      "issue": "Evaluate burn, Taunt, drain and attacker setup",
+      "available": true
+    },
+    {
+      "id": "망나뇽-기띠한카",
+      "a": "조심CS메망나",
+      "b": "기띠고집한카",
+      "issue": "Consider Draco Meteor and post-sash Extreme Speed",
+      "available": true
+    },
+    {
+      "id": "누리레느-보만다",
+      "a": "HBC자뭉누리",
+      "b": "고집AS메만다",
+      "issue": "Avoid premature Aqua Jet over available Moonblast",
+      "available": true
+    },
+    {
+      "id": "메가갸라-누리레느",
+      "a": "노자속기메갸라",
+      "b": "HBC자뭉누리",
+      "issue": "Mega timing and Power Whip value",
+      "available": true
+    },
+    {
+      "id": "메메타-한카",
+      "a": "고집AS메메타",
+      "b": "고집스카프한카",
+      "issue": "Ice Punch and Bullet Punch race",
+      "available": true
+    },
+    {
+      "id": "누리레느-킬가르도",
+      "a": "HBC자뭉누리",
+      "b": "",
+      "issue": "Historical Aegislash sample missing from current library",
+      "available": false
+    },
+    {
+      "id": "나무킹-누리레느",
+      "a": "",
+      "b": "HBC자뭉누리",
+      "issue": "Historical Mega Sceptile sample missing from current library",
+      "available": false
+    },
+    {
+      "id": "누리레느-메가드닐레이브",
+      "a": "HBC자뭉누리",
+      "b": "",
+      "issue": "Historical Mega Baxcalibur sample missing from current library",
+      "available": false
+    }
+  ]
+}
