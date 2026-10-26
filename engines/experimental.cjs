@@ -59,7 +59,7 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps){
    right=actionForPlan(B,deps,'p2',activePlans.right,turn);
   }
   if(!left||!right){
-   const budgetMs=Math.min(turn===0?9500:3700,totalDeadline-Date.now()-120);
+   const budgetMs=Math.min(turn===0?13500:3700,totalDeadline-Date.now()-120);
    if(budgetMs<120){stopReason='compute_timeout';break}
    result=search(B,deps,budgetMs,seed,turn);
    if(!result?.leftActions?.length||!result?.rightActions?.length){
