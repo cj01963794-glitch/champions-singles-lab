@@ -182,9 +182,12 @@ function provablyImmuneAttack(B,side,action){
  const enemy=B.getSide(enemySide),us=B.getSide(side);
  const defender=enemy?.pokemon?.[0],attacker=us?.pokemon?.[0];
  if(!attacker||!defender||!action)return false;
- // Opponent may Mega-evolve into another defensive typing in the same
- // simultaneous move. Never prune under this uncertainty.
- if(enemy.activeRequest?.active?.[0]?.canMegaEvo)return false;
+ // A potential opposing Mega is not automatically an immunity escape.
+ // Discard an attack only if BOTH its current typing and its possible
+ // Mega typing are immune. Otherwise preserve the optional evolution branch.
+ const megaAvailable=!!enemy.activeRequest?.active?.[0]?.canMegaEvo;
+ const foeMega=megaAvailable?B.dex.species.get(B.actions.canMegaEvo(defender)):null;
+ if(megaAvailable&&!foeMega?.exists)return false;
  if(defender.item&&['ringtarget','ironball'].includes(defender.item))return false;
  if(B.field?.pseudoWeather?.gravity||
   Object.keys(defender.volatiles||{}).some(x=>
@@ -202,7 +205,11 @@ function provablyImmuneAttack(B,side,action){
   }
  }
  if(typeChangingAbilities.has(id(ability)))return false;
- return attackMatchup(B,attacker,defender,m,action).effectiveness===0;
+ if(attackMatchup(B,attacker,defender,m,action).effectiveness!==0)return false;
+ // Recompute with the real species' Mega types, including cases where a
+ // base-form immunity disappears or appears on optional evolution.
+ return !megaAvailable||
+  attackMatchup(B,attacker,{getTypes:()=>foeMega.types},m,action).effectiveness===0;
 }
 // Encore locks a move the target has ALREADY used. When the target has
 // no previous move and Encore's user must act first, its only apparent
