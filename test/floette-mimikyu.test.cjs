@@ -86,3 +86,22 @@ test('multiple RNG seeds do not repeat exposed second-turn Calm Mind',()=>{
   else process.env.MEGA_TIMING_MAX_SAMPLES=old;
  }
 });
+
+test('uncapped production-style Mega timing still avoids unsafe follow-up setup',()=>{
+ const previous=process.env.MEGA_TIMING_MAX_SAMPLES;
+ delete process.env.MEGA_TIMING_MAX_SAMPLES;
+ try{
+  const r=simulation(F,M,3,'1579,3137,6027,8191');
+  const first=r.choices[0],second=r.choices[1];
+  console.log('[FLOETTE-PRODUCTION-BUDGET]',JSON.stringify({
+   first,second,rounds:r.decisionDetails[0]?.megaTimingAudit?.samples,
+   applied:r.decisionDetails[1]?.exposedSetupAudit,stop:r.stopReason
+  }));
+  assert.ok(first,'must finish the opener without timing out');
+  if(second&&first[1]==='move 2'&&first[0]?.startsWith('move 1'))
+   assert.notEqual(second[0],'move 4',
+    'production search budget must not lose the physical-risk correction');
+ }finally{
+  if(previous!==undefined)process.env.MEGA_TIMING_MAX_SAMPLES=previous;
+ }
+});
