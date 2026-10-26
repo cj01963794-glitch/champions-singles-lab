@@ -4,7 +4,7 @@
 // simultaneous opening pair, never one convenient fixed opponent action.
 // Continuations remain heuristic, so none of these values certify optimality.
 function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMatrix,
- maxSamples=128,minSamples=32,attackDamageTieBreak=false,preferMegaTie=null}={}){
+ maxSamples=128,minSamples=32,attackDamageTieBreak=false,preferMegaTie=null,followupTurns=5}={}){
  const L=legal(B,'p1'),R=legal(B,'p2');
  if(!L.length||!R.length)return null;
  const saved=JSON.stringify(B.toJSON());
@@ -25,7 +25,7 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
    branch.makeChoices(L[i],R[j]);
    const dealtLeft=beforeLeft==null?0:Math.max(0,beforeLeft-(leftTarget?.hp??beforeLeft))/maxLeft;
    const dealtRight=beforeRight==null?0:Math.max(0,beforeRight-(rightTarget?.hp??beforeRight))/maxRight;
-   for(let step=1;step<5&&!branch.ended;step++){
+   for(let step=1;step<followupTurns&&!branch.ended;step++){
     if(Date.now()>deadline)break;
     const left=followup(branch,'p1',turn+step),right=followup(branch,'p2',turn+step);
     if(!left||!right)break;
