@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T10:33:25.003Z",
-  "count": 19,
+  "generatedAt": "2026-10-26T10:49:11.869Z",
+  "count": 20,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -446,6 +446,29 @@
         "spa": 32,
         "spd": 0,
         "spe": 32
+      }
+    },
+    {
+      "id": "f485bfa2-9b9d-483d-9fed-704c9a4a1eee",
+      "updatedAt": "2026-10-26T10:49:08.869Z",
+      "name": "생구HA고릴타",
+      "species": "Rillaboom",
+      "nature": "Adamant",
+      "item": "Life Orb",
+      "ability": "Grassy Surge",
+      "moves": [
+        "Drum Beating",
+        "Grassy Glide",
+        "High Horsepower",
+        "Knock Off"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 2
       }
     }
   ]
