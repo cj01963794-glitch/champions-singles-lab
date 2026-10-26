@@ -345,8 +345,19 @@ function plainlyDominatedAttack(B,side,action,options){
   return types.every(t=>strength(better,t)>=1.5*strength(move,t)+0.00001);
  });
 }
+// Do not feed a deterministic failed status move into the minimax matrix.
+// A player with any meaningful alternative must not repeatedly use burn,
+// poison, sleep, or paralysis against a target that already has a status.
+function wastedMajorStatus(B,side,action){
+ const foe=B.getSide(side==='p1'?'p2':'p1')?.pokemon?.[0];
+ if(!foe)return false;
+ const move=B.dex.moves.get(actionInfo(B,side,action).id);
+ if(move.category!=='Status'||move.target==='self'||!move.status)return false;
+ return !!foe.status;
+}
 function strategicLegal(B,side){
- const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a)&&!wastedOpeningEncore(B,side,a)&&
+ const all=legal(B,side),filtered=all.filter(a=>!provablyImmuneAttack(B,side,a)&&
+  !wastedOpeningEncore(B,side,a)&&!wastedMajorStatus(B,side,a)&&
   !plainlyDominatedAttack(B,side,a,all));
  // Keep raw legal options available if there are no attacks able to hit.
  return filtered.some(a=>moveIsAttack(B,side,a))?filtered:all;
@@ -354,6 +365,7 @@ function strategicLegal(B,side){
 function avoidImmuneChoice(B,side,choice){
  if(!provablyImmuneAttack(B,side,choice)&&
   !wastedOpeningEncore(B,side,choice)&&
+  !wastedMajorStatus(B,side,choice)&&
   !plainlyDominatedAttack(B,side,choice,legal(B,side)))return choice;
  const candidateMoves=strategicLegal(B,side);
  const hits=candidateMoves.filter(a=>moveIsAttack(B,side,a) &&
