@@ -53,3 +53,25 @@ test('status plus Pain Split qualifies for long-horizon planning against a physi
  assert.equal(needsSustainHorizon(B),true,
   'a wall with burn, Pain Split and Leftovers cannot be evaluated with attack-only five-turn horizon');
 });
+
+
+test('after a successful burn the wall keeps a deep response planner on next turn',()=>{
+ for(const [a,b,ri] of [[rot,scr,0],[scr,rot,1]]){
+  const result=simulation(a,b,4,seed);
+  const first=result.choices[0],next=result.decisionDetails[1];
+  // Track only branches where the status did land. Taunt is a real
+  // counterplay, not a case where forced Will-O-Wisp is always optimal.
+  const played=first?.[ri];
+  console.log('[ROTOM-SCRAFTY-LONG-CONTINUATION]',JSON.stringify({ri,first,second:result.choices[1],
+    depth:next?.depth,sustain:next?.sustainRoute}));
+  if(played==='move 3'){
+   const B=battle(a,b,seed);
+   B.makeChoices(first[0],first[1]);
+   const opponent=B.getSide(ri===0?'p2':'p1').pokemon[0];
+   if(opponent.status==='brn'){
+    assert.ok(next?.sustainRoute?.includes(ri===0?'p1':'p2'),
+      'continue status-defense strategy after actual burn, not 2-turn HP-only search');
+   }
+  }
+ }
+});
