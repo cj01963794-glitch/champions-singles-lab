@@ -352,8 +352,17 @@ function focusedSustainOpening(B,side){
   if(recovery)selected.push(recovery.key);
  }
  if(!selected.length)return all;
- const chosen=selected.flatMap(key=>variants(key));
- return chosen.length?chosen:all;
+ // Three representative actions fit multiple completed 15-turn samples on
+ // small cloud instances: Mega offense, Mega setup, and one delayed-Mega
+ // comparator. Keep secondary attacks to test differing resistances.
+ const chosen=[];
+ for(const key of selected){
+  const v=variants(key),mega=v.find(x=>x.endsWith(' mega'));
+  chosen.push(mega||v[0]);
+ }
+ const first=selected[0],base=variants(first)?.find(x=>!x.endsWith(' mega'));
+ if(base)chosen.push(base);
+ return chosen.length?[...new Set(chosen)]:all;
 }
 function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
  if(position.ended)return {value:score(position)};
@@ -946,7 +955,7 @@ function simulation(a,b,depth=120,rngSeed){
     Math.min(Date.now()+10000,globalDeadline-9000),
     {Sim,legal:sustain?focusedSustainOpening:strategicLegal,seed:verificationSeed,
      maxSamples:sustain?Math.min(24,maxMegaSamples):maxMegaSamples,
-     minSamples:4,followupTurns:sustain?15:5,resolveMatrix,
+     minSamples:sustain?2:4,followupTurns:sustain?15:5,resolveMatrix,
      attackDamageTieBreak:true,preferMegaTie:dominatesBaseOnMega,
      preferSustainTie:isRecoverySetup,
      followup:(branch,side)=>continuationMove(branch,side)});
@@ -960,7 +969,7 @@ function simulation(a,b,depth=120,rngSeed){
     // Only retain a setup/recovery route with >=60% completed wins even
     // against its worst observed opposing opener. Never commit to a route
     // from unresolved horizons, or from a selected direct attack.
-    if(sustain && megaTimingAudit.samples>=4){
+    if(sustain && megaTimingAudit.samples>=2){
      const matrix=megaTimingAudit.payoff;
      for(const [side,field,actions] of [
       ['p1','left',megaTimingAudit.leftActions],
