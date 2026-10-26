@@ -75,3 +75,17 @@ test('after a successful burn the wall keeps a deep response planner on next tur
   }
  }
 });
+
+test('deep root includes both Taunt and Dragon Dance counterplay, not just attacks',()=>{
+ const {focusedSustainOpening,needsSustainHorizon}=require('../server.cjs');
+ for(const [a,b,ri] of [[rot,scr,0],[scr,rot,1]]){
+  const B=battle(a,b,seed),sc=ri===0?'p2':'p1',ro=ri===0?'p1':'p2';
+  assert.equal(needsSustainHorizon(B),true);
+  const foe=focusedSustainOpening(B,sc),mine=focusedSustainOpening(B,ro);
+  console.log('[FOCUSED-ROOT-COMPLETENESS]',JSON.stringify({ri,foe,mine}));
+  assert.ok(foe.includes('move 3 mega'),'Dragon Dance must be an opponent candidate');
+  assert.ok(foe.includes('move 4 mega'),'Taunt must be an opponent candidate');
+  assert.ok(mine.includes('move 3'),'Will-O-Wisp must be my candidate');
+  assert.ok(mine.includes('move 1'),'Volt Switch must also be compared');
+ }
+});
