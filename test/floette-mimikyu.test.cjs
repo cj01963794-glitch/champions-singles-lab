@@ -26,7 +26,7 @@ test('observe saved Floette and Mimikyu opening on both sides',()=>{
    leftActions:r.decisionDetails[0].megaTimingAudit?.leftActions,
    rightActions:r.decisionDetails[0].megaTimingAudit?.rightActions,
    payoff:r.decisionDetails[0].megaTimingAudit?.payoff
-  },turns:r.decisionDetails.map(d=>({l:d.left,r:d.right,depth:d.depth}))}));
+  },turns:r.decisionDetails.map(d=>({l:d.left,r:d.right,depth:d.depth,exposedSetupAudit:d.exposedSetupAudit}))}));
  }
  }finally{if(prev===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;else process.env.MEGA_TIMING_MAX_SAMPLES=prev}
 });
