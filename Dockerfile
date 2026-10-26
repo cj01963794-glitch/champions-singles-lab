@@ -8,6 +8,7 @@ ENV SHOWDOWN_PACKAGE_PATH=/opt/pokemon-showdown
 # Stop deployment if the saved Gyarados/Primarina opener regresses.
 RUN node --check engines/experimental.cjs
 RUN node --test test/experimental.test.cjs
+RUN node --test test/experimental-historical.test.cjs
 RUN node --test test/pain-split-ui.test.cjs
 RUN node --test test/rotom-scrafty.test.cjs
 RUN node --test test/rotom-salamence.test.cjs
