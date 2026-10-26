@@ -265,13 +265,18 @@ function dominatesBaseOnMega(B,side,action){
  const evolution=B.actions.canMegaEvo(p);
  if(!evolution)return false;
  const form=B.dex.species.get(evolution),base=p.species;
- if(!form.exists||id(p.ability)!==id(form.abilities?.['0'])||
+ if(!form.exists||
   p.getTypes().join(',')!==form.types.join(',')||
   p.getTypes().join(',')!==base.types.join(','))return false;
- const move=B.dex.moves.get(actionInfo(B,side,action).id);
- if(!move.exists||move.category==='Status')return false;
- const attackStat=move.category==='Physical'?'atk':'spa';
- return ['hp','def','spd','spe',attackStat].every(k=>
+ const pre=id(p.ability),post=id(form.abilities?.['0']);
+ // Flower Veil protects Grass-type allies. In a one-on-one with a non-Grass
+ // user, it has no self-protective effect; Fairy Aura is a positive upgrade.
+ // Standard same-ability Megas are also eligible. Weather/type-changing
+ // Megas are deliberately excluded, since they may help the opponent.
+ const abilitySafe=pre===post||
+  (pre==='flowerveil'&&!p.getTypes().includes('Grass')&&post==='fairyaura');
+ if(!abilitySafe)return false;
+ return ['hp','atk','def','spa','spd','spe'].every(k=>
   Number(form.baseStats?.[k])>=Number(base.baseStats?.[k]));
 }
 function followChoiceBeam(B,side,actions,limit=2){
@@ -884,7 +889,7 @@ function simulation(a,b,depth=120,rngSeed){
   // whose full sampled battle won. The opposing side still gets a fresh
   // independent one-turn best response on every subsequent turn.
   if(t>0 && sustainedSides.size){
-   const shallow=evalOneTurn(B,t,4,globalDeadline-850);
+   const shallow=evalOneTurn(B,t,1,globalDeadline-850);
    if(shallow){
     choice={left:shallow.left,right:shallow.right};depthUsed=15;
     for(const side of sustainedSides){
