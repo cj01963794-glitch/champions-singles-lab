@@ -266,7 +266,14 @@ function plainlyDominatedAttack(B,side,action,options){
   return effects.every(e=>e.boosts&&Object.values(e.boosts).every(v=>v<0)&&
    !e.status&&!e.volatileStatus&&!e.self&&!e.onHit);
  };
- if(!eligible(move)||move.secondary||move.secondaries||
+ // Sparkling Aria's secondary only clears burns on the target.
+ // If the opponent is healthy and has no Substitute option, that effect
+ // cannot compensate for an inferior attack in this opening.
+ const secondary=!!move.secondary||!!move.secondaries?.length;
+ const ariaInert=move.id==='sparklingaria'&&!foe.status&&
+  !foe.volatiles?.substitute&&
+  !foe.moveSlots.some(s=>B.dex.moves.get(s.id).id==='substitute');
+ if(!eligible(move)||(secondary&&!ariaInert)||
   move.id==='freeze-dry'||move.id==='thousandarrows')return false;
  const types=[foe.getTypes()];
  const evolution=B.actions.canMegaEvo(foe);
