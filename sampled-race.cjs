@@ -82,10 +82,12 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
    if(i<0||j<0||!preferMegaTie(B,side,selectedAction))continue;
    const value=index=>side==='p1'?Math.min(...values[index]):
     Math.max(...values.map(row=>row[index]));
-   if(Math.abs(value(i)-value(j))<1e-10){
-    selected[field]=alt;
-    megaTieBreak.push({side,from:selectedAction,to:alt,reason:'same-payoff-safer-mega-stats'});
-   }
+   // This callback certifies a same-type, non-decreasing-stat Mega
+   // whose ability is unchanged or replaces an inapplicable ally effect.
+   // Paired samples can falsely favor the inferior base form by one roll;
+   // the mechanical dominance is stronger evidence than sampling noise.
+   selected[field]=alt;
+   megaTieBreak.push({side,from:selectedAction,to:alt,reason:'mechanically-dominant-mega'});
   }
  }
  let closeDamageTieBreak=null;
