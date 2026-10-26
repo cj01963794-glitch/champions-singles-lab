@@ -194,8 +194,14 @@ function provablyImmuneAttack(B,side,action){
    ['smackdown','ingrain','foresight','miracleeye'].includes(x)))return false;
  const slot=Number(String(action).match(/move (\d+)/)?.[1]||0)-1;
  const m=B.dex.moves.get(attacker.moveSlots[slot]?.id);
+ // A move's onTryHit hook can have a side effect (for example breaking
+ // Reflect/Light Screen) without changing immunity. Do not infer an
+ // immunity bypass merely from the existence of that hook.
+ // True immunity-ignoring and custom-effectiveness moves remain exempt.
+ const bypass=!!m.ignoreImmunity && (m.ignoreImmunity===true||
+  (typeof m.ignoreImmunity==='object'&&m.ignoreImmunity[m.type]));
  if(!m.exists||m.category==='Status'||m.basePower<=0||
-   specialTypeMoves.has(m.id)||m.onTryHit||m.onEffectiveness)return false;
+   specialTypeMoves.has(m.id)||bypass||m.onEffectiveness)return false;
  let ability=attacker.ability;
  if(String(action).endsWith(' mega')){
   const evolution=B.actions.canMegaEvo(attacker);
