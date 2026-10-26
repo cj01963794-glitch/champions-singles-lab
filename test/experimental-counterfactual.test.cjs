@@ -18,7 +18,7 @@ test('expert counterfactuals: threatened Floette, burned Scrafty and setup Corvi
   if(B.ended){console.log('[EXPERIMENTAL-COUNTERFACTUAL]',JSON.stringify({id:c.id,ended:B.winner}));continue}
   const result=exp.planning(B,deps,Date.now()+2500,'1579,3137,6027,8191',1);
   if(!result){console.log('[EXPERIMENTAL-COUNTERFACTUAL]',JSON.stringify({id:c.id,notEnoughTime:true}));continue}
-  const dist=exp.equilibrium(result.values,250);
+  const dist=result.chanceGame?{left:result.chanceGame.policyLeft,right:result.chanceGame.policyRight}:exp.equilibrium(result.values,250);
   console.log('[EXPERIMENTAL-COUNTERFACTUAL]',JSON.stringify({id:c.id,
     left:result.L.map((action,i)=>({action,prob:Math.round(dist.left[i]*100)})),
     right:result.R.map((action,i)=>({action,prob:Math.round(dist.right[i]*100)})),
