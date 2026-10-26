@@ -432,8 +432,15 @@ function focusedSustainOpening(B,side){
   const v=variants(key),mega=v.find(x=>x.endsWith(' mega'));
   chosen.push(mega||v[0]);
  }
- const first=selected[0],base=variants(first)?.find(x=>!x.endsWith(' mega'));
- if(base)chosen.push(base);
+ // Keep delayed-Mega options for *each* selected attack as well as setup.
+ // A previous shortcut retained only the first move's base version; with a
+ // boost-first build that removed base-form damage altogether. In particular
+ // this can conceal the ability to break Disguise without enabling a global
+ // aura that also empowers the opponent.
+ for(const key of selected){
+  const base=variants(key).find(x=>!x.endsWith(' mega'));
+  if(base)chosen.push(base);
+ }
  return chosen.length?[...new Set(chosen)]:all;
 }
 function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
