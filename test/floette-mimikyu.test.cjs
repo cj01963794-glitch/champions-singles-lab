@@ -56,3 +56,33 @@ test('compare immediate vs delayed Fairy Aura and second-turn Moonblast vs Calm 
   }
  }
 });
+
+test('generic continuation rejects unsafe special setup after physical Swords Dance',()=>{
+ const {continuationMove}=require('../server.cjs');
+ for(const open of ['move 1','move 1 mega']){
+  const B=battle(F,M,'1579,3137,6027,8191');
+  B.makeChoices(open,'move 3');
+  assert.ok(!B.ended);
+  assert.equal(continuationMove(B,'p1'),'move 1',
+   'opponent +2 physical attack can KO even when the setter still has full HP');
+ }
+});
+test('multiple RNG seeds do not repeat exposed second-turn Calm Mind',()=>{
+ const old=process.env.MEGA_TIMING_MAX_SAMPLES;
+ process.env.MEGA_TIMING_MAX_SAMPLES='5';
+ try{
+  const seeds=['1579,3137,6027,8191','111,222,333,444','913,2451,7251,8832'];
+  for(const seed of seeds)for(const [a,b,fl,op] of [[F,M,0,1],[M,F,1,0]]){
+   const r=simulation(a,b,3,seed);
+   const first=r.choices[0],second=r.choices[1];
+   console.log('[FLOETTE-MANY-SEED]',JSON.stringify({seed,fl,first,second,
+    audit:r.decisionDetails[1]?.exposedSetupAudit,stop:r.stopReason}));
+   if(second&&first?.[op]==='move 2'&&first?.[fl]?.startsWith('move 1'))
+    assert.notEqual(second[fl],'move 4',
+     'do not select unsafe special setup when the opponent opened with Play Rough');
+  }
+ }finally{
+  if(old===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;
+  else process.env.MEGA_TIMING_MAX_SAMPLES=old;
+ }
+});
