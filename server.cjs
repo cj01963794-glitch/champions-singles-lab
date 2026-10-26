@@ -1754,7 +1754,7 @@ if(!['legacy','experimental'].includes(model))throw Error('Unknown calculation m
 const result=model==='experimental'?
  require('./engines/experimental.cjs').simulateExperimental(x.a,x.b,
   Number(x.maxTurns)||120,x.rngSeed,
-  {battle,legal,strategicLegal,avoidImmuneChoice,estimatedDirectDamage,Sim}):
+  {battle,legal,strategicLegal,avoidImmuneChoice,estimatedDirectDamage,provablyImmuneAttack,Sim}):
  {...simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed),model:'legacy'};
 if([x.a?.species,x.b?.species].map(id).includes('floettemega')&&
  [x.a?.species,x.b?.species].map(id).includes('mimikyu'))
