@@ -57,3 +57,31 @@ test('defensive ability immunity is respected by every attack-ranking pathway',(
  assert.ok(estimatedDirectDamage(base,'p1','move 2')>0,
   'the same Ground move should still do damage without Levitate');
 });
+
+test('a burned physical booster evaluates actual weakened damage and future setup',()=>{
+ const {estimatedDirectDamage}=require('../server.cjs');
+ const B=battle(S,R,'1579,3137,6027,8191');
+ B.makeChoices('move 3 mega','move 3');
+ const mence=B.p1.pokemon[0],hp=mence.hp;
+ assert.equal(mence.status,'brn','Showdown records real burn');
+ const burned=estimatedDirectDamage(B,'p1','move 1');
+ mence.status='';
+ const healthy=estimatedDirectDamage(B,'p1','move 1');
+ mence.status='brn';
+ assert.ok(healthy>=burned*1.95,{burned,healthy});
+ const next=continuationMove(B,'p1');
+ console.log('[BURNED-MENCE-CONTINUATION]',JSON.stringify({hp,menceMaxHp:mence.maxhp,
+  boost:mence.boosts.atk,burned,healthy,next,pp:mence.moveSlots.map(x=>({id:x.id,pp:x.pp}))}));
+ assert.equal(next,'move 3','healthy boosted attacker should seek a winning damage threshold, not waste Roost');
+});
+
+test('sustained route re-evaluates attacking win attempts for both sides after burn',()=>{
+ const r=simulation(S,R,6,'1579,3137,6027,8191');
+ const mence=r.choices.map(x=>x[0]),rotom=r.choices.map(x=>x[1]);
+ console.log('[SUSTAINED-BOTH-SIDES]',JSON.stringify({mence,rotom,stop:r.stopReason,
+  final:r.log.filter(x=>/^\\|move\\||^\\|-status\\||^\\|-boost\\||^\\|-heal\\|/.test(x)).slice(-28)}));
+ assert.ok(rotom.includes('move 3'),'defender must have a burn line');
+ assert.ok(mence.includes('move 1') || mence.includes('move 1 mega') ||
+  mence.filter(x=>x.startsWith('move 3')).length>=2,
+  'attacker must pursue attack or setup rather than repeat Roost after turn one');
+});
