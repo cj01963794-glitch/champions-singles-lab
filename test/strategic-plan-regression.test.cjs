@@ -78,7 +78,10 @@ test('setup-with-recovery changes to healing under real incoming damage',()=>{
  const healPlan=buildPlans(B,deps,'p1').find(x=>x.kind==='setup-heal'&&x.mega==='immediate');
  assert.ok(healPlan,'must generate contingent recovery plan');
  B.makeChoices('move 4 mega','move 1 mega');
- B.makeChoices('move 4','move 1');
+ const firstFollowup=actionForPlan(B,deps,'p1',healPlan,1);
+ assert.equal(firstFollowup,'move 4',
+  'do not waste limited Synthesis PP if another Calm Mind can safely fit');
+ B.makeChoices(firstFollowup,'move 1');
  const action=actionForPlan(B,deps,'p1',healPlan,2);
  console.log('[PLAN-RECOVERY-ASSERTION]',JSON.stringify({
   afterTwo:[B.p1.pokemon[0].hp,B.p1.pokemon[0].maxhp],
@@ -86,7 +89,14 @@ test('setup-with-recovery changes to healing under real incoming damage',()=>{
   plan:healPlan.name,choice:action,
   healMeta:B.dex.moves.get('synthesis').flags
  }));
- assert.equal(action,'move 2','a setup-sustain plan must heal before lethal repeated Flamethrower');
+ assert.ok(['move 2','move 4'].includes(action),
+  'must either recover or continue a viable boost sequence rather than discard the plan');
+ if(action==='move 4'){
+  B.makeChoices(action,'move 1');
+  assert.ok(B.p1.pokemon[0].hp>0,'a third boost must be survivable against regular attack');
+  assert.equal(actionForPlan(B,deps,'p1',healPlan,3),'move 2',
+   'once boosting leaves HP dangerously low, the plan must recover');
+ }
 });
 
 test('live Experimental model executes one coherent multi-turn policy',()=>{
