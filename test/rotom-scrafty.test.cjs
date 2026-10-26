@@ -29,13 +29,20 @@ test('measure burn, Pain Split, Volt Switch mechanics versus Mega Scrafty',()=>{
   }
  }
 });
-test('Pain Split directly changes both HP when their current totals differ',()=>{
+test('Pain Split updates both actual HP and emits two-sided -sethp log',()=>{
  const B=battle(rot,scr,seed);
- B.makeChoices('move 1','move 3 mega');
- const before=[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp];
- B.makeChoices('move 4','move 4');
- const after=[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp];
- const log=B.log.filter(x=>/Pain Split|\|-sethp\||\|-damage\||\|-heal\||\|move\|/.test(x));
- console.log('[ROTOM-SCRAFTY-PAINSPLIT]',JSON.stringify({before,after,log:log.slice(-35)}));
+ B.makeChoices('move 4','move 2 mega');
+ const hp=[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp];
+ const max=[B.p1.pokemon[0].maxhp,B.p2.pokemon[0].maxhp];
+ const log=B.log.filter(x=>x.includes('Pain Split')||x.includes('|-sethp|')||x.startsWith('|-damage|')||x.startsWith('|-heal|'));
+ console.log('[ROTOM-SCRAFTY-PAINSPLIT]',JSON.stringify({hp,max,log:log.slice(-35)}));
  assert.ok(log.some(x=>x.includes('Pain Split')));
+ assert.ok(log.some(x=>x.includes('|-sethp|')),'engine must report the new HP of both battlers');
+ assert.ok(hp[0]<max[0]&&hp[0]>0&&hp[1]<max[1]&&hp[1]>0);
+});
+test('Mega Scrafty Taunt acts before Rotom burn and prevents status',()=>{
+ const B=battle(rot,scr,seed);
+ B.makeChoices('move 3','move 4 mega');
+ assert.equal(B.p2.pokemon[0].status,'');
+ assert.ok(B.log.some(x=>x.includes('Taunt')));
 });
