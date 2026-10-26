@@ -88,3 +88,20 @@ test('setup-with-recovery changes to healing under real incoming damage',()=>{
  }));
  assert.equal(action,'move 2','a setup-sustain plan must heal before lethal repeated Flamethrower');
 });
+
+test('live Experimental model executes one coherent multi-turn policy',()=>{
+ const a=set.get('HS명상메플라'),b=set.get('HB와자몽');
+ const r=experimental.simulateExperimental(a,b,6,seed,deps);
+ const root=r.decisionDetails[0]?.experimental;
+ assert.ok(root?.selectedPlanLeft&&root?.selectedPlanRight,
+  'planner must carry policy identities, not just a turn-one move');
+ for(const step of r.decisionDetails.slice(1)){
+  assert.equal(step.experimental.mode,'conditional-plan-continuation',
+   'do not silently replace the found long-horizon plan with a new one-turn score');
+  assert.equal(step.experimental.selectedPlanLeft,root.selectedPlanLeft);
+  assert.equal(step.experimental.selectedPlanRight,root.selectedPlanRight);
+ }
+ console.log('[PLAN-CONTINUITY-SMOKE]',JSON.stringify({
+  chosen:[root.selectedPlanLeft,root.selectedPlanRight],
+  choices:r.choices,winner:r.winner,stop:r.stopReason}));
+});
