@@ -466,6 +466,69 @@ function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
  const selected=resolveMatrix(matrix,L,R);
  return {value:selected.leftValue,left:selected.left,right:selected.right,matrix};
 }
+// Re-check a special-only setup in immediate physical danger with actual
+// Showdown outcomes, not a short horizon's HP/stat-stage utility. This
+// deliberately samples both plausible physical threats and an attacking
+// continuation; it does not certify an exhaustive optimal game strategy.
+function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
+ if(!selected||Date.now()>=deadline)return null;
+ const self=B.getSide(side).pokemon[0],enemySide=side==='p1'?'p2':'p1';
+ const enemy=B.getSide(enemySide).pokemon[0];
+ const move=B.dex.moves.get(actionInfo(B,side,selected).id);
+ const boosts=move.boosts||move.self?.boosts||{};
+ if(move.category!=='Status'||move.target!=='self'||
+  !(boosts.spa>0||boosts.spd>0)||boosts.def>0||boosts.atk>0||
+  self.hp/self.maxhp>0.67)return null;
+ const attacks=strategicLegal(B,side).filter(a=>moveIsAttack(B,side,a));
+ if(!attacks.length)return null;
+ const attack=usefulAttack(B,side,attacks);
+ const threats=strategicLegal(B,enemySide).filter(a=>{
+  const m=B.dex.moves.get(actionInfo(B,enemySide,a).id);
+  return m.category==='Physical'&&m.basePower>0&&
+   !provablyImmuneAttack(B,enemySide,a);
+ }).sort((a,b)=>estimatedDirectDamage(B,enemySide,b)-
+  estimatedDirectDamage(B,enemySide,a)).slice(0,2);
+ if(!threats.length)return null;
+ const saved=JSON.stringify(B.toJSON());
+ const counts={setup:[],attack:[]};
+ const N=48;
+ for(const threat of threats){
+  let tested=0,koOnHit=0,setupWins=0,attackWins=0;
+  for(let k=0;k<N;k++){
+   if(Date.now()>deadline)return null;
+   const seed=verificationSeed(turn,k,114);
+   for(const [action,key] of [[selected,'setup'],[attack,'attack']]){
+    const branch=Sim.Battle.fromJSON(saved);
+    branch.resetRNG(seed);
+    branch.makeChoices(side==='p1'?action:threat,side==='p1'?threat:action);
+    const victim=branch.getSide(side).pokemon[0];
+    if(key==='setup'){tested++;if(victim.hp===0)koOnHit++}
+    for(let step=0;step<3&&!branch.ended;step++){
+     const us=usefulAttack(branch,side,legal(branch,side).filter(x=>moveIsAttack(branch,side,x)))||
+      legal(branch,side)[0];
+     const foe=legal(branch,enemySide).includes(threat)?threat:
+      usefulAttack(branch,enemySide,legal(branch,enemySide).filter(x=>moveIsAttack(branch,enemySide,x)))||
+      legal(branch,enemySide)[0];
+     if(!us||!foe)break;
+     branch.makeChoices(side==='p1'?us:foe,side==='p1'?foe:us);
+    }
+    const victor=branch.winner;
+    if(victor===(side==='p1'?'Left':'Right')){
+     if(key==='setup')setupWins++;else attackWins++;
+    }
+   }
+  }
+  counts.setup.push(setupWins/N);
+  counts.attack.push(attackWins/N);
+  // Only use this audit for actually dangerous matchups; missing or weak
+  // physical pressure is not a reason to discard a sustained setup plan.
+  if(koOnHit<tested*0.48)return null;
+ }
+ const worstSetup=Math.min(...counts.setup),worstAttack=Math.min(...counts.attack);
+ return {side,from:selected,to:attack,physicalThreats:threats,
+  pairedSamples:N,setupWinEstimates:counts.setup,attackWinEstimates:counts.attack,
+  applied:worstAttack>=worstSetup+1/N-1e-10};
+}
 function hasTacticalMove(B){
  const tactical=new Set(['swordsdance','dragondance','nastyplot','calmmind','bulkup','irondefense','agility','shellsmash',
   'coil','quiverdance','curse','cosmicpower','amnesia','stockpile','recover','roost','slackoff','softboiled',
@@ -1143,6 +1206,20 @@ function simulation(a,b,depth=120,rngSeed){
     }
    }
   }
+  // A special-defense-only boost cannot blunt a lethal physical hit.
+  // Before executing a high-risk setup, compare real finish probabilities
+  // against the opponent's strongest physical attacks.
+  let exposedSetupAudit=null;
+  if(t<4 && Date.now()<globalDeadline-2200){
+   for(const [side,field] of [['p1','left'],['p2','right']]){
+    const audit=exposedPhysicalSetupAudit(B,side,choice[field],t,
+      Math.min(Date.now()+1800,globalDeadline-950));
+    if(audit){
+     if(audit.applied)choice[field]=audit.to;
+     (exposedSetupAudit??=[]).push(audit);
+    }
+   }
+  }
   // Certified/sampled planners may still return tied all-loss actions.
   // Never execute a known type-immune attack when a real hit is possible.
   const oldLeft=choice.left,oldRight=choice.right;
@@ -1156,6 +1233,7 @@ function simulation(a,b,depth=120,rngSeed){
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
    ...(sustainedSides.size?{sustainRoute:[...sustainedSides]}:{}),megaTimingConsidered:megaPending,
+   ...(exposedSetupAudit?{exposedSetupAudit}:{}),
    ...(immunityCorrection.length?{immunityCorrection}:{}),...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(megaTimingAudit?{megaTimingAudit}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
  if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
