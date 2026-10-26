@@ -47,6 +47,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/localization-audit.cjs
+      - name: Trace saved Mega Floette vs Mega Charizard Y sustain endgame
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/floette-charizard-diagnostic.cjs
       - name: Diagnose stored Mimikyu and Mega Dragonite choices
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
