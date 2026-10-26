@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T11:30:26.561Z",
-  "count": 21,
+  "generatedAt": "2026-10-26T11:58:11.923Z",
+  "count": 22,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -492,6 +492,30 @@
         "spa": 0,
         "spd": 0,
         "spe": 24
+      }
+    },
+    {
+      "id": "b77ada92-c947-48a1-be67-d8d9d8ad65b3",
+      "updatedAt": "2026-10-26T11:58:08.026Z",
+      "name": "메가 염무왕",
+      "species": "Emboar-Mega",
+      "nature": "Adamant",
+      "item": "Emboarite",
+      "ability": "Mold Breaker",
+      "preMegaAbility": "Reckless",
+      "moves": [
+        "Flare Blitz",
+        "Drain Punch",
+        "Bulk Up",
+        "Thunder Punch"
+      ],
+      "evs": {
+        "hp": 6,
+        "atk": 22,
+        "def": 5,
+        "spa": 0,
+        "spd": 1,
+        "spe": 32
       }
     }
   ]
