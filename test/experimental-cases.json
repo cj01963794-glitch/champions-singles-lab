@@ -345,14 +345,77 @@
         "spd": 0,
         "spe": 24
       }
+    },
+    {
+      "name": "원본H32C32누리레느",
+      "species": "Primarina",
+      "nature": "Modest",
+      "item": "Sitrus Berry",
+      "ability": "Torrent",
+      "moves": [
+        "Moonblast",
+        "Sparkling Aria",
+        "Aqua Jet",
+        "Encore"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 2
+      }
+    },
+    {
+      "name": "원본H32B20C14누리레느",
+      "species": "Primarina",
+      "nature": "Modest",
+      "item": "Sitrus Berry",
+      "ability": "Torrent",
+      "moves": [
+        "Moonblast",
+        "Sparkling Aria",
+        "Aqua Jet",
+        "Encore"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 20,
+        "spa": 14,
+        "spd": 0,
+        "spe": 0
+      }
+    },
+    {
+      "name": "원본광각리베로에이스번",
+      "species": "Cinderace",
+      "nature": "Jolly",
+      "item": "Wide Lens",
+      "ability": "Libero",
+      "moves": [
+        "Gunk Shot",
+        "U-turn",
+        "Pyro Ball",
+        "High Jump Kick"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 32
+      }
     }
   ],
   "cases": [
     {
       "id": "누리레느-에이스번",
-      "a": "HBC자뭉누리",
-      "b": "고집기띠에이스번",
-      "issue": "Historical Wide Lens Libero variant differs; evaluate but no fixed action asserted",
+      "a": "원본H32C32누리레느",
+      "b": "원본광각리베로에이스번",
+      "issue": "Historically verified Wide Lens Libero Gunk Shot miss + Sparkling Aria crit route",
       "available": true
     },
     {
@@ -480,6 +543,20 @@
       "b": "",
       "issue": "Past miss-rate anomaly; both historical saved sets absent",
       "available": false
+    },
+    {
+      "id": "누리레느-광각에이스번-내구형",
+      "a": "원본H32B20C14누리레느",
+      "b": "원본광각리베로에이스번",
+      "issue": "H32 B20 C14 alternate spread: miss and Aria critical then Aqua Jet win route",
+      "available": true
+    },
+    {
+      "id": "누리레느-기띠에이스번-별개",
+      "a": "HBC자뭉누리",
+      "b": "고집기띠에이스번",
+      "issue": "Saved library's separate Focus Sash Cinderace configuration is NOT the original bug",
+      "available": true
     }
   ]
 }
