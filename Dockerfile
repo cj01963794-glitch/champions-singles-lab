@@ -7,6 +7,7 @@ COPY . .
 ENV SHOWDOWN_PACKAGE_PATH=/opt/pokemon-showdown
 # Stop deployment if the saved Gyarados/Primarina opener regresses.
 RUN node --test test/gyarados-primarina.test.cjs
+RUN node --test test/floette-mimikyu.test.cjs
 ENV PORT=10000
 EXPOSE 10000
 CMD ["node","server.cjs"]
