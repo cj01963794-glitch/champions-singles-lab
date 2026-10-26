@@ -16,3 +16,10 @@
 - **Protocol updated:** `AGENTS.md`, `docs/PROJECT_MEMORY.md`, `docs/DECISIONS.md`; future transcripts must update the one existing canonical file rather than create per-turn files.
 - **GitHub commits:** archive merge `138999c`; AGENTS `402f903`; memory `ef146a3`; decisions `337d9a2`.
 - **Tests:** not run; documentation only. Development dialogue backups require an explicit GitHub write, not automatic live sync.
+
+## 2026-10-27 KST — new chat recovery and withdrawal of ungrounded proposal
+- Reconnected to GitHub and read previous documentation and single cumulative transcript.
+- User challenged whether the 'small strategy analyzer' had an implementable algorithm beyond state-difference reporting.
+- Assistant explicitly withdrew recommendation to implement the proposed analyzer; no source files were changed and no tests were run.
+- Archived current new-chat user's exact messages and assistant verbatim excerpts (not a complete UI transcript) in existing `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`, commit `2cbc8ecc545b11764d28e53693685ce095c7e973`.
+- Backup is **manual per actual commit, never automatic per message**. Do not imply continuous unattended recording.
