@@ -20,12 +20,18 @@ test('diagnostic reveal of stage-by-stage generated plans against adaptive adver
   if(!p1||!p2)continue;
   const steps=[];
   for(let turn=0;turn<15&&!B.ended;turn++){
+   const beforeBoost={...B.p1.pokemon[0].boosts};
+   const boostMove=B.dex.moves.get(B.p1.pokemon[0].moveSlots[3]?.id);
+   const boostMeta={boosts:boostMove.boosts,selfBoosts:boostMove.self?.boosts};
+   const synth=B.dex.moves.get(B.p1.pokemon[0].moveSlots[1]?.id);
+   const healMeta={id:synth.id,heal:synth.heal,
+     onHit:!!synth.onHit,category:synth.category};
    const L=actionForPlan(B,deps,'p1',p1,turn),R=actionForPlan(B,deps,'p2',p2,turn);
    B.makeChoices(L,R);
-   steps.push({t:turn+1,L,R,HP:[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp],
+   steps.push({t:turn+1,L,R,beforeBoost,boostMeta,healMeta,HP:[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp],
     stat:[B.p1.pokemon[0].boosts,B.p2.pokemon[0].boosts],
     weather:B.field.weather,latest:B.log.filter(x=>x.startsWith('|move|')||
-     x.startsWith('|-crit|')||x.startsWith('|-fail|')).slice(-3)});
+     x.startsWith('|-crit|')||x.startsWith('|-fail|')||x.startsWith('|-boost|')||x.startsWith('|-heal|')).slice(-3)});
   }
   console.log('[CONTINGENT-PLAN-TRACE]',JSON.stringify({match:a+' vs '+b,
    planL:p1.name,planR:p2.name,steps,winner:B.winner||'unresolved'}));
