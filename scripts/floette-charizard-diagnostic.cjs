@@ -12,8 +12,8 @@ const seed='1579,3137,6027,8191';
 const who=(B,side)=>B.getSide(side).pokemon[0];
 function state(B){
  return {turn:B.turn,weather:B.field.weather,
- p1:{form:who(B,'p1').species.name,hp:who(B,'p1').hp,boosts:who(B,'p1').boosts,ability:who(B,'p1').ability,item:who(B,'p1').item},
- p2:{form:who(B,'p2').species.name,hp:who(B,'p2').hp,boosts:who(B,'p2').boosts,ability:who(B,'p2').ability,item:who(B,'p2').item}};
+ p1:{form:who(B,'p1').species.name,hp:who(B,'p1').hp,boosts:{...who(B,'p1').boosts},ability:who(B,'p1').ability,item:who(B,'p1').item},
+ p2:{form:who(B,'p2').species.name,hp:who(B,'p2').hp,boosts:{...who(B,'p2').boosts},ability:who(B,'p2').ability,item:who(B,'p2').item}};
 }
 function choices(B,p1,p2){B.makeChoices(p1,p2);}
 function floette(B,side,first='calm'){
@@ -36,7 +36,10 @@ function scripted(left=A,right=B,first='calm',mode='roost',n=28){
  for(let i=0;i<n&&!B.ended;i++){
   const l=left.species.includes('Floette')?floette(B,'p1',first):zard(B,'p1',mode);
   const r=right.species.includes('Floette')?floette(B,'p2',first):zard(B,'p2',mode);
-  choices(B,l,r);
+  try{choices(B,l,r)}catch(err){
+   return {winner:B.winner,ended:B.ended,scriptError:err.message,
+    lastAttempt:[l,r],history:history.slice(0,22)};
+  }
   history.push({choices:[l,r],...state(B)});
  }
  return {winner:B.winner,ended:B.ended,history:history.slice(0,22),logTail:B.log.slice(-14)};
