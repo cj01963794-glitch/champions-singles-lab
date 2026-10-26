@@ -491,15 +491,15 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
  // A special boost can only repay its lost attack on a later turn.
  // In a physical 2HKO race, the opponent can end the battle before that
  // investment pays off; compare the attacking line even at full HP.
- const shortPhysicalRace=
-  B.dex.moves.get(actionInfo(B,side,attack).id).category==='Special' &&
-  estimatedDirectDamage(B,side,attack)*1.85>=enemy.hp &&
-  threats.some(a=>estimatedDirectDamage(B,enemySide,a)*2.3>=self.hp);
+ const physicallyExposed=legal(B,enemySide).filter(a=>moveIsAttack(B,enemySide,a))
+  .every(a=>B.dex.moves.get(actionInfo(B,enemySide,a).id).category==='Physical');
+ const twoTurnDamageEvidence=[];
  const saved=JSON.stringify(B.toJSON());
  const counts={setup:[],attack:[]};
  const N=48;
  for(const threat of threats){
   let tested=0,koOnHit=0,setupWins=0,attackWins=0;
+  let threatTwoHit=0,attackTwoHit=0;
   for(let k=0;k<N;k++){
    if(Date.now()>deadline)return null;
    const seed=verificationSeed(turn,k,114);
@@ -508,7 +508,14 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
     branch.resetRNG(seed);
     branch.makeChoices(side==='p1'?action:threat,side==='p1'?threat:action);
     const victim=branch.getSide(side).pokemon[0];
-    if(key==='setup'){tested++;if(victim.hp===0)koOnHit++}
+    if(key==='setup'){
+     tested++;
+     if(victim.hp===0)koOnHit++;
+     if(victim.hp<=self.hp*0.53)threatTwoHit++;
+    }else{
+     const victimOnOtherSide=branch.getSide(enemySide).pokemon[0];
+     if(victimOnOtherSide.hp<=enemy.hp*0.5)attackTwoHit++;
+    }
     for(let step=0;step<3&&!branch.ended;step++){
      const us=usefulAttack(branch,side,legal(branch,side).filter(x=>moveIsAttack(branch,side,x)))||
       legal(branch,side)[0];
@@ -529,17 +536,25 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
   // Do not use current HP percentage as a proxy for future KO danger.
   // A high-HP target can still be 2HKO'd, or lose a critical-hit race.
   // Keep a low-risk threat only when attacking wins clearly more often.
+  // Use actual Showdown HP changes, including weather, auras, type
+  // modifiers and critical damage. The former rough-damage heuristic
+  // missed Fairy Aura and rejected this legitimate two-hit race.
+  const shortPhysicalRace=physicallyExposed &&
+   B.dex.moves.get(actionInfo(B,side,attack).id).category==='Special' &&
+   threatTwoHit>=N*0.60 && attackTwoHit>=N*0.60;
+  twoTurnDamageEvidence.push({threat,threatTwoHit,attackTwoHit,shortPhysicalRace});
   if(!shortPhysicalRace && koOnHit<tested*0.12 && attackWins-setupWins<4)continue;
   counts.setup.push(setupWins/N);
   counts.attack.push(attackWins/N);
  }
  if(!counts.setup.length)return null;
  const worstSetup=Math.min(...counts.setup),worstAttack=Math.min(...counts.attack);
+ const shortPhysicalRace=twoTurnDamageEvidence.some(x=>x.shortPhysicalRace);
  return {side,from:selected,to:attack,physicalThreats:threats,
   pairedSamples:N,setupWinEstimates:counts.setup,attackWinEstimates:counts.attack,
-  shortPhysicalRace,
+  twoTurnDamageEvidence,shortPhysicalRace,
   applied:worstAttack>=worstSetup+1/N-1e-10 ||
-   (shortPhysicalRace && worstAttack>=worstSetup-1/N-1e-10)};
+   (shortPhysicalRace && worstAttack>=worstSetup-3/N-1e-10)};
 }
 function hasTacticalMove(B){
  const tactical=new Set(['swordsdance','dragondance','nastyplot','calmmind','bulkup','irondefense','agility','shellsmash',
