@@ -515,6 +515,21 @@ function physicalPressure(B,attacker,defender){
    attackMatchup(B,p,q,m).effectiveness>0;
  });
 }
+// Setup + recovery endgames may need many turns before any KO happens.
+// A five-turn rollout would score all such candidates as "unresolved",
+// thereby discarding a real route with gradual boosts and healing.
+function needsSustainHorizon(B){
+ return ['p1','p2'].some(side=>{
+  const own=legal(B,side),p=B.getSide(side)?.pokemon?.[0];
+  if(!p||!strategyMove(B,side,own,'heal')||!hasRealAttack(B,side))return false;
+  return own.some(action=>{
+   const m=B.dex.moves.get(actionInfo(B,side,action).id);
+   const boosts=m.boosts||m.self?.boosts||{};
+   return m.category==='Status'&&m.target==='self'&&
+    ['atk','spa','def','spd'].some(stat=>(boosts[stat]||0)>0);
+  });
+ });
+}
 function defensePlanSide(B){
  for(const side of ['p1','p2']){
   const enemy=side==='p1'?'p2':'p1';
@@ -864,11 +879,15 @@ function simulation(a,b,depth=120,rngSeed){
    const configuredCap=Number(process.env.MEGA_TIMING_MAX_SAMPLES);
    const maxMegaSamples=Number.isFinite(configuredCap)&&configuredCap>=4?
     Math.max(4,Math.min(48,Math.floor(configuredCap))):48;
+   const sustain=needsSustainHorizon(B);
    megaTimingAudit=sampledRace(B,null,t,
     Math.min(Date.now()+10000,globalDeadline-9000),
-    {Sim,legal:strategicLegal,seed:verificationSeed,maxSamples:maxMegaSamples,minSamples:4,resolveMatrix,
+    {Sim,legal:strategicLegal,seed:verificationSeed,
+     maxSamples:sustain?Math.min(18,maxMegaSamples):maxMegaSamples,
+     minSamples:sustain?3:4,followupTurns:sustain?15:5,resolveMatrix,
      attackDamageTieBreak:true,preferMegaTie:dominatesBaseOnMega,
      followup:(branch,side)=>continuationMove(branch,side)});
+   if(megaTimingAudit)megaTimingAudit.sustainHorizon=sustain?15:5;
    if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
    if(megaTimingAudit?.chosen && decisive){
@@ -1377,6 +1396,6 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
 return server;
 }
 if(require.main===module)startServer();
-module.exports={battle,legal,simulation,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
+module.exports={battle,legal,simulation,validate,needsSustainHorizon,Sim,startServer,probabilisticAttackSearch,resolveMatrix,
  continuationMove,estimatedDirectDamage,provablyImmuneAttack,wastedOpeningEncore,strategicLegal,avoidImmuneChoice,catalog,koData,koName,dex};
 function respond(res,x,status=200){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(x))}
