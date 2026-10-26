@@ -26,7 +26,7 @@ function shape(B,side,deps){
   boosts:rows.filter(x=>{const b=x.m.boosts||x.m.self?.boosts||{};
    return x.m.category==='Status'&&x.m.target==='self'&&
     Object.values(b).some(v=>v>0)}),
-  heals:rows.filter(x=>x.m.heal||x.m.id==='painsplit'||
+  heals:rows.filter(x=>x.m.heal||x.m.flags?.heal||x.m.id==='painsplit'||
     x.m.drain&&x.m.category!=='Status'),
   disruptions:rows.filter(x=>x.m.category==='Status'&&
    x.m.target!=='self'&&(x.m.status||x.m.volatileStatus||
@@ -194,7 +194,8 @@ function actionForPlan(B,deps,side,plan,turn){
  // Winning immediately is stronger than completing a planned boost.
  if(bestFinish)return bestFinish.a;
  const heal=working.filter(a=>S.heals.some(x=>moveIndex(x.action)===moveIndex(a)) &&
-  info(B,side,a).category==='Status'&&info(B,side,a).heal);
+  info(B,side,a).category==='Status'&&
+  (info(B,side,a).heal||info(B,side,a).flags?.heal));
  const risk=healthRisk(B,deps,side);
  const hpThreshold=plan.hpRule??0.5;
  const healNeeded=heal.length&&S.p.hp<S.p.maxhp &&
