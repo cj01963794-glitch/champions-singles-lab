@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {battle,simulation,strategicLegal,continuationMove,Sim}=require('../server.cjs');
+const {battle,legal,simulation,strategicLegal,continuationMove,Sim}=require('../server.cjs');
 const rot={name:'HB불로톰',species:'Rotom-Heat',nature:'Bold',item:'Leftovers',ability:'Levitate',
  moves:['Volt Switch','Overheat','Will-O-Wisp','Pain Split'],evs:{hp:32,atk:0,def:32,spa:0,spd:2,spe:0}};
 const scr={name:'용춤 메가곤율거니',species:'Scrafty-Mega',nature:'Adamant',item:'Scraftinite',
@@ -138,6 +138,8 @@ test('numeric taunt/drain-punch versus overheat/burn continuation checks',()=>{
   for(const secondSc of ['move 1','move 3']){
    for(const secondRo of ['move 2','move 4']){
     const C=Sim.Battle.fromJSON(checkpoint);
+    if(C.ended||!legal(C,'p1').includes(secondRo)||
+     !legal(C,'p2').includes(secondSc))continue;
     C.makeChoices(secondRo,secondSc);
     const sh=C.p2.pokemon[0],rh=C.p1.pokemon[0];
     successors.push({rotom:secondRo,scrafty:secondSc,
