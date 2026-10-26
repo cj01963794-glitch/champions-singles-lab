@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:04:57.578Z",
-  "count": 26,
+  "generatedAt": "2026-10-26T12:07:19.581Z",
+  "count": 27,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -607,6 +607,29 @@
         "atk": 0,
         "def": 0,
         "spa": 32,
+        "spd": 0,
+        "spe": 32
+      }
+    },
+    {
+      "id": "cc7f2c8c-a77a-4bf8-bf8c-46085343ede1",
+      "updatedAt": "2026-10-26T12:07:16.482Z",
+      "name": "4공격 빠르모트",
+      "species": "Pawmot",
+      "nature": "Adamant",
+      "item": "Focus Sash",
+      "ability": "Iron Fist",
+      "moves": [
+        "Fake Out",
+        "Double Shock",
+        "Close Combat",
+        "Ice Punch"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
         "spd": 0,
         "spe": 32
       }
