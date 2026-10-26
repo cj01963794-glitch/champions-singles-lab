@@ -36,23 +36,22 @@ test('experimental policy opens legal moves and records balanced opponent respon
   assert.equal(result.choices.length,1,'needs one move for '+a+' vs '+b);
   assert.ok(deps.legal(B,'p1').includes(result.choices[0][0]),'illegal left move');
   assert.ok(deps.legal(B,'p2').includes(result.choices[0][1]),'illegal right move');
-  assert.equal(result.decisionDetails[0].experimental.utility,'finite-horizon-not-win-probability');
+  assert.equal(result.decisionDetails[0].experimental.utility,'terminal-win-probability');
+  assert.ok(Array.isArray(result.decisionDetails[0].experimental.winBounds));
+  assert.ok(['sampled-terminal-outcomes','bounded-game-tree'].includes(result.decisionDetails[0].experimental.estimateType));
   console.log('[EXPERIMENTAL-OPENING]',JSON.stringify({match:a+' / '+b,
    actions:result.choices[0],mode:result.decisionDetails[0].experimental.mode,
    probabilities:[result.decisionDetails[0].experimental.policyLeft,
     result.decisionDetails[0].experimental.policyRight],ms:Date.now()-t}));
  }
 });
-test('physical immunity and no-target Encore remain prohibited',()=>{
- const cases=[
-  {a:'고집AS메메타',b:'용춤 메가곤율거니',forbidden:1,side:0},
-  {a:'기띠에써르',b:'초점HA따라큐',forbidden:4,side:0}
- ];
- for(const {a,b,forbidden,side} of cases){
+test('all legal options remain available to the probability solver without heuristic pruning',()=>{
+ for(const [a,b] of [['고집AS메메타','용춤 메가곤율거니'],
+   ['기띠에써르','초점HA따라큐']]){
   const B=deps.battle(sample(a),sample(b),rng);
-  const opts=exp.options(B,side?'p2':'p1',engineDeps);
-  assert.ok(!opts.some(x=>x.startsWith('move '+forbidden)),
-   'must eliminate impossible move '+forbidden+' for '+a);
+  for(const side of ['p1','p2']){
+   assert.deepEqual(exp.options(B,side,engineDeps),deps.legal(B,side));
+  }
  }
 });
 test('legacy simulation remains separate and export is unchanged',()=>{
