@@ -431,6 +431,30 @@ function focusedSustainOpening(B,side){
  const attacks=entries.filter(x=>x.category!=='Status')
   .sort((a,b)=>b.damage-a.damage);
  selected.push(...attacks.slice(0,boosting?1:2).map(x=>x.key));
+ // A long defensive matchup cannot be evaluated if burn, poison or other
+ // debilitating status is removed from the root action set. In particular
+ // burn halves subsequent physical damage; a short damage-only ranking
+ // incorrectly discards the only way a wall survives a setup sweeper.
+ const enemy=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const physicalThreat=enemy.moveSlots.some(slot=>{
+  const m=B.dex.moves.get(slot.id);
+  return m.category==='Physical'&&m.basePower>=40;
+ });
+ if(!enemy.status&&physicalThreat){
+  const statusOptions=entries.filter(x=>{
+   const m=B.dex.moves.get(x.key);
+   if(m.category!=='Status'||!['brn','psn','tox','par'].includes(m.status))return false;
+   if(m.status==='brn'&&enemy.getTypes().includes('Fire'))return false;
+   return true;
+  });
+  if(statusOptions.length){
+   statusOptions.sort((a,b)=>{
+    const value=x=>x.key==='willowisp'?2:x.key==='thunderwave'?1:0;
+    return value(b)-value(a);
+   });
+   selected.push(statusOptions[0].key);
+  }
+ }
  // Once injured, recovering may be competitive even as an opening option.
  if(p.hp/p.maxhp<0.88){
   const recovery=entries.find(x=>x.heal);
@@ -918,6 +942,27 @@ function continuationMove(B,side){
    if(lethalPhysical)return directAttack;
   }
  }
+ // Pain Split is a HP exchange, not a standard self-heal. A direct
+ // damage ranking cannot capture its value when the user is substantially
+ // weaker in remaining absolute HP than the target. It can also weaken an
+ // opponent repeatedly using ordinary recovery.
+ const split=actions.find(a=>actionInfo(B,side,a).id==='painsplit');
+ if(split && p.hp>0 && foe.hp>p.hp+Math.max(18,p.maxhp*0.18) &&
+   hp<0.76 && projected<0.78*foe.hp)return split;
+ // Burn, unlike a one-turn damage hit, reduces the entire future physical
+ // attack sequence. Apply the general mechanic only against an unstatused
+ // physical threat, not against Fire types or ability/item counters.
+ const burn=actions.find(a=>B.dex.moves.get(actionInfo(B,side,a).id).status==='brn');
+ const burnBadAbilities=new Set(['guts','quickfeet','flareboost','magicbounce','waterveil','waterbubble','shedskin','naturalcure']);
+ const physicalMoves=foe.moveSlots.some(s=>{
+  const m=B.dex.moves.get(s.id);
+  return m.category==='Physical'&&m.basePower>=40;
+ });
+ if(burn && !foe.status && physicalMoves && hp>=0.27 &&
+   !foe.getTypes().includes('Fire') &&
+   !burnBadAbilities.has(foe.ability) &&
+   !['lumberry','rawstberry'].includes(foe.item) &&
+   !foe.volatiles?.substitute)return burn;
  // Heal when actually threatened. Do not spend every full-HP turn using
  // Roost while an opponent is strengthening.
  if(heal && hp<0.57 && (!def || p.boosts.def>=foe.boosts.atk || hp<0.34))return heal;
