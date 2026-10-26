@@ -556,6 +556,54 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
   applied:worstAttack>=worstSetup+1/N-1e-10 ||
    (shortPhysicalRace && worstAttack>=worstSetup-3/N-1e-10)};
 }
+// Cheap, mandatory fallback when time-bounded stochastic verification runs
+// out. It uses Showdown's actual one-turn damage, not rough type-based power.
+function immediatePhysicalRaceGuard(B,side,chosen,turn){
+ if(!chosen)return null;
+ const p=B.getSide(side).pokemon[0],opp=side==='p1'?'p2':'p1';
+ const foe=B.getSide(opp).pokemon[0];
+ const move=B.dex.moves.get(actionInfo(B,side,chosen).id);
+ const boosts=move.boosts||move.self?.boosts||{};
+ if(move.category!=='Status'||move.target!=='self'||
+  !(boosts.spa>0||boosts.spd>0)||
+  boosts.def>0||boosts.atk>0||boosts.spe>0||
+  p.status||foe.status)return null;
+ if(foe.moveSlots.some(s=>HEALING_MOVES.has(s.id)))return null;
+ const sameMega=chosen.endsWith(' mega');
+ const attacks=strategicLegal(B,side).filter(a=>
+  a.endsWith(' mega')===sameMega&&moveIsAttack(B,side,a));
+ const attack=usefulAttack(B,side,attacks);
+ if(!attack)return null;
+ const attackMove=B.dex.moves.get(actionInfo(B,side,attack).id);
+ if(attackMove.category!=='Special'||attackMove.recoil||
+  attackMove.multihit||attackMove.selfdestruct||
+  (typeof attackMove.accuracy==='number'&&attackMove.accuracy<100))return null;
+ const threats=strategicLegal(B,opp).filter(a=>{
+  const m=B.dex.moves.get(actionInfo(B,opp,a).id);
+  return m.category==='Physical'&&m.basePower>0;
+ });
+ if(!threats.length)return null;
+ const state=JSON.stringify(B.toJSON()),evidence=[];
+ for(const threat of threats){
+  let attackHits=0,physicalHits=0;
+  for(let k=0;k<4;k++){
+   const seed=verificationSeed(turn,k,170);
+   const direct=Sim.Battle.fromJSON(state);
+   direct.resetRNG(seed);
+   direct.makeChoices(side==='p1'?attack:threat,side==='p1'?threat:attack);
+   const dealt=foe.hp-direct.getSide(opp).pokemon[0].hp;
+   if(dealt>=foe.hp*0.52)attackHits++;
+   const defended=Sim.Battle.fromJSON(state);
+   defended.resetRNG(seed);
+   defended.makeChoices(side==='p1'?chosen:threat,side==='p1'?threat:chosen);
+   const received=p.hp-defended.getSide(side).pokemon[0].hp;
+   if(received>=p.hp*0.50)physicalHits++;
+  }
+  evidence.push({threat,attackHits,physicalHits});
+ }
+ const proven=evidence.some(x=>x.attackHits>=3&&x.physicalHits>=2);
+ return {from:chosen,to:attack,evidence,applied:proven};
+}
 function hasTacticalMove(B){
  const tactical=new Set(['swordsdance','dragondance','nastyplot','calmmind','bulkup','irondefense','agility','shellsmash',
   'coil','quiverdance','curse','cosmicpower','amnesia','stockpile','recover','roost','slackoff','softboiled',
