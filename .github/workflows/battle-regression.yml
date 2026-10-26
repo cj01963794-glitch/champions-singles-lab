@@ -31,6 +31,8 @@ jobs:
               except Exception as e:
                   print("[LIVE-ERROR] endpoint=",endpoint,repr(e))
           PY
+      - name: Verify live Floette and Charizard Mega sustain match
+        run: node scripts/check-live-floette.cjs
       - name: Verify live Render Korean catalog and all gendered formes
         run: node scripts/check-live-locale.cjs
       - name: Build pinned Champions showdown engine
