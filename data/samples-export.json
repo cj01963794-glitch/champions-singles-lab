@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-25T21:44:57.875Z",
-  "count": 16,
+  "generatedAt": "2026-10-26T07:49:41.363Z",
+  "count": 17,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -376,6 +376,29 @@
         "spa": 1,
         "spd": 0,
         "spe": 32
+      }
+    },
+    {
+      "id": "532fdfc1-ba08-4c7c-95f7-096d407f275b",
+      "updatedAt": "2026-10-26T07:48:27.966Z",
+      "name": "HC풍선브두",
+      "species": "Archaludon",
+      "nature": "Modest",
+      "item": "Air Balloon",
+      "ability": "Stamina",
+      "moves": [
+        "Flash Cannon",
+        "Thunderbolt",
+        "Dragon Pulse",
+        "Dark Pulse"
+      ],
+      "evs": {
+        "hp": 26,
+        "atk": 0,
+        "def": 0,
+        "spa": 25,
+        "spd": 7,
+        "spe": 8
       }
     }
   ]
