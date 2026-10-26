@@ -6,10 +6,14 @@ Initial source-code checkpoint observed: `82f97bc033394421679f9d2ff7b9bf98dfac29
 
 ## When a conversation becomes too long or a new chat starts
 1. Read this entry point and the four companion files under `docs/`.
-2. Read `docs/TRANSCRIPTS/` for any preserved **verbatim** text. Not every historical ChatGPT message can be automatically retrieved.
+2. Read the **single ongoing development-dialogue log** `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md` for new preserved dialogue. Older separate files in `docs/TRANSCRIPTS/` remain for historical links; not every ChatGPT message is automatically retrievable.
 3. Verify the repository state with `README.md`, actual source/test files, and Git history.
 4. Continue development from actual code, not the assistant's recollection.
 5. Make a new explicit backup commit of development documentation and any available transcript after substantive sessions.
+
+
+## Transcript storage rule (updated 2026-10-27)
+**Do not create one backup transcript file per message/chat.** Always append further available development dialogue to existing `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`, with ordered dated speaker sections and clear exact-quote vs summary labeling. Use a new GitHub commit updating the same file. Previously created separate historical files remain for existing links. Not automatic live sync.
 
 ## Long-term purpose
 Create a Pokémon Champions single-battle 1v1 matchup engine that tests plausible moves and multi-turn policies with correct mechanics; discovers win plans without hardcoded matchup scripts; considers the opponent's optimal or strategically rational counterplay; exposes probabilities, limitations, conditions, and reproducible sequences.
