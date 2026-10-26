@@ -10,7 +10,8 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  const saved=JSON.stringify(B.toJSON());
  const cells=L.map(()=>R.map(()=>({wins:0,losses:0,draws:0,unresolved:0,
   firstDamageLeft:0,firstDamageRight:0,
-  finalHpLeft:0,finalHpRight:0,turnsFinished:0})));
+  finalHpLeft:0,finalHpRight:0,
+  lowestHpLeft:0,lowestHpRight:0,turnsFinished:0})));
  let n=0;
  for(;n<maxSamples;n++){
   if(Date.now()>deadline)break;
@@ -23,7 +24,14 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
    const rightTarget=branch.getSide?.('p1')?.pokemon?.[0];
    const beforeLeft=leftTarget?.hp,beforeRight=rightTarget?.hp;
    const maxLeft=leftTarget?.maxhp||1,maxRight=rightTarget?.maxhp||1;
+   let lowestHpLeft=1,lowestHpRight=1;
+   const captureLowHp=()=>{
+    const l=branch.getSide('p1').pokemon[0],r=branch.getSide('p2').pokemon[0];
+    lowestHpLeft=Math.min(lowestHpLeft,l.hp/Math.max(1,l.maxhp));
+    lowestHpRight=Math.min(lowestHpRight,r.hp/Math.max(1,r.maxhp));
+   };
    branch.makeChoices(L[i],R[j]);
+   captureLowHp();
    const dealtLeft=beforeLeft==null?0:Math.max(0,beforeLeft-(leftTarget?.hp??beforeLeft))/maxLeft;
    const dealtRight=beforeRight==null?0:Math.max(0,beforeRight-(rightTarget?.hp??beforeRight))/maxRight;
    for(let step=1;step<followupTurns&&!branch.ended;step++){
@@ -31,11 +39,12 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
     const left=followup(branch,'p1',turn+step),right=followup(branch,'p2',turn+step);
     if(!left||!right)break;
     branch.makeChoices(left,right);
+    captureLowHp();
    }
    if(Date.now()>deadline)break;
    const finalLeft=branch.getSide?.('p1')?.pokemon?.[0];
    const finalRight=branch.getSide?.('p2')?.pokemon?.[0];
-   round.push({i,j,dealtLeft,dealtRight,
+   round.push({i,j,dealtLeft,dealtRight,lowestHpLeft,lowestHpRight,
     finalHpLeft:finalLeft?.hp/Math.max(1,finalLeft?.maxhp||1)||0,
     finalHpRight:finalRight?.hp/Math.max(1,finalRight?.maxhp||1)||0,
     outcome:!branch.ended?'unresolved':branch.winner==='Left'?'wins':
@@ -43,12 +52,15 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
   }
   // All pairs must receive exactly the same number of complete paired rounds.
   if(round.length!==L.length*R.length)break;
-  for(const {i,j,outcome,dealtLeft,dealtRight,finalHpLeft,finalHpRight} of round){
+  for(const {i,j,outcome,dealtLeft,dealtRight,finalHpLeft,finalHpRight,
+   lowestHpLeft,lowestHpRight} of round){
    const cell=cells[i][j];cell[outcome]++;
    cell.firstDamageLeft+=dealtLeft;
    cell.firstDamageRight+=dealtRight;
    cell.finalHpLeft+=finalHpLeft;
    cell.finalHpRight+=finalHpRight;
+   cell.lowestHpLeft+=lowestHpLeft;
+   cell.lowestHpRight+=lowestHpRight;
   }
  }
  if(!n)return null;
@@ -65,13 +77,13 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  const leftWorst=values.map(row=>Math.min(...row));
  const highest=Math.max(...leftWorst);
  const leftCandidates=L.map((action,i)=>({action,i,worst:leftWorst[i],
-  safety:Math.min(...cells[i].map(cell=>cell.finalHpLeft/n))}))
+  safety:Math.min(...cells[i].map(cell=>cell.lowestHpLeft/n))}))
   .filter(x=>Math.abs(x.worst-highest)<=epsilon)
   .sort((a,b)=>b.safety-a.safety);
  if(leftCandidates.length>1){
   const best=leftCandidates[0],before=selected.left;
   if(best.safety>
-   Math.min(...cells[L.indexOf(before)].map(c=>c.finalHpLeft/n))+0.005){
+   Math.min(...cells[L.indexOf(before)].map(c=>c.lowestHpLeft/n))+0.005){
    selected.left=best.action;
    endHpTieBreak.push({side:'p1',from:before,to:best.action,
     worstCaseRemainingHpPct:Math.round(best.safety*1000)/10});
@@ -80,13 +92,13 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  const rightWorst=R.map((_,j)=>Math.max(...values.map(row=>row[j])));
  const lowest=Math.min(...rightWorst);
  const rightCandidates=R.map((action,j)=>({action,j,worst:rightWorst[j],
-  safety:Math.min(...cells.map(row=>row[j].finalHpRight/n))}))
+  safety:Math.min(...cells.map(row=>row[j].lowestHpRight/n))}))
   .filter(x=>Math.abs(x.worst-lowest)<=epsilon)
   .sort((a,b)=>b.safety-a.safety);
  if(rightCandidates.length>1){
   const best=rightCandidates[0],before=selected.right;
   if(best.safety>
-   Math.min(...cells.map(row=>row[R.indexOf(before)].finalHpRight/n))+0.005){
+   Math.min(...cells.map(row=>row[R.indexOf(before)].lowestHpRight/n))+0.005){
    selected.right=best.action;
    endHpTieBreak.push({side:'p2',from:before,to:best.action,
     worstCaseRemainingHpPct:Math.round(best.safety*1000)/10});
@@ -178,7 +190,8 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
   leftActions:L,rightActions:R,
   payoff:cells.map((row,i)=>row.map((c,j)=>({winPct:pct(c.wins/n),lossPct:pct(c.losses/n),
    drawPct:pct(c.draws/n),unresolvedPct:pct(c.unresolved/n),
-   finalHpLeftPct:pct(c.finalHpLeft/n),finalHpRightPct:pct(c.finalHpRight/n),n,
+   finalHpLeftPct:pct(c.finalHpLeft/n),finalHpRightPct:pct(c.finalHpRight/n),
+   lowestHpLeftPct:pct(c.lowestHpLeft/n),lowestHpRightPct:pct(c.lowestHpRight/n),n,
    winLowerPct:pct(c.wins/n),winUpperPct:pct((c.wins+c.unresolved)/n)}))),
   // Kept for older clients; the full payoff matrix is authoritative.
   side:'p1',chosen:enough?selected.left:null,comparedAgainst:enough?selected.right:null,
