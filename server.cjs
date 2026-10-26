@@ -304,7 +304,9 @@ function strategicLegal(B,side){
  return filtered.some(a=>moveIsAttack(B,side,a))?filtered:all;
 }
 function avoidImmuneChoice(B,side,choice){
- if(!provablyImmuneAttack(B,side,choice)&&!wastedOpeningEncore(B,side,choice))return choice;
+ if(!provablyImmuneAttack(B,side,choice)&&
+  !wastedOpeningEncore(B,side,choice)&&
+  !plainlyDominatedAttack(B,side,choice,legal(B,side)))return choice;
  const candidateMoves=strategicLegal(B,side);
  const hits=candidateMoves.filter(a=>moveIsAttack(B,side,a) &&
   !provablyImmuneAttack(B,side,a));
