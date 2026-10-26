@@ -15,6 +15,11 @@ test('observe saved Floette and Mimikyu opening on both sides',()=>{
  try{
  for(const [left,right,fl] of [[F,M,0],[M,F,1]]){
   const r=simulation(left,right,4,'1579,3137,6027,8191');
+  const timing=r.decisionDetails[0]?.megaTimingAudit;
+  assert.ok(timing,'opening should evaluate both optional Mega timings');
+  const options=fl===0?timing.leftActions:timing.rightActions;
+  assert.ok(options.includes('move 1'), 'the base-form Moonblast that breaks Disguise must be evaluated');
+  assert.ok(options.includes('move 1 mega'),'the Mega Moonblast must also be evaluated');
   console.log('[FLOETTE-MIMIKYU-LIVE-OPEN]',JSON.stringify({fl,choices:r.choices,win:r.winner,stop:r.stopReason,first:r.decisionDetails[0]&&{
    left:r.decisionDetails[0].left,right:r.decisionDetails[0].right,
    samples:r.decisionDetails[0].megaTimingAudit?.samples,
