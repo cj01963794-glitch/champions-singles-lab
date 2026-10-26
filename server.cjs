@@ -1859,6 +1859,19 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
     ['home','/?source=smoketest','GET'],
     ['health','/api/health','GET'],
     ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}],
+    ...[0,1].map(index=>{
+     const rotom={name:'HB불로톰',species:'Rotom-Heat',nature:'Bold',
+      item:'Leftovers',ability:'Levitate',
+      moves:['Volt Switch','Overheat','Will-O-Wisp','Pain Split'],
+      evs:{hp:32,atk:0,def:32,spa:0,spd:2,spe:0}};
+     const sal={name:'고집AS메만다',species:'Salamence-Mega',nature:'Adamant',
+      item:'Salamencite',ability:'Aerilate',preMegaAbility:'Intimidate',
+      moves:['Double-Edge','Earthquake','Dragon Dance','Roost'],
+      evs:{hp:2,atk:32,def:0,spa:0,spd:0,spe:32}};
+     return ['live-rotom-vs-megasalamence-'+index,'/api/duel','POST',{
+      a:index===0?rotom:sal,b:index===0?sal:rotom,
+      maxTurns:4,rngSeed:'1579,3137,6027,8191'}];
+    }),
     ...[0,1].map((index)=>[
      'live-megameta-vs-megascrafty-'+index,'/api/duel','POST',{
       a:index===0?{
