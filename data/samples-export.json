@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:00:22.381Z",
-  "count": 24,
+  "generatedAt": "2026-10-26T12:01:28.074Z",
+  "count": 25,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -561,6 +561,29 @@
         "atk": 32,
         "def": 0,
         "spa": 0,
+        "spd": 0,
+        "spe": 2
+      }
+    },
+    {
+      "id": "f1b61d22-523e-4046-9646-63fb4aaa4b80",
+      "updatedAt": "2026-10-26T12:01:24.886Z",
+      "name": "딜탱 엠페르트(풍선)",
+      "species": "Empoleon",
+      "nature": "Modest",
+      "item": "Air Balloon",
+      "ability": "Competitive",
+      "moves": [
+        "Surf",
+        "Flash Cannon",
+        "Ice Beam",
+        "Vacuum Wave"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
         "spd": 0,
         "spe": 2
       }
