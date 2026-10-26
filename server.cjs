@@ -1680,7 +1680,7 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
     let body='';res.on('data',c=>body+=c);res.on('end',()=>{
       let data={};try{data=JSON.parse(body)}catch(e){}
       const turns=Array.isArray(data.log)?data.log.filter(v=>v.startsWith('|turn|')).map(v=>Number(v.slice(6))):[];
-      resolve({status:res.statusCode,type:res.headers['content-type'],body:body.slice(0,160),turns:data.turns,stopReason:data.stopReason,firstTurn:turns[0],lastTurn:turns.at(-1),loggedTurnCount:turns.length});
+      resolve({status:res.statusCode,type:res.headers['content-type'],turns:data.turns,stopReason:data.stopReason,choices:data.choices?.slice(0,3),seed:data.rngSeed,secondAudit:data.decisionDetails?.[1]?.exposedSetupAudit,firstTurn:turns[0],lastTurn:turns.at(-1),loggedTurnCount:turns.length});
     });
   });req.on('error',e=>resolve({error:e.message}));if(payload)req.write(JSON.stringify(payload));req.end();
  });
