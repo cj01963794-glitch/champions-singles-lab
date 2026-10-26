@@ -1385,14 +1385,16 @@ function simulation(a,b,depth=120,rngSeed){
      ['brn','psn','tox','par'].includes(B.dex.moves.get(slot.id).status));
     return canSustain&&hasMajorStatus&&physicalPressure(B,enemySide,side);
    };
-   const unreliableSustainSample=sustain&&megaTimingAudit?.samples<8&&
+   const unreliableSustainSample=sustain&&(!megaTimingAudit||megaTimingAudit.samples<8)&&
     (isDefensiveStatusPlan('p1')||isDefensiveStatusPlan('p2'));
    if(unreliableSustainSample){
     const tentative={left:continuationMove(B,'p1'),right:continuationMove(B,'p2')};
     if(tentative.left&&tentative.right){
      choice=tentative;depthUsed=1;
-     megaTimingAudit.applied=false;
-     megaTimingAudit.provisionalFallback='mechanics-aware-status-sustain';
+     if(megaTimingAudit){
+      megaTimingAudit.applied=false;
+      megaTimingAudit.provisionalFallback='mechanics-aware-status-sustain';
+     }
     }
    }
    if(!unreliableSustainSample && megaTimingAudit?.chosen && decisive){
