@@ -45,3 +45,37 @@ test('statistically characterize missing Gunk Shot and Sparkling Aria crit then 
  console.log('[PRIMA-CINDER-GUNK-MISS-CRIT]',JSON.stringify(rows));
  assert.equal(rows.length,3);
 });
+
+
+test('compare formerly recorded bulk-invested H32 B20 C14 Primarina winning path',()=>{
+ const bulky={...prima,name:'H32 B20 C14 누리레느',
+  evs:{hp:32,atk:0,def:20,spa:14,spd:0,spe:0}};
+ const sampleCount=2400;
+ const results=[];
+ for(const [label,first] of [['aria','move 2'],['moonblast','move 1'],['aqua','move 3']]){
+  let wins=0,misses=0,crit=0,winAriaCritDirect=0,afterFirstVictories=0,needsJetWin=0;
+  let sample=null,sampleWin=null;
+  for(let i=0;i<sampleCount;i++){
+   const seed=[401+131*i,893+233*i,1559+311*i,2207+467*i].map(n=>n%65536).join(',');
+   const B=core.battle(bulky,cinder,seed);
+   B.makeChoices(first,'move 1');
+   const miss=B.log.some(s=>s.startsWith('|-miss|')&&s.includes('에이스번'));
+   const critical=B.log.some(s=>s.startsWith('|-crit|')&&s.includes('에이스번'));
+   misses+=Number(miss);
+   crit+=Number(miss&&critical);
+   if(B.winner==='Left'){afterFirstVictories++;if(miss&&critical)winAriaCritDirect++}
+   const beforeSecond={hp:[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp],
+    foeType:B.p2.pokemon[0].getTypes()};
+   if(!B.ended&&core.legal(B,'p1').includes('move 3')&&core.legal(B,'p2').includes('move 1'))B.makeChoices('move 3','move 1');
+   const win=B.winner==='Left';
+   wins+=Number(win);
+   if(win&&miss&&critical)needsJetWin++;
+   if(miss&&critical&&!sample)sample={seed,beforeSecond,winner:B.winner,after:[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp]};
+   if(win&&miss&&critical&&!sampleWin)sampleWin={seed,beforeSecond,winner:B.winner,log:B.log.slice(-11)};
+  }
+  results.push({label,n:sampleCount,misses,missCrit:crit,wins,afterFirstVictories,
+   winsWithMissCrit:needsJetWin,sample,sampleWin});
+ }
+ console.log('[PRIMA-CINDER-BULKY-CRIT-ROUTE]',JSON.stringify(results));
+ assert.equal(results.length,3);
+});
