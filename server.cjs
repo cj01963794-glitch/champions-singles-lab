@@ -477,8 +477,7 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
  const move=B.dex.moves.get(actionInfo(B,side,selected).id);
  const boosts=move.boosts||move.self?.boosts||{};
  if(move.category!=='Status'||move.target!=='self'||
-  !(boosts.spa>0||boosts.spd>0)||boosts.def>0||boosts.atk>0||
-  (self.hp/self.maxhp>0.67 && enemy.boosts.atk<2))return null;
+  !(boosts.spa>0||boosts.spd>0)||boosts.def>0||boosts.atk>0)return null;
  const attacks=strategicLegal(B,side).filter(a=>moveIsAttack(B,side,a));
  if(!attacks.length)return null;
  const attack=usefulAttack(B,side,attacks);
@@ -520,7 +519,10 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
   }
   // Weak physical attacks should not veto an observed lethal threat.
   // Compare outcomes only for actions with substantial immediate KO risk.
-  if(koOnHit<tested*0.48)continue;
+  // Do not use current HP percentage as a proxy for future KO danger.
+  // A high-HP target can still be 2HKO'd, or lose a critical-hit race.
+  // Keep a low-risk threat only when attacking wins clearly more often.
+  if(koOnHit<tested*0.12 && attackWins-setupWins<4)continue;
   counts.setup.push(setupWins/N);
   counts.attack.push(attackWins/N);
  }
