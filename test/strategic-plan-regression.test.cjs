@@ -72,3 +72,19 @@ test('all historical opening moves represented by a contingent candidate',()=>{
   }
  }
 });
+
+test('setup-with-recovery changes to healing under real incoming damage',()=>{
+ const B=pair('HS명상메플라','HB와자몽');
+ const healPlan=buildPlans(B,deps,'p1').find(x=>x.kind==='setup-heal'&&x.mega==='immediate');
+ assert.ok(healPlan,'must generate contingent recovery plan');
+ B.makeChoices('move 4 mega','move 1 mega');
+ B.makeChoices('move 4','move 1');
+ const action=actionForPlan(B,deps,'p1',healPlan,2);
+ console.log('[PLAN-RECOVERY-ASSERTION]',JSON.stringify({
+  afterTwo:[B.p1.pokemon[0].hp,B.p1.pokemon[0].maxhp],
+  boosts:B.p1.pokemon[0].boosts,
+  plan:healPlan.name,choice:action,
+  healMeta:B.dex.moves.get('synthesis').flags
+ }));
+ assert.equal(action,'move 2','a setup-sustain plan must heal before lethal repeated Flamethrower');
+});
