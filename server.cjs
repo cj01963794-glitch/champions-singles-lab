@@ -530,6 +530,14 @@ function needsSustainHorizon(B){
   });
  });
 }
+function isRecoverySetup(B,side,action){
+ const actions=legal(B,side);
+ if(!strategyMove(B,side,actions,'heal')||!hasRealAttack(B,side))return false;
+ const m=B.dex.moves.get(actionInfo(B,side,action).id);
+ const boosts=m.boosts||m.self?.boosts||{};
+ return m.category==='Status'&&m.target==='self'&&
+  ['atk','spa','def','spd'].some(k=>(boosts[k]||0)>0);
+}
 function defensePlanSide(B){
  for(const side of ['p1','p2']){
   const enemy=side==='p1'?'p2':'p1';
@@ -902,6 +910,7 @@ function simulation(a,b,depth=120,rngSeed){
      maxSamples:sustain?Math.min(18,maxMegaSamples):maxMegaSamples,
      minSamples:sustain?3:4,followupTurns:sustain?15:5,resolveMatrix,
      attackDamageTieBreak:true,preferMegaTie:dominatesBaseOnMega,
+     preferSustainTie:isRecoverySetup,
      followup:(branch,side)=>continuationMove(branch,side)});
    if(megaTimingAudit)megaTimingAudit.sustainHorizon=sustain?15:5;
    if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
