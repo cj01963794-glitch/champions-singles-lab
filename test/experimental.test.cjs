@@ -38,7 +38,7 @@ test('experimental policy opens legal moves and records balanced opponent respon
   assert.ok(deps.legal(B,'p2').includes(result.choices[0][1]),'illegal right move');
   assert.equal(result.decisionDetails[0].experimental.utility,'terminal-win-probability');
   assert.ok(Array.isArray(result.decisionDetails[0].experimental.winBounds));
-  assert.ok(['sampled-terminal-outcomes','bounded-game-tree'].includes(result.decisionDetails[0].experimental.estimateType));
+  assert.ok(['sampled-terminal-outcomes','bounded-game-tree','scenario-counterplans-not-exact-game-value'].includes(result.decisionDetails[0].experimental.estimateType));
   console.log('[EXPERIMENTAL-OPENING]',JSON.stringify({match:a+' / '+b,
    actions:result.choices[0],mode:result.decisionDetails[0].experimental.mode,
    probabilities:[result.decisionDetails[0].experimental.policyLeft,
