@@ -4,7 +4,7 @@
 // simultaneous opening pair, never one convenient fixed opponent action.
 // Continuations remain heuristic, so none of these values certify optimality.
 function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMatrix,
- maxSamples=128,minSamples=32,attackDamageTieBreak=false,preferMegaTie=null,followupTurns=5}={}){
+ maxSamples=128,minSamples=32,attackDamageTieBreak=false,preferMegaTie=null,preferSustainTie=null,followupTurns=5}={}){
  const L=legal(B,'p1'),R=legal(B,'p2');
  if(!L.length||!R.length)return null;
  const saved=JSON.stringify(B.toJSON());
@@ -47,6 +47,26 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  if(!n)return null;
  const values=cells.map(row=>row.map(c=>(c.wins+c.draws/2)/n));
  const selected=resolveMatrix(values,L,R);
+ const sustainTieBreak=[];
+ if(preferSustainTie && n>=8 && followupTurns>=12){
+  for(const [side,actions,field] of [['p1',L,'left'],['p2',R,'right']]){
+   const value=i=>side==='p1'?Math.min(...values[i]):Math.max(...values.map(row=>row[i]));
+   const best=side==='p1'?Math.max(...actions.map((_,i)=>value(i))):
+    Math.min(...actions.map((_,i)=>value(i)));
+   const candidates=actions.map((action,i)=>({action,value:value(i)}))
+    .filter(x=>preferSustainTie(B,side,x.action))
+    .filter(x=>side==='p1'?x.value>=best-1/n-1e-9:x.value<=best+1/n+1e-9)
+    .filter(x=>(side==='p1'?x.value:1-x.value)>=0.60)
+    .sort((a,b)=>side==='p1'?b.value-a.value:a.value-b.value);
+   if(candidates.length){
+    const c=candidates.find(x=>x.action.endsWith(' mega'))||candidates[0];
+    if(c.action!==selected[field]){
+     sustainTieBreak.push({side,from:selected[field],to:c.action});
+     selected[field]=c.action;
+    }
+   }
+  }
+ }
  // Paired finite samples frequently see identical win/loss records for
  // base and Mega of the same move. When type, ability and all stats
  // relevant to this action weakly improve, an exact observed tie should
@@ -105,7 +125,7 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
  const pct=x=>Math.round(x*1000)/10;
  return {method:'sampled-joint-opening-game',samples:n,ambiguous:true,
   left:enough?selected.left:null,right:enough?selected.right:null,
-  megaTieBreak,closeDamageTieBreak,
+  megaTieBreak,sustainTieBreak,closeDamageTieBreak,
   sampleBudgetComplete:n===maxSamples,continuation:'heuristic',
   leftActions:L,rightActions:R,
   payoff:cells.map((row,i)=>row.map((c,j)=>({winPct:pct(c.wins/n),lossPct:pct(c.losses/n),
