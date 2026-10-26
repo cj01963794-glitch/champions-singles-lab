@@ -17,6 +17,19 @@ test('all archived reproducible opponent matchups receive a non-immune legal dec
    assert.ok(core.legal(B,side).includes(actions[i]),c.id+': illegal '+side);
    assert.notEqual(core.provablyImmuneAttack(B,side,actions[i]),true,c.id+': provably immune');
   }
+  const mechanicalExpected={
+   '누리레느-에이스번':['move 2'],
+   '누리레느-광각에이스번-내구형':['move 2'],
+   '따라큐-아머까오':['move 3'],
+   '플라엣테-리자몽Y':['move 4','move 4 mega'],
+   '망나뇽-기띠한카':['move 1','move 1 mega'],
+   '에써르-따라큐':['move 1','move 2','move 3'],
+   '누리레느-보만다':['move 2']
+  };
+  if(mechanicalExpected[c.id]){
+   assert.ok(mechanicalExpected[c.id].includes(actions[0]),
+    c.id+': tactical regression: '+actions[0]+' is not among supported opener plans');
+  }
   console.log('[EXPERIMENTAL-HISTORICAL-AUDIT]',JSON.stringify({id:c.id,
    left:actions[0],right:actions[1],mode:r.decisionDetails[0]?.experimental?.mode,ms:Date.now()-t}));
   examined++;
