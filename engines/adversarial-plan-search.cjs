@@ -111,6 +111,47 @@ function analyzePlans(B,deps,{budgetMs=9000,seed='plan',maxTurns=65,
   else cell.drawCount++;
  }
  const game=solve(cells);
+ // The zero-sum mixer decides which FIRST ACTIONS to represent. Several
+ // hypotheses can share the same first action, but differ radically in their
+ // continuation (e.g. a one-turn boost then blind attacks versus a genuine
+ // boost/recovery/attack cycle). Do not lottery over unverified continuations
+ // merely because they share an opener. Reallocate that opener's mass to
+ // the best counter-tested contingent plan, using uncertainty penalties.
+ function consolidate(plans,ours,theirs,isLeft){
+  const groups=new Map();
+  plans.forEach((p,i)=>{
+   const group=groups.get(p.first)||[];group.push(i);groups.set(p.first,group);
+  });
+  const output=ours.map(()=>0);
+  for(const indexes of groups.values()){
+   const mass=indexes.reduce((v,i)=>v+ours[i],0);
+   let best=indexes[0],bestQuality=-Infinity;
+   for(const i of indexes){
+    let quality=0,totalSamples=0;
+    for(let j=0;j<theirs.length;j++){
+     const c=isLeft?cells[i][j]:cells[j][i];
+     const mean=c.weight>0?c.win/c.weight:0.5;
+     const effective=c.sumSq>0?c.weight*c.weight/c.sumSq:0;
+     const error=effective?Math.min(0.40,0.28/Math.sqrt(effective)):0.50;
+     // Confidence-adjusted payoff, not HP shaping and not a mathematical
+     // lower bound. It penalizes lucky one-sample results in either direction.
+     quality+=theirs[j]*(isLeft?
+      Math.max(0,mean-error):Math.max(0,1-mean-error));
+     totalSamples+=c.n;
+    }
+    quality+=Math.min(1e-7,totalSamples*1e-10);
+    if(quality>bestQuality){bestQuality=quality;best=i}
+   }
+   output[best]=mass;
+  }
+  return output;
+ }
+ const originalR=game.right;
+ game.left=consolidate(plansL,game.left,originalR,true);
+ game.right=consolidate(plansR,originalR,game.left,false);
+ game.value=game.left.reduce((acc,a,i)=>acc+
+  a*game.right.reduce((n,b,j)=>n+b*(cells[i][j].weight?
+   cells[i][j].win/cells[i][j].weight:0.5),0),0);
  const chanceL=new Map(),chanceR=new Map();
  for(let i=0;i<plansL.length;i++)chanceL.set(plansL[i].first,
   (chanceL.get(plansL[i].first)||0)+game.left[i]);
