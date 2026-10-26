@@ -74,7 +74,7 @@ test('diagnostic: branch on first Power Whip hit before evolving',()=>{
  // HIT -> Mega Earthquake; MISS -> Mega Power Whip.
  const tally=()=>({wins:0,losses:0,draws:0,unresolved:0,
   firstHit:0,firstMiss:0,winAfterHit:0,winAfterMiss:0,
-  initialSurvives:0,turnTwo:{megaEarthquake:0,megaPowerWhip:0,other:0}});
+  initialSurvives:0,firstTurnResolved:0,turnTwo:{megaEarthquake:0,megaPowerWhip:0,other:0}});
  const out={immediate:tally(),adaptiveDelay:tally()};
  const N=2048;
  for(let k=0;k<N;k++){
@@ -87,6 +87,7 @@ test('diagnostic: branch on first Power Whip hit before evolving',()=>{
    const hit=p.hp<p.maxhp;
    if(hit)st.firstHit++;else st.firstMiss++;
    if(g.hp>0)st.initialSurvives++;
+   if(B.ended)st.firstTurnResolved++;
    for(let turn=1;turn<6&&!B.ended;turn++){
     const target=B.p2.pokemon[0];
     let gMove;
@@ -109,6 +110,6 @@ test('diagnostic: branch on first Power Whip hit before evolving',()=>{
  }
  console.log('[GYARADOS-MEGA-BRANCHED-COMPARISON]',JSON.stringify({N,out}));
  assert.equal(out.adaptiveDelay.turnTwo.megaEarthquake+out.adaptiveDelay.turnTwo.megaPowerWhip,
-  out.adaptiveDelay.initialSurvives,
+  out.adaptiveDelay.initialSurvives-out.adaptiveDelay.firstTurnResolved,
   'all surviving nonterminal delayed cases evolve on turn 2');
 });
