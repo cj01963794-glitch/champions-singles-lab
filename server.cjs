@@ -1371,7 +1371,31 @@ function simulation(a,b,depth=120,rngSeed){
     megaTimingAudit.openingCandidateMethod=sustain?'focused-recovery-setup-vs-attack':'complete';}
    if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
-   if(megaTimingAudit?.chosen && decisive){
+   // A 15-turn matrix with 3x8 actions and only 2 completed paired RNG
+   // rounds does NOT establish a best opening. On a busy production
+   // instance this previously selected a random Overheat from two seeds,
+   // while the very same battle selected Will-O-Wisp with 24 rounds.
+   // Mark it explicitly provisional and use the mechanics-aware adaptive
+   // policy rather than accepting a noisy empirical "win rate".
+   const isDefensiveStatusPlan=side=>{
+    const own=B.getSide(side).pokemon[0],enemySide=side==='p1'?'p2':'p1';
+    const canSustain=own.moveSlots.some(slot=>slot.id==='painsplit'||
+     HEALING_MOVES.has(slot.id))||['leftovers','blacksludge'].includes(id(own.item));
+    const hasMajorStatus=own.moveSlots.some(slot=>
+     ['brn','psn','tox','par'].includes(B.dex.moves.get(slot.id).status));
+    return canSustain&&hasMajorStatus&&physicalPressure(B,enemySide,side);
+   };
+   const unreliableSustainSample=sustain&&megaTimingAudit?.samples<8&&
+    (isDefensiveStatusPlan('p1')||isDefensiveStatusPlan('p2'));
+   if(unreliableSustainSample){
+    const tentative={left:continuationMove(B,'p1'),right:continuationMove(B,'p2')};
+    if(tentative.left&&tentative.right){
+     choice=tentative;depthUsed=1;
+     megaTimingAudit.applied=false;
+     megaTimingAudit.provisionalFallback='mechanics-aware-status-sustain';
+    }
+   }
+   if(!unreliableSustainSample && megaTimingAudit?.chosen && decisive){
     choice={left:megaTimingAudit.left,right:megaTimingAudit.right};
     depthUsed=megaTimingAudit.sustainHorizon||5;megaTimingAudit.applied=true;
     // Only retain a setup/recovery route with >=60% completed wins even
@@ -1393,7 +1417,7 @@ function simulation(a,b,depth=120,rngSeed){
       if(worst>=60)sustainedSides.add(side);
      }
     }
-   }else if(megaTimingAudit)megaTimingAudit.applied=false;
+   }else if(megaTimingAudit && !unreliableSustainSample)megaTimingAudit.applied=false;
    // A selected long-horizon attack can depend on applying a disabling
    // status later. Previously only boosting + conventional recovery retained
    // the tested continuation, so the actual next turns abandoned burn and
