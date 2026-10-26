@@ -637,7 +637,7 @@ function renderResult(raw,a,b){
    ' · B 선택 전략: '+probabilities(b,detail?.actionsRight,detail?.policyRight)+
    ' · 승리확률 구간: '+Number(bounds[0]).toFixed(2)+'% ~ '+Number(bounds[1]).toFixed(2)+'%'+
    (certified?' (검증됨)':' (최적 승률 미확정)')+
-   (detail?.estimatedGameValuePct==null?'':' · 표본상 게임값: '+Number(detail.estimatedGameValuePct).toFixed(2)+'%')+
+   (detail?.estimatedGameValuePct==null?'':' · 자가대전 정책 기준 참고치(최적 승률 아님): '+Number(detail.estimatedGameValuePct).toFixed(2)+'%')+
    (detail?.samples?' · 자동대전 표본: '+detail.samples+'회':'')+
    (detail?.unresolved?' · 미종료 표본: '+detail.unresolved+'회':'')+
    (detail?.warning?' · '+detail.warning:'')+
