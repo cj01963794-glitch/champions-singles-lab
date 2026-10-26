@@ -89,3 +89,23 @@ test('deep root includes both Taunt and Dragon Dance counterplay, not just attac
   assert.ok(mine.includes('move 1'),'Volt Switch must also be compared');
  }
 });
+
+
+test('four-sample full-horizon search cannot override a defensible status opener with noise',()=>{
+ const old=process.env.MEGA_TIMING_MAX_SAMPLES;
+ process.env.MEGA_TIMING_MAX_SAMPLES='4';
+ try{
+  for(const [a,b,ri] of [[rot,scr,0],[scr,rot,1]]){
+   const out=simulation(a,b,3,seed);
+   const root=out.decisionDetails[0];
+   console.log('[ROTOM-SCRAFTY-LOW-BUDGET]',JSON.stringify({ri,first:out.choices[0],
+    samples:root?.megaTimingAudit?.samples,provisional:root?.megaTimingAudit?.provisionalFallback}));
+   assert.equal(out.choices[0]?.[ri],'move 3',
+    'avoid an arbitrary Volt Switch/Overheat from an under-sampled 15-turn search');
+   assert.equal(root?.megaTimingAudit?.provisionalFallback,'mechanics-aware-status-sustain');
+  }
+ }finally{
+  if(old===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;
+  else process.env.MEGA_TIMING_MAX_SAMPLES=old;
+ }
+});
