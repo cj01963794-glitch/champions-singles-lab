@@ -201,18 +201,24 @@ function actionForPlan(B,deps,side,plan,turn){
  const healNeeded=heal.length&&S.p.hp<S.p.maxhp &&
   (risk.now<=risk.maximum*hpThreshold ||risk.incoming>=risk.now*0.70);
  const healChoice=heal[0];
- if(healNeeded&&(plan.kind.includes('heal')||plan.kind==='sustain'))return healChoice;
  const boost=bySlot(plan.slot);
  if((plan.kind==='setup'||plan.kind==='setup-heal')&&boost&&meaningfulBoost(B,side,boost)){
   const boostMove=info(B,side,boost),entries=Object.entries(boostMove.boosts||boostMove.self?.boosts||{})
    .filter(([stat,n])=>n>0);
-  const level=Math.min(...entries.map(([stat])=>S.p.boosts[stat]||0));
+  const level=entries.length?Math.min(...entries.map(([stat])=>S.p.boosts[stat]||0)):6;
   if(level<(plan.stage||1)){
+   // Plan backwards from a viable boost -> recovery route, rather than
+   // repeatedly healing at the same HP fraction without making progress.
+   // If the foe acts after us, a healing turn can follow the boost;
+   // if it acts first, allow a wider survival margin for both turns.
+   const enemyFirst=S.foe.getStat('spe')>S.p.getStat('spe');
+   const needed=risk.incoming*(enemyFirst?2.2:1.2);
    if(plan.kind==='setup-heal'&&healChoice&&S.p.hp<S.p.maxhp&&
-      risk.incoming>=S.p.hp*0.85)return healChoice;
+      risk.incoming>0&&risk.now<=needed)return healChoice;
    return boost;
   }
  }
+ if(healNeeded&&(plan.kind.includes('heal')||plan.kind==='sustain'))return healChoice;
  const disrupt=bySlot(plan.slot);
  if(plan.kind.startsWith('disrupt')&&disrupt&&validDisruption(B,side,disrupt)){
   if(plan.kind==='disrupt'||!healNeeded)return disrupt;
