@@ -637,7 +637,7 @@ function renderResult(raw,a,b){
     'disrupt-heal':'방해·회복 후 공격','disrupt':'방해 후 공격',
     'sustain':'회복을 섞은 공격','attack':'직접 공격',
     'forced-opening':'첫 기술 고정 후 대응'};
-   const hit=name.match(/^[^:]+:(\\d+)/),move=hit?sample.moves[Number(hit[1])]:null;
+   const hit=name.match(/^[^:]+:(\d+)/),move=hit?sample.moves[Number(hit[1])]:null;
    const mega=name.includes(':after-build')?'랭크업 후 메가':
     name.includes(':hold')?'메가 보류 유지':
     name.includes(':delay')?'첫 턴 메가 보류':
