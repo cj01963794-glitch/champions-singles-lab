@@ -18,14 +18,14 @@ function state(B){
 function choices(B,p1,p2){B.makeChoices(p1,p2);}
 function floette(B,side,first='calm'){
  const p=who(B,side);
- if(first==='moon')return 'move 1'+(p.canMegaEvo?' mega':'');
- if(p.hp/p.maxhp<0.66 && p.moveSlots[1].pp>0)return 'move 2'+(p.canMegaEvo?' mega':'');
- if(p.boosts.spa<6 && p.boosts.spd<6 && p.moveSlots[3].pp>0)return 'move 4'+(p.canMegaEvo?' mega':'');
- return 'move 1'+(p.canMegaEvo?' mega':'');
+ if(first==='moon')return 'move 1'+(B.getSide(side)?.activeRequest?.active?.[0]?.canMegaEvo?' mega':'');
+ if(p.hp/p.maxhp<0.66 && p.moveSlots[1].pp>0)return 'move 2'+(B.getSide(side)?.activeRequest?.active?.[0]?.canMegaEvo?' mega':'');
+ if(p.boosts.spa<6 && p.boosts.spd<6 && p.moveSlots[3].pp>0)return 'move 4'+(B.getSide(side)?.activeRequest?.active?.[0]?.canMegaEvo?' mega':'');
+ return 'move 1'+(B.getSide(side)?.activeRequest?.active?.[0]?.canMegaEvo?' mega':'');
 }
 function zard(B,side,mode='roost'){
  const p=who(B,side);
- const mega=p.canMegaEvo?' mega':'';
+ const mega=B.getSide(side)?.activeRequest?.active?.[0]?.canMegaEvo?' mega':'';
  if(mode==='flame')return 'move 1'+mega;
  if(mode==='solar')return 'move 2'+mega;
  if(p.hp/p.maxhp<0.58 && p.moveSlots[3].pp>0)return 'move 4'+mega;
