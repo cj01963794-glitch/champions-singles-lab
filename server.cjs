@@ -458,7 +458,12 @@ function focusedSustainOpening(B,side){
  const variants=key=>moves.get(key)||[];
  const entries=[...moves.keys()].map(key=>({
   key,category:B.dex.moves.get(key).category,
-  boost:isRecoverySetup(B,side,variants(key)[0]),
+  boost:(()=>{
+   const m=B.dex.moves.get(key),stages=m.boosts||m.self?.boosts||{};
+   return m.category==='Status'&&m.target==='self'&&
+    ['atk','spa','spe','def','spd'].some(k=>(stages[k]||0)>0);
+  })(),
+  disruption:['taunt','encore','disable','healblock','haze'].includes(key),
   heal:HEALING_MOVES.has(key),
   damage:Math.max(...variants(key).map(x=>estimatedDirectDamage(B,side,x)))
  }));
@@ -470,7 +475,17 @@ function focusedSustainOpening(B,side){
  }
  const attacks=entries.filter(x=>x.category!=='Status')
   .sort((a,b)=>b.damage-a.damage);
- selected.push(...attacks.slice(0,boosting?1:2).map(x=>x.key));
+ selected.push(...attacks.slice(0,2).map(x=>x.key));
+ // Root minimax must evaluate moves that invalidate the opposing strategy.
+ // A 15-turn root formerly removed both Dragon Dance and Taunt from Mega
+ // Scrafty, making the putative Rotom win probabilities meaningless.
+ const opposite=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ const defensiveTargets=opposite.moveSlots.some(slot=>
+  B.dex.moves.get(slot.id).category==='Status');
+ if(defensiveTargets){
+  const blocker=entries.find(x=>x.disruption);
+  if(blocker)selected.push(blocker.key);
+ }
  // A long defensive matchup cannot be evaluated if burn, poison or other
  // debilitating status is removed from the root action set. In particular
  // burn halves subsequent physical damage; a short damage-only ranking
