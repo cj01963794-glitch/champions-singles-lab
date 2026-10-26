@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:10:02.482Z",
-  "count": 28,
+  "generatedAt": "2026-10-26T12:12:41.973Z",
+  "count": 29,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -655,6 +655,30 @@
         "spa": 0,
         "spd": 0,
         "spe": 12
+      }
+    },
+    {
+      "id": "f3075dc2-7c21-4cf7-a561-076334ce771b",
+      "updatedAt": "2026-10-26T12:12:39.285Z",
+      "name": "용춤 메가곤율거니",
+      "species": "Scrafty-Mega",
+      "nature": "Adamant",
+      "item": "Scraftinite",
+      "ability": "Intimidate",
+      "preMegaAbility": "Intimidate",
+      "moves": [
+        "Drain Punch",
+        "Knock Off",
+        "Dragon Dance",
+        "Taunt"
+      ],
+      "evs": {
+        "hp": 19,
+        "atk": 21,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 26
       }
     }
   ]
