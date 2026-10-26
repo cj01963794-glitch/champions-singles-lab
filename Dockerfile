@@ -12,6 +12,7 @@ RUN node --check engines/probability-planner.cjs
 RUN node --check engines/experimental.cjs
 RUN node --test test/stage1-probability.test.cjs
 RUN node --test test/strategic-plan-regression.test.cjs
+RUN node --test test/strategic-trace.test.cjs
 RUN node --test test/model-selector.test.cjs
 RUN node --test test/experimental.test.cjs
 RUN node --test test/experimental-historical.test.cjs
