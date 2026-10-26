@@ -107,6 +107,7 @@ function sampledRace(B,planned,turn,deadline,{Sim,legal,seed,followup,resolveMat
    const candidates=L.map((a,k)=>({action:a,k,worst:rowMin[k],
     firstDamage:cells[k][j0].firstDamageLeft/n}))
     .filter(x=>isAttack('p1',x.action) && x.worst>=best-2/n-1e-10)
+    .filter(x=>x.action.endsWith(' mega')===selected.left.endsWith(' mega'))
     .sort((a,b)=>b.firstDamage-a.firstDamage);
    if(candidates.length>1 && candidates[0].firstDamage>
        cells[leading][j0].firstDamageLeft/n+0.02 &&
