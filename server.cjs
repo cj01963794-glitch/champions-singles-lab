@@ -1689,6 +1689,17 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
     ['home','/?source=smoketest','GET'],
     ['health','/api/health','GET'],
     ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}],
+    ...['9050,5038,6950,14342','21540,8808,14040,34072'].map((seed,i)=>[
+      'live-floette-'+i,'/api/duel','POST',{
+       a:{species:'Floette-Mega',nature:'Timid',item:'Floettite',ability:'Fairy Aura',
+        preMegaAbility:'Flower Veil',moves:['Moonblast','Synthesis','Draining Kiss','Calm Mind'],
+        evs:{hp:22,atk:0,def:11,spa:1,spd:0,spe:32}},
+       b:{species:'Mimikyu',nature:'Adamant',item:'Scope Lens',ability:'Disguise',
+        moves:['Shadow Claw','Play Rough','Swords Dance','Shadow Sneak'],
+        evs:{hp:32,atk:32,def:0,spa:0,spd:0,spe:2}},
+       rngSeed:seed,maxTurns:3
+      }
+    ]),
     ['long-battle','/api/duel','POST',{
       a:{species:'Magikarp',name:'테스트 A',nature:'Jolly',ability:'Swift Swim',moves:['Splash']},
       b:{species:'Magikarp',name:'테스트 B',nature:'Jolly',ability:'Swift Swim',moves:['Splash']},maxTurns:25
