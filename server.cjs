@@ -1761,6 +1761,33 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
     ['home','/?source=smoketest','GET'],
     ['health','/api/health','GET'],
     ['duel','/api/duel','POST',{a:samples[0],b:samples[1]}],
+    ...[0,1].map((index)=>[
+     'live-megameta-vs-megascrafty-'+index,'/api/duel','POST',{
+      a:index===0?{
+       name:'고집AS메메타',species:'Metagross-Mega',nature:'Adamant',
+       item:'Metagrossite',ability:'Tough Claws',preMegaAbility:'Clear Body',
+       moves:['Psychic Fangs','Ice Punch','Earthquake','Bullet Punch'],
+       evs:{hp:2,atk:32,def:0,spa:0,spd:0,spe:32}
+      }:{
+       name:'용춤 메가곤율거니',species:'Scrafty-Mega',nature:'Adamant',
+       item:'Scraftinite',ability:'Intimidate',preMegaAbility:'Intimidate',
+       moves:['Drain Punch','Knock Off','Dragon Dance','Taunt'],
+       evs:{hp:19,atk:21,def:0,spa:0,spd:0,spe:26}
+      },
+      b:index===1?{
+       name:'고집AS메메타',species:'Metagross-Mega',nature:'Adamant',
+       item:'Metagrossite',ability:'Tough Claws',preMegaAbility:'Clear Body',
+       moves:['Psychic Fangs','Ice Punch','Earthquake','Bullet Punch'],
+       evs:{hp:2,atk:32,def:0,spa:0,spd:0,spe:32}
+      }:{
+       name:'용춤 메가곤율거니',species:'Scrafty-Mega',nature:'Adamant',
+       item:'Scraftinite',ability:'Intimidate',preMegaAbility:'Intimidate',
+       moves:['Drain Punch','Knock Off','Dragon Dance','Taunt'],
+       evs:{hp:19,atk:21,def:0,spa:0,spd:0,spe:26}
+      },
+      maxTurns:2,rngSeed:'1579,3137,6027,8191'
+     }
+    ]),
     ...['9050,5038,6950,14342','21540,8808,14040,34072'].map((seed,i)=>[
       'live-floette-'+i,'/api/duel','POST',{
        a:{species:'Floette-Mega',nature:'Timid',item:'Floettite',ability:'Fairy Aura',
