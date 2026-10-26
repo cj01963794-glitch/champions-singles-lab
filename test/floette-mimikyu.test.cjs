@@ -20,6 +20,8 @@ test('observe saved Floette and Mimikyu opening on both sides',()=>{
   const options=fl===0?timing.leftActions:timing.rightActions;
   assert.ok(options.includes('move 1'), 'the base-form Moonblast that breaks Disguise must be evaluated');
   assert.ok(options.includes('move 1 mega'),'the Mega Moonblast must also be evaluated');
+  assert.equal(r.choices[1]?.[fl],'move 1',
+   'when Disguise is broken and lethal physical attacks threaten, avoid a second-turn Calm Mind');
   console.log('[FLOETTE-MIMIKYU-LIVE-OPEN]',JSON.stringify({fl,choices:r.choices,win:r.winner,stop:r.stopReason,first:r.decisionDetails[0]&&{
    left:r.decisionDetails[0].left,right:r.decisionDetails[0].right,
    samples:r.decisionDetails[0].megaTimingAudit?.samples,
