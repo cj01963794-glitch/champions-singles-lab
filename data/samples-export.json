@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:45:16.299Z",
-  "count": 29,
+  "generatedAt": "2026-10-26T13:05:25.241Z",
+  "count": 30,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -679,6 +679,29 @@
         "spa": 0,
         "spd": 0,
         "spe": 26
+      }
+    },
+    {
+      "id": "09818c19-f4bf-498a-ad6c-8c809ce447a6",
+      "updatedAt": "2026-10-26T13:05:22.439Z",
+      "name": "HB불로톰",
+      "species": "Rotom-Heat",
+      "nature": "Bold",
+      "item": "Leftovers",
+      "ability": "Levitate",
+      "moves": [
+        "Volt Switch",
+        "Overheat",
+        "Will-O-Wisp",
+        "Pain Split"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 0,
+        "def": 32,
+        "spa": 0,
+        "spd": 2,
+        "spe": 0
       }
     }
   ]
