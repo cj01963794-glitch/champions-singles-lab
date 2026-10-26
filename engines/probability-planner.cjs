@@ -26,6 +26,13 @@ function pick(items,p,random){
  return items[items.length-1];
 }
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function sampleBernoulliWithImportance(p,random,minimum=0.25){
+ if(!(p>0&&p<1))return {yes:p>=1,ratio:1,biased:false};
+ const q=clamp(p,minimum,1-minimum);
+ if(Math.abs(q-p)<1e-12)return {yes:random()<p,ratio:1,biased:false};
+ const yes=random()<q;
+ return {yes,ratio:yes?p/q:(1-p)/(1-q),biased:true};
+}
 const pct=v=>Math.round(v*10000)/100;
 const tokenIndex=token=>Number(String(token).match(/move (\d+)/)?.[1]||0)-1;
 function rootActions(B,deps,side){
@@ -72,12 +79,11 @@ function evaluateRollout(B,deps,rootLeft,rootRight,random,biasRng,tree,turnCap,d
  B.randomChance=(num,den)=>{
   const p=num/den;
   if(!(p>0&&p<1)||altered>=4)return original(num,den);
-  const q=clamp(p,0.25,0.75);
-  if(Math.abs(q-p)<1e-12)return original(num,den);
+  const sampled=sampleBernoulliWithImportance(p,biasRng);
+  if(!sampled.biased)return sampled.yes;
   altered++;
-  const yes=biasRng()<q;
-  weight*=yes?p/q:(1-p)/(1-q);
-  return yes;
+  weight*=sampled.ratio;
+  return sampled.yes;
  };
  try{B.makeChoices(rootLeft,rootRight)}
  finally{B.randomChance=original}
@@ -175,13 +181,14 @@ function genericTerminalSearch(B,deps,{deadline,seed,turnCap=120,maxSamples=2000
  let samples=0,deadlineReached=false;
  const start=Date.now();
  while(samples<maxSamples&&Date.now()<deadline){
-  let selected=null,min=Infinity;
+  let selected=null,min=Infinity,least=[];
   // Ensure joint action coverage before exploitation; never assume
   // the opponent uses every action equally when computing game value.
   for(let i=0;i<L.length;i++)for(let j=0;j<R.length;j++){
    const n=table[i][j].count;
-   if(n<min){min=n;selected=[i,j]}
+   if(n<min){min=n;least=[[i,j]]}else if(n===min){least.push([i,j])}
   }
+  selected=least[Math.floor(random()*least.length)];
   // Afterwards prioritize cells of strategies currently plausible,
   // with persistent uniform exploration (not a fixed opponent policy).
   if(min>=2&&random()>0.35){
@@ -242,5 +249,5 @@ function analyze(B,deps,{budgetMs=1800,seed='test',turnCap=120}={}){
   method:exact.method,winBounds:exact.valueBounds,horizon:exact.horizon}:null};
  return exact||generic;
 }
-module.exports={seedFrom,rng,pick,reward,rootActions,mixedPolicy,asGame,exactSupported,
+module.exports={seedFrom,rng,pick,reward,rootActions,mixedPolicy,sampleBernoulliWithImportance,asGame,exactSupported,
  genericTerminalSearch,analyze};
