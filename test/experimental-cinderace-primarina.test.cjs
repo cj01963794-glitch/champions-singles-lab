@@ -79,3 +79,17 @@ test('compare formerly recorded bulk-invested H32 B20 C14 Primarina winning path
  console.log('[PRIMA-CINDER-BULKY-CRIT-ROUTE]',JSON.stringify(results));
  assert.equal(results.length,3);
 });
+test('trace accuracy/critical RNG hooks on actual Libero Gunk Shot -> Aria',()=>{
+ for(const first of ['move 2','move 1','move 4']){
+  const B=core.battle(prima,cinder,baseSeed),rolls=[];
+  const original=B.randomChance.bind(B);
+  B.randomChance=(numerator,denominator)=>{
+   const result=original(numerator,denominator);
+   rolls.push([numerator,denominator,result]);
+   return result;
+  };
+  B.makeChoices(first,'move 1');
+  console.log('[CINDER-RNG-HOOKS]',JSON.stringify({first,rolls,hp:[B.p1.pokemon[0].hp,B.p2.pokemon[0].hp],
+   log:B.log.filter(x=>/\\|move\\||\\|-miss\\||\\|-crit\\||\\|-damage\\|/.test(x)).slice(-12)}));
+ }
+});
