@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:07:35.172Z",
-  "count": 27,
+  "generatedAt": "2026-10-26T12:10:02.482Z",
+  "count": 28,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -632,6 +632,29 @@
         "spa": 0,
         "spd": 0,
         "spe": 32
+      }
+    },
+    {
+      "id": "05bae342-b079-4c4b-826b-301952f5b070",
+      "updatedAt": "2026-10-26T12:09:59.584Z",
+      "name": "딜탱 창파나이트",
+      "species": "Sirfetch’d",
+      "nature": "Adamant",
+      "item": "Leek",
+      "ability": "Scrappy",
+      "moves": [
+        "Close Combat",
+        "Leaf Blade",
+        "Feint",
+        "Meteor Assault"
+      ],
+      "evs": {
+        "hp": 22,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 12
       }
     }
   ]
