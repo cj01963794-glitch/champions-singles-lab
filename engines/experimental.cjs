@@ -5,6 +5,7 @@
 // simulation() or continuationMove(). All numeric outcomes are approximate
 // finite-horizon utilities, NOT proven win rates.
 const crypto=require('node:crypto');
+const {probeRareWin}=require('./rare-win.cjs');
 const STATS=['atk','spa','def','spd','spe'];
 function seedFrom(x){
  const hash=crypto.createHash('sha256').update(String(x)).digest();
@@ -215,12 +216,35 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps){
   }
   const L=result?.L||undefined,R=result?.R||undefined;
   const availableL=L||options(B,'p1',deps,5),availableR=R||options(B,'p2',deps,5);
+  const rareWinAudits=[];
+  // Only when one side is already overwhelmingly committed to a specific
+  // inaccurate attacking move, search missed-hit/critical survival paths
+  // against every legal turn-two answer. This distinguishes a measurable
+  // rare chance of victory from a heuristic HP/setup preference.
+  // The calculation remains explicitly conditional, NOT a full Nash win rate.
+  if(turn===0)for(const [side,our,enemy,pOpp] of [
+   ['p1',availableL,availableR,equilibriumResult.right],
+   ['p2',availableR,availableL,equilibriumResult.left]
+  ]){
+   const column=pOpp.indexOf(Math.max(...pOpp));
+   if(column<0||pOpp[column]<0.85)continue;
+   const opponent=enemy[column];
+   const probes=probeRareWin(B,side,our,opponent,deps,
+    Math.min(Date.now()+650,overallDeadline-350));
+   if(!probes?.length)continue;
+   const winner=probes[0];
+   const p=our.map(x=>x===winner.action?1:0);
+   if(side==='p1')equilibriumResult.left=p;
+   else equilibriumResult.right=p;
+   rareWinAudits.push({side,against:opponent,...winner,
+    qualification:'conditional route, not certified whole-match win chance'});
+  }
   const left=pick(availableL,equilibriumResult.left,seed+':p1:'+turn);
   const right=pick(availableR,equilibriumResult.right,seed+':p2:'+turn);
   const l=deps.avoidImmuneChoice(B,'p1',left),r=deps.avoidImmuneChoice(B,'p2',right);
   if(!l||!r){stopReason='no_available_actions';break}
   if(turn<8)details.push({turn:turn+1,left:l,right:r,depth:from==='one-ply-provisional'?1:2,
-   experimental:{mode:from,samples:result?.samples||0,actionsLeft:availableL,actionsRight:availableR,
+   experimental:{mode:from,samples:result?.samples||0,rareWinAudits,actionsLeft:availableL,actionsRight:availableR,
     policyLeft:equilibriumResult.left.map(x=>Math.round(x*1000)/1000),
     policyRight:equilibriumResult.right.map(x=>Math.round(x*1000)/1000),
     utility:'finite-horizon-not-win-probability',seed}});
