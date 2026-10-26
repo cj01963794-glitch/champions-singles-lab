@@ -138,7 +138,15 @@ test('randomized production openings reject unsafe second-turn special setup',()
     playRough++;
     if(second[0]==='move 4'){
      calm++;
+     const B=battle(F,M,seed);
+     B.makeChoices(first[0],first[1]);
+     const us=B.p1.pokemon[0],them=B.p2.pokemon[0];
      disagreements.push({seed,first,second,
+      hp:[us.hp,us.maxhp,them.hp,them.maxhp],
+      boosts:[us.boosts,them.boosts],
+      attacks:legal(B,'p2').filter(x=>x==='move 1'||x==='move 2'),
+      continuation:continuationMove(B,'p1'),
+      log:B.log.slice(-16),
       audit:r.decisionDetails[1]?.exposedSetupAudit,
       depth:r.decisionDetails[1]?.depth});
     }
