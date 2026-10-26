@@ -105,3 +105,21 @@ test('uncapped production-style Mega timing still avoids unsafe follow-up setup'
   if(previous!==undefined)process.env.MEGA_TIMING_MAX_SAMPLES=previous;
  }
 });
+
+test('diagnostic: varied full-budget seeds reveal why second-turn choices diverge',()=>{
+ const prev=process.env.MEGA_TIMING_MAX_SAMPLES;
+ delete process.env.MEGA_TIMING_MAX_SAMPLES;
+ try{
+  for(const seed of ['111,333,555,777','772,3311,1199,31887','12345,22334,33445,44556','54321,2345,9876,4567']){
+   const result=simulation(F,M,3,seed),second=result.decisionDetails[1];
+   console.log('[FLOETTE-VARIANT]',JSON.stringify({seed,choices:result.choices,
+    first:result.decisionDetails[0]?{samples:result.decisionDetails[0].megaTimingAudit?.samples,
+      left:result.decisionDetails[0].left,right:result.decisionDetails[0].right}:null,
+    second:second?{left:second.left,right:second.right,depth:second.depth,
+      audit:second.exposedSetupAudit,sustainRoute:second.sustainRoute,
+      exact:!!second.exactSearch?.certified,tactical:second.tacticalProbability?.applied,
+      counterfactual:second.counterfactual}:null,
+    stop:result.stopReason}));
+  }
+ }finally{if(prev===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;else process.env.MEGA_TIMING_MAX_SAMPLES=prev}
+});
