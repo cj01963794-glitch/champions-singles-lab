@@ -226,7 +226,8 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps){
     utility:'finite-horizon-not-win-probability',seed}});
   B.makeChoices(l,r);choices.push([l,r]);
  }
- if(!B.ended&&!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
+ if(B.ended)stopReason='battle_ended';
+ else if(!stopReason)stopReason=choices.length>=depth?'turn_limit':'other';
  return {model:'experimental',winner:B.ended?(B.winner||'draw'):'unresolved',
   stopReason,policy:mode,rngSeed:seed,log:B.log,choices,turns:choices.length,
   maxTurns:depth,decisionDetails:details,searchFallbacks:details.filter(x=>x.experimental.mode==='one-ply-provisional').length,
