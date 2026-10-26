@@ -1232,6 +1232,23 @@ function simulation(a,b,depth=120,rngSeed){
   // policy. A 1-2 turn HP-only search otherwise discards the very strategy
   // whose full sampled battle won. The opposing side still gets a fresh
   // independent one-turn best response on every subsequent turn.
+  // Status-based walls remain strategic AFTER successfully applying burn
+  // or another lasting status. The original route registration only retained
+  // setup + healing plans with >=60% wins versus every possible opening;
+  // that failed when the opponent had an opening Taunt but chose Knock Off.
+  // Once status is actually present, condition on the observed state rather
+  // than on the counterfactual Taunt line from turn one.
+  if(t>0)for(const side of ['p1','p2']){
+   const opp=side==='p1'?'p2':'p1';
+   const own=B.getSide(side).pokemon[0],enemy=B.getSide(opp).pokemon[0];
+   const canSustain=own.moveSlots.some(slot=>slot.id==='painsplit'||
+    HEALING_MOVES.has(slot.id))||['leftovers','blacksludge'].includes(id(own.item));
+   const hasStatusOption=own.moveSlots.some(slot=>
+    ['brn','psn','tox','par'].includes(B.dex.moves.get(slot.id).status));
+   if(canSustain&&hasStatusOption&&
+    ['brn','psn','tox','par'].includes(enemy.status)&&
+    physicalPressure(B,opp,side))sustainedSides.add(side);
+  }
   if(t>0 && sustainedSides.size){
    // Re-plan BOTH players' turns with the same long-horizon policy that
    // evaluated the opening. Previously the defender used its long-horizon
