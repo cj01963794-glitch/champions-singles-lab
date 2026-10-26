@@ -105,3 +105,26 @@ test('live Experimental model executes one coherent multi-turn policy',()=>{
   chosen:[root.selectedPlanLeft,root.selectedPlanRight],
   choices:r.choices,winner:r.winner,stop:r.stopReason}));
 });
+
+test('generic pre-Mega typing preservation plan for a supplementary Sceptile-like case',()=>{
+ // Reconstructed from the reported move set, NOT asserted to be the exact
+ // historical saved sample (the latter is absent from the library fixture).
+ const sceptile={species:'Sceptile-Mega',nature:'Adamant',
+  item:'Sceptilite',ability:'Lightning Rod',preMegaAbility:'Overgrow',
+  moves:['Swords Dance','Leaf Blade','Earthquake','Rock Slide'],
+  evs:{hp:2,atk:32,spe:32}};
+ const B=core.battle(sceptile,set.get('HBC자뭉누리'),seed);
+ const opts=core.legal(B,'p1');
+ assert.ok(opts.includes('move 1')&&opts.includes('move 1 mega'));
+ const p=buildPlans(B,deps,'p1');
+ const hold=p.find(x=>x.mega==='hold'&&x.kind==='setup');
+ const evolve=p.find(x=>x.mega==='immediate'&&x.kind==='setup');
+ assert.ok(hold&&evolve,'support two competing typing-dependent Mega strategies');
+ assert.ok(!actionForPlan(B,deps,'p1',hold,0)?.endsWith(' mega'));
+ assert.ok(actionForPlan(B,deps,'p1',evolve,0)?.endsWith(' mega'));
+ console.log('[SUPPLEMENTARY-SCEPTILE-MEGA-TIMING]',JSON.stringify({
+  firstUnmega:actionForPlan(B,deps,'p1',hold,0),
+  firstMega:actionForPlan(B,deps,'p1',evolve,0),
+  candidateTypes:[B.p1.pokemon[0].getTypes(),
+   B.dex.species.get('Sceptile-Mega').types]}));
+});
