@@ -258,10 +258,16 @@ function plainlyDominatedAttack(B,side,action,options){
  const move=B.dex.moves.get(user.moveSlots[ix]?.id);
  const eligible=m=>m.exists&&m.basePower>0&&m.category!=='Status'&&
   typeof m.accuracy==='number'&&!m.multihit&&!m.recoil&&!m.drain&&
-  !m.selfdestruct&&!m.self&&!m.secondary&&!m.secondaries&&
+  !m.selfdestruct&&!m.self&&
   !m.onBasePower&&!m.onModifyMove&&!m.onEffectiveness&&!m.onTryHit&&
   !m.flags?.charge&&!m.flags?.recharge;
- if(!eligible(move)||move.id==='freeze-dry'||move.id==='thousandarrows')return false;
+ const foeDebuffOnly=m=>{
+  const effects=[...(m.secondary?[m.secondary]:[]),...(m.secondaries||[])];
+  return effects.every(e=>e.boosts&&Object.values(e.boosts).every(v=>v<0)&&
+   !e.status&&!e.volatileStatus&&!e.self&&!e.onHit);
+ };
+ if(!eligible(move)||move.secondary||move.secondaries||
+  move.id==='freeze-dry'||move.id==='thousandarrows')return false;
  const types=[foe.getTypes()];
  const evolution=B.actions.canMegaEvo(foe);
  if(evolution){const next=B.dex.species.get(evolution);if(next.exists)types.push(next.types)}
@@ -283,7 +289,8 @@ function plainlyDominatedAttack(B,side,action,options){
   if(alt===action||String(alt).endsWith(' mega')!==String(action).endsWith(' mega'))return false;
   const ai=Number(String(alt).match(/move (\d+)/)?.[1]||0)-1;
   const better=B.dex.moves.get(user.moveSlots[ai]?.id);
-  if(!eligible(better)||better.category!==move.category||better.priority!==move.priority||
+  if(!eligible(better)||!foeDebuffOnly(better)||
+    better.category!==move.category||better.priority!==move.priority||
     better.accuracy<move.accuracy)return false;
   // Require at least 50% greater direct threat against every legal typing.
   // Weak evidence must not erase utility moves or strategic timing choices.
