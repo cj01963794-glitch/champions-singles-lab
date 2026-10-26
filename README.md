@@ -127,3 +127,19 @@ or a nonpersistent Render Free Key Value instance. The availability of the
 vault still depends on GitHub, the token's validity and the lifetime of
 the GitHub repository. No database can guarantee literal perpetuity; make
 separate backups of valuable sets when appropriate.
+
+
+## Development continuity archive (2026-10-27)
+
+To resume work after a long or inaccessible ChatGPT session, begin with
+[docs/PROJECT_MEMORY.md](docs/PROJECT_MEMORY.md), then read
+[architecture](docs/ARCHITECTURE.md), [design decisions](docs/DECISIONS.md),
+[matchup test catalogue](docs/TEST_CASES.md), and the
+[development log](docs/DEVELOPMENT_LOG.md). The
+[conversation archive](docs/TRANSCRIPTS/) contains selected, explicitly
+scoped excerpts of actual dialogue; it is **not an automatically synced or
+complete ChatGPT export**. [AGENTS.md](AGENTS.md) describes the update protocol.
+
+**Privacy:** This is a public GitHub repository. Development-related quoted
+dialogue is stored here at the user's request. Do not commit access keys,
+credentials, unrelated sensitive information, or private third-party details.
