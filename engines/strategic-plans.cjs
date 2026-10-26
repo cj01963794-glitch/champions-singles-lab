@@ -131,13 +131,28 @@ function buildPlans(B,deps,side){
  if(heal.length){
   for(const h of [0.35,0.55,0.75])for(const mode of modes)add('sustain',null,mode,null,h);
  }
- // Cap is a CPU budget, not a species filter. Preserve forced openings,
- // basic attack, and diverse setup thresholds before thinning variants.
- if(plans.length>35){
+ // Balance plan diversity rather than allowing any one tactic to monopolize
+ // budget. Forced-opening candidates cover all legal first actions; remaining
+ // slots are allocated round-robin across distinct contingent plan families.
+ const maxPlans=26;
+ if(plans.length>maxPlans){
   const forced=plans.filter(p=>p.kind==='forced-opening');
-  const diverse=plans.filter(p=>p.kind!=='forced-opening');
-  const budget=Math.max(0,35-forced.length),stride=Math.max(1,Math.ceil(diverse.length/budget));
-  return [...forced,...diverse.filter((_,i)=>i%stride===0).slice(0,budget)];
+  const categories=new Map();
+  for(const p of plans.filter(p=>p.kind!=='forced-opening')){
+   if(!categories.has(p.kind))categories.set(p.kind,[]);
+   categories.get(p.kind).push(p);
+  }
+  const remaining=maxPlans-forced.length,selected=[];
+  while(selected.length<remaining&&[...categories.values()].some(g=>g.length)){
+   for(const group of categories.values()){
+    if(!group.length||selected.length>=remaining)continue;
+    // Spread boost targets and HP thresholds rather than keeping only
+    // the shortest-range variants.
+    const index=Math.floor(group.length/2);
+    selected.push(group.splice(index,1)[0]);
+   }
+  }
+  return [...forced,...selected];
  }
  return plans;
 }
