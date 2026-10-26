@@ -50,7 +50,10 @@ test('defensive ability immunity is respected by every attack-ranking pathway',(
    'heuristic threat estimates must not treat Levitate as a 4x Ground weakness');
   assert.notEqual(avoidImmuneChoice(B,'p1',option),option);
  }
- const base=battle(S,{...R,ability:'Pressure'},'1579,3137,6027,8191');
+ const base=battle(S,R,'1579,3137,6027,8191');
+ // Change the live battle's ability only to test the matchup heuristic's
+ // counterfactual. Team import validation correctly disallows this set.
+ base.p2.pokemon[0].ability='pressure';
  assert.ok(estimatedDirectDamage(base,'p1','move 2')>0,
   'the same Ground move should still do damage without Levitate');
 });
