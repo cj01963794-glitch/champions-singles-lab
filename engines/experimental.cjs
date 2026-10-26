@@ -66,11 +66,25 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps){
     stopReason='no_available_actions';break;
    }
    if(result.planBankLeft?.length&&result.planBankRight?.length){
-    const planL=choose(result.planBankLeft,result.planPolicyLeft,seed+':plan:p1:'+turn);
-    const planR=choose(result.planBankRight,result.planPolicyRight,seed+':plan:p2:'+turn);
-    activePlans={left:planL,right:planR};
-    left=actionForPlan(B,deps,'p1',planL,turn);
-    right=actionForPlan(B,deps,'p2',planR,turn);
+    // First sample the visible root-action equilibrium, then choose the
+    // best validated continuation for that action. This retains seeded
+    // reproducibility when redundant plans are merged or reordered.
+    const openingL=choose(result.leftActions,result.policyLeft,seed+':p1:'+turn);
+    const openingR=choose(result.rightActions,result.policyRight,seed+':p2:'+turn);
+    const matching=(plans,weights,opening)=>{
+     const indices=plans.map((p,i)=>p.first===opening?i:-1).filter(i=>i>=0);
+     const best=indices.reduce((i,j)=>i<0||weights[j]>weights[i]?j:i,-1);
+     return best>=0?plans[best]:null;
+    };
+    const planL=matching(result.planBankLeft,result.planPolicyLeft,openingL);
+    const planR=matching(result.planBankRight,result.planPolicyRight,openingR);
+    if(planL&&planR){
+     activePlans={left:planL,right:planR};
+     left=actionForPlan(B,deps,'p1',planL,turn);
+     right=actionForPlan(B,deps,'p2',planR,turn);
+    }else{
+     left=openingL;right=openingR;
+    }
    }else{
     left=choose(result.leftActions,result.policyLeft,seed+':p1:'+turn);
     right=choose(result.rightActions,result.policyRight,seed+':p2:'+turn);
