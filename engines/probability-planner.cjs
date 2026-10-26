@@ -228,14 +228,22 @@ function genericTerminalSearch(B,deps,{deadline,seed,turnCap=120,maxSamples=2000
    if(n<min){min=n;least=[[i,j]]}else if(n===min){least.push([i,j])}
   }
   selected=least[Math.floor(random()*least.length)];
-  // Afterwards prioritize cells of strategies currently plausible,
-  // with persistent uniform exploration (not a fixed opponent policy).
-  if(min>=2&&random()>0.35){
+  // Counterfactual racing: keep sampling EVERY candidate against the
+  // opponent's plausible best responses, even when early noise makes that
+  // candidate's estimated value tiny. Prior equilibrium-only allocation
+  // prematurely locked onto a wrong low-probability rare-win line.
+  if(min>=3&&random()>0.20){
    const means=table.map(row=>row.map(c=>c.total?c.sum/c.total:0.5));
    const both=mixedPolicy(means,80);
-   const lp=both.left,rp=both.right;
-   const i=L.indexOf(pick(L,lp,random)),j=R.indexOf(pick(R,rp,random));
-   selected=[i,j];
+   if(random()<0.60){
+    // Hold the threatening opponent strategy fixed, compare all our moves.
+    selected=[Math.floor(random()*L.length),
+     R.indexOf(pick(R,both.right,random))];
+   }else{
+    // Hold our most promising strategy fixed, verify all opponent replies.
+    selected=[L.indexOf(pick(L,both.left,random)),
+     Math.floor(random()*R.length)];
+   }
   }
   const [i,j]=selected,cell=table[i][j];
   const trial=deps.Sim.Battle.fromJSON(initial);
