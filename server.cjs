@@ -1259,7 +1259,7 @@ function simulation(a,b,depth=120,rngSeed){
   // A certified opening uses all outcome probabilities, not sampled seeds.
   // Unknown suffixes are [0,1] bounds, so only a provable pure equilibrium is
   // allowed to override the existing planner. Other mechanics use the fallback.
-  if(!megaPending && t<4 && Date.now()<globalDeadline-9000){
+  if(!choice && !megaPending && t<4 && Date.now()<globalDeadline-9000){
    exactSearch=exactAttackRace(B,{Sim,horizon:3,
     deadline:Math.min(Date.now()+(t===0?5000:2000),globalDeadline-8000)});
    if(exactSearch?.certified){
