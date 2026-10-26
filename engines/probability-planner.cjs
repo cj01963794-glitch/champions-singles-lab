@@ -46,7 +46,7 @@ function stateKey(B){
    v,Object.entries(s.sideConditions||{}).map(([id,x])=>[id,x.duration||0])];
  });
  return JSON.stringify([pokemon,B.field.weather,B.field.terrain,
-  Object.keys(B.field.pseudoWeather||{}),B.turn]);
+  Object.keys(B.field.pseudoWeather||{})]);
 }
 function makeBandit(actions){
  return {actions,seen:actions.map(()=>0),sum:actions.map(()=>0)};
@@ -63,7 +63,6 @@ function banditChoice(node,random,reverse){
  return ties[Math.floor(random()*ties.length)];
 }
 function evaluateRollout(B,deps,rootLeft,rootRight,random,biasRng,tree,turnCap,deadline){
- const first=JSON.stringify(B.toJSON());
  let weight=1,altered=0,trajectory=[],moves=0;
  // Importance sample low-probability *mechanics*, not named species or moves.
  // The likelihood ratio restores their true probability mass.
@@ -107,6 +106,27 @@ function evaluateRollout(B,deps,rootLeft,rootRight,random,biasRng,tree,turnCap,d
   node.l.sum[i]+=outcome;node.r.sum[j]+=outcome;
  }
  return {outcome,weight,turns:moves,altered};
+}
+function mixedPolicy(matrix,iterations=120){
+ // Regret matching is polynomial in action count. The exact small-game
+ // support enumerator is retained for certified analytic models only.
+ const n=matrix.length,m=matrix[0].length;
+ const rl=Array(n).fill(0),rr=Array(m).fill(0),al=Array(n).fill(0),ar=Array(m).fill(0);
+ const policy=R=>{
+  const q=R.map(x=>Math.max(0,x)),z=q.reduce((a,b)=>a+b,0);
+  return q.map(x=>z?x/z:1/q.length);
+ };
+ for(let t=0;t<iterations;t++){
+  const x=policy(rl),y=policy(rr);
+  x.forEach((v,i)=>al[i]+=v);y.forEach((v,j)=>ar[j]+=v);
+  const l=matrix.map(row=>row.reduce((v,w,j)=>v+w*y[j],0));
+  const r=Array.from({length:m},(_,j)=>matrix.reduce((v,row,i)=>v+row[j]*x[i],0));
+  const value=l.reduce((v,w,i)=>v+w*x[i],0);
+  l.forEach((v,i)=>rl[i]+=v-value);
+  r.forEach((v,j)=>rr[j]+=value-v);
+ }
+ const x=al.map(v=>v/iterations),y=ar.map(v=>v/iterations);
+ return {left:x,right:y,value:matrix.reduce((v,row,i)=>v+x[i]*row.reduce((w,c,j)=>w+c*y[j],0),0)};
 }
 function asGame(result){
  if(!result)return null;
@@ -166,8 +186,8 @@ function genericTerminalSearch(B,deps,{deadline,seed,turnCap=120,maxSamples=2000
   // with persistent uniform exploration (not a fixed opponent policy).
   if(min>=2&&random()>0.35){
    const means=table.map(row=>row.map(c=>c.total?c.sum/c.total:0.5));
-   const lp=gameValue(means,true).probabilities;
-   const rp=gameValue(means[0].map((_,j)=>means.map(row=>1-row[j])),true).probabilities;
+   const both=mixedPolicy(means,80);
+   const lp=both.left,rp=both.right;
    const i=L.indexOf(pick(L,lp,random)),j=R.indexOf(pick(R,rp,random));
    selected=[i,j];
   }
@@ -190,8 +210,7 @@ function genericTerminalSearch(B,deps,{deadline,seed,turnCap=120,maxSamples=2000
  // The payoff is the observed terminal win fraction, *not* a state score.
  // Unsampled/unfinished trajectories receive no invented win rate; 0.5
  // above is solely an exploration prior for choosing further simulations.
- const left=gameValue(means,true);
- const right=gameValue(means[0].map((_,j)=>means.map(row=>1-row[j])),true);
+ const both=mixedPolicy(means,240);
  const payoff=table.map(row=>row.map(c=>({
   winPct:c.total?pct(c.win/c.total):null,
   lossPct:c.total?pct(c.loss/c.total):null,
@@ -204,9 +223,9 @@ function genericTerminalSearch(B,deps,{deadline,seed,turnCap=120,maxSamples=2000
  // The interval [0, 100] is the only safe deterministic certification
  // if this stochastic tree was not exhaustively evaluated.
  return {method:'terminal-outcome-selfplay',leftActions:L,rightActions:R,
-  policyLeft:left.probabilities,policyRight:right.probabilities,
+  policyLeft:both.left,policyRight:both.right,
   payoff,estimateType:'sampled-terminal-outcomes',certified:false,
-  valueBounds:[0,100],estimatedGameValuePct:complete?pct(left.value):null,
+  valueBounds:[0,100],estimatedGameValuePct:complete?pct(both.value):null,
   samples,unresolved:table.reduce((n,row)=>n+row.reduce((v,c)=>v+c.unresolved,0),0),
   coverage:table.filter(row=>row.every(c=>c.count>0)).length+'/'+L.length,
   deadlineReached,visitedStates:tree.size,turnCap,elapsedMs:Date.now()-start,
@@ -223,5 +242,5 @@ function analyze(B,deps,{budgetMs=1800,seed='test',turnCap=120}={}){
   method:exact.method,winBounds:exact.valueBounds,horizon:exact.horizon}:null};
  return exact||generic;
 }
-module.exports={seedFrom,rng,pick,reward,rootActions,asGame,exactSupported,
+module.exports={seedFrom,rng,pick,reward,rootActions,mixedPolicy,asGame,exactSupported,
  genericTerminalSearch,analyze};
