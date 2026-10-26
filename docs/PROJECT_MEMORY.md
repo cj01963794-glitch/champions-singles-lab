@@ -26,3 +26,6 @@ A prior chat contained a numbered section titled **"5. 이걸 실제 코드로 �
 
 ## Storage expectation
 GitHub commits persist development documents and exact conversation excerpts copied there. **Not automatic live sync** and not a guaranteed full ChatGPT history export. User explicitly chose to store development-related conversation originals in this public repository, acknowledging visibility.
+
+## Latest design status after new-chat discussion (2026-10-27)
+The previously proposed small **strategy analyzer** (state-change analysis → important issue discovery → strategy generation → counterplay) was **explicitly withdrawn** after the user challenged its implementability. Only the state-difference calculations were judged straightforward; there is no substantiated general algorithm for selecting strategically important differences without falling back on costly search or hand-built heuristics. **Do not present the strategy-analyzer experiment as an agreed next implementation step.** The user strongly rejects speculative architectures and repeated case-by-case patches. Before recommending coding, provide an executable, falsifiable core algorithm and clear reasons to believe it addresses the circularity. No implementation was made. Transcript recovery: `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`.
