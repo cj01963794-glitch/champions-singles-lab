@@ -55,6 +55,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/garchomp-dragonite-diagnostic.cjs --verify-live
+      - name: Diagnose saved Indeedee Encore against Mimikyu
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/encore-diagnostic.cjs
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
