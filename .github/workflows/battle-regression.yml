@@ -58,7 +58,7 @@ jobs:
       - name: Diagnose saved Indeedee Encore against Mimikyu
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
-        run: node scripts/encore-diagnostic.cjs
+        run: node scripts/encore-diagnostic.cjs --verify-live
       - name: Run full regression suite
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
