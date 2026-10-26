@@ -230,7 +230,13 @@ function provablyImmuneAttack(B,side,action){
    if(form.exists)ability=form.abilities['0']||ability;
   }
  }
- if(typeChangingAbilities.has(id(ability)))return false;
+ // Aerilate/Pixilate/Refrigerate/Galvanize only retype Normal moves;
+ // Liquid Voice only retypes sound moves. Ordinary Ground attacks still
+ // respect Levitate even if Mega Salamence has Aerilate.
+ const modifiedType=ability==='normalize'||
+  (['aerilate','pixilate','refrigerate','galvanize'].includes(id(ability))&&m.type==='Normal')||
+  (id(ability)==='liquidvoice'&&m.flags?.sound);
+ if(modifiedType)return false;
  if(attackMatchup(B,attacker,defender,m,action).effectiveness!==0)return false;
  // Recompute with the real species' Mega types, including cases where a
  // base-form immunity disappears or appears on optional evolution.
@@ -1298,6 +1304,31 @@ function simulation(a,b,depth=120,rngSeed){
      }
     }
    }else if(megaTimingAudit)megaTimingAudit.applied=false;
+   // A selected long-horizon attack can depend on applying a disabling
+   // status later. Previously only boosting + conventional recovery retained
+   // the tested continuation, so the actual next turns abandoned burn and
+   // Pain Split and repeatedly used an attack. Preserve the *same* adaptive
+   // policy for defensive status + sustain routes with measured wins.
+   if(megaTimingAudit?.applied && sustain && megaTimingAudit.samples>=2){
+    for(const [side,field,actions] of [
+     ['p1','left',megaTimingAudit.leftActions],
+     ['p2','right',megaTimingAudit.rightActions]]){
+     const user=B.getSide(side).pokemon[0],enemySide=side==='p1'?'p2':'p1';
+     const usefulStatus=user.moveSlots.some(slot=>{
+      const m=B.dex.moves.get(slot.id);
+      return m.category==='Status'&&['brn','psn','tox','par'].includes(m.status);
+     });
+     const sustainOptions=user.moveSlots.some(slot=>slot.id==='painsplit'||
+      HEALING_MOVES.has(slot.id))||['leftovers','blacksludge'].includes(user.item);
+     if(!usefulStatus||!sustainOptions||!physicalPressure(B,enemySide,side))continue;
+     const chosen=choice[field],actionIndex=actions.indexOf(chosen);
+     if(actionIndex<0)continue;
+     const worstWin=side==='p1'?
+      Math.min(...megaTimingAudit.payoff[actionIndex].map(cell=>cell.winPct)):
+      Math.min(...megaTimingAudit.payoff.map(row=>row[actionIndex].lossPct));
+     if(worstWin>=60)sustainedSides.add(side);
+    }
+   }
   }
   // Planning runs when set-up, healing, disabling or a consumable Berry may
   // change the outcome across turns. Budgeted to preserve Render responsiveness.
