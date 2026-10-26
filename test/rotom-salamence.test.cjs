@@ -85,3 +85,29 @@ test('sustained route re-evaluates attacking win attempts for both sides after b
   mence.filter(x=>x.startsWith('move 3')).length>=2,
   'attacker must pursue attack or setup rather than repeat Roost after turn one');
 });
+
+test('no player wastes major-status PP against an already statused foe',()=>{
+ const {strategicLegal,avoidImmuneChoice}=require('../server.cjs');
+ const B=battle(R,S,'1579,3137,6027,8191');
+ B.makeChoices('move 3','move 3 mega');
+ assert.equal(B.p2.pokemon[0].status,'brn');
+ assert.ok(!strategicLegal(B,'p1').includes('move 3'));
+ assert.notEqual(avoidImmuneChoice(B,'p1','move 3'),'move 3');
+});
+test('adaptive six-turn sequence never re-burns a burned target',()=>{
+ for(const [a,b,rot] of [[R,S,0],[S,R,1]]){
+  const seed='1579,3137,6027,8191';
+  const plan=simulation(a,b,6,seed);
+  const replay=battle(a,b,seed);
+  let checked=0;
+  for(const pair of plan.choices){
+   const foe=replay.getSide(rot===0?'p2':'p1').pokemon[0];
+   if(foe.status==='brn'){
+    assert.notEqual(pair[rot],'move 3','must not burn a target that is already burned');
+    checked++;
+   }
+   replay.makeChoices(pair[0],pair[1]);
+  }
+  assert.ok(checked>=1,'fixture must actually reach a burned target');
+ }
+});
