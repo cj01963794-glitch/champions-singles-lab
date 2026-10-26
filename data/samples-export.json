@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T11:58:11.923Z",
-  "count": 22,
+  "generatedAt": "2026-10-26T11:58:19.625Z",
+  "count": 23,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -515,6 +515,29 @@
         "def": 5,
         "spa": 0,
         "spd": 1,
+        "spe": 32
+      }
+    },
+    {
+      "id": "2a2f111c-01e9-409e-906a-5984ee426748",
+      "updatedAt": "2026-10-26T11:58:16.436Z",
+      "name": "에이스 포트데스",
+      "species": "Polteageist-Antique",
+      "nature": "Modest",
+      "item": "Focus Sash",
+      "ability": "Weak Armor",
+      "moves": [
+        "Shadow Ball",
+        "Giga Drain",
+        "Stored Power",
+        "Shell Smash"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
         "spe": 32
       }
     }
