@@ -68,3 +68,18 @@ test('rollout uses general immediate-KO mechanics rather than irrational follow-
  assert.equal(L[choice],'move 3',
   'Aqua Jet should be found as a general priority immediate knockout, not species rule');
 });
+
+test('inspect both Cinderace spreads with unrestricted chance-aware game strategies',()=>{
+ const bulky=samples.get('원본H32B20C14누리레느');
+ const foe=samples.get('원본광각리베로에이스번');
+ const result=exp.simulateExperimental(bulky,foe,1,seed,deps);
+ const q=result.decisionDetails[0]?.experimental;
+ console.log('[STAGE1-BULKY-ROOT-AUDIT]',JSON.stringify({
+  first:result.choices[0],policyLeft:q?.policyLeft,
+  policyRight:q?.policyRight,samples:q?.samples,
+  estimatedGameValuePct:q?.estimatedGameValuePct,
+  versusGunk:q?.payoff?.map(row=>row[0]),
+  status:q?.certified?'certified':'provisional'}));
+ assert.ok(q?.samples>0);
+ assert.equal(q?.certified,false,'cannot call a small self-play sample a proven optimal win rate');
+});
