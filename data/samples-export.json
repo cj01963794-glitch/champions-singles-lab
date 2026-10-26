@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T08:08:29.169Z",
-  "count": 16,
+  "generatedAt": "2026-10-26T08:08:54.572Z",
+  "count": 17,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -376,6 +376,29 @@
         "spa": 25,
         "spd": 7,
         "spe": 8
+      }
+    },
+    {
+      "id": "506d3e4a-b40c-45a9-823f-6cca8ef5456b",
+      "updatedAt": "2026-10-26T08:08:52.063Z",
+      "name": "풍선HC타부자고",
+      "species": "Gholdengo",
+      "nature": "Modest",
+      "item": "Air Balloon",
+      "ability": "Good as Gold",
+      "moves": [
+        "Make It Rain",
+        "Shadow Ball",
+        "Nasty Plot",
+        "Recover"
+      ],
+      "evs": {
+        "hp": 29,
+        "atk": 0,
+        "def": 0,
+        "spa": 27,
+        "spd": 0,
+        "spe": 10
       }
     }
   ]
