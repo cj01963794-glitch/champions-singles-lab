@@ -39,3 +39,18 @@ test('burn vs volt switch, measured in actual showdown, without guessing aura or
   }
  }
 });
+
+test('defensive ability immunity is respected by every attack-ranking pathway',()=>{
+ const {estimatedDirectDamage,provablyImmuneAttack,avoidImmuneChoice}=require('../server.cjs');
+ const B=battle(S,R,'1579,3137,6027,8191');
+ for(const option of ['move 2','move 2 mega']){
+  assert.equal(provablyImmuneAttack(B,'p1',option),true,
+   'Earthquake cannot affect Levitate even after Mega evolution');
+  assert.equal(estimatedDirectDamage(B,'p1',option),0,
+   'heuristic threat estimates must not treat Levitate as a 4x Ground weakness');
+  assert.notEqual(avoidImmuneChoice(B,'p1',option),option);
+ }
+ const base=battle(S,{...R,ability:'Pressure'},'1579,3137,6027,8191');
+ assert.ok(estimatedDirectDamage(base,'p1','move 2')>0,
+  'the same Ground move should still do damage without Levitate');
+});
