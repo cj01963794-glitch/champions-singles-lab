@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T12:01:28.074Z",
-  "count": 25,
+  "generatedAt": "2026-10-26T12:03:13.972Z",
+  "count": 26,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -586,6 +586,29 @@
         "spa": 32,
         "spd": 0,
         "spe": 2
+      }
+    },
+    {
+      "id": "d0b2b559-4593-4a74-92f1-4a78a4653bb5",
+      "updatedAt": "2026-10-26T12:03:11.174Z",
+      "name": "기띠 에써르(수컷)",
+      "species": "Indeedee",
+      "nature": "Timid",
+      "item": "Focus Sash",
+      "ability": "Psychic Surge",
+      "moves": [
+        "Expanding Force",
+        "Mystical Fire",
+        "Dazzling Gleam",
+        "Encore"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
       }
     }
   ]
