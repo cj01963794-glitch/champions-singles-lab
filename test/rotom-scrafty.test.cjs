@@ -109,3 +109,43 @@ test('four-sample full-horizon search cannot override a defensible status opener
   else process.env.MEGA_TIMING_MAX_SAMPLES=old;
  }
 });
+
+test('numeric taunt/drain-punch versus overheat/burn continuation checks',()=>{
+ const openings=[
+  ['Taunt vs Overheat','move 2','move 4 mega'],
+  ['Drain Punch vs Overheat','move 2','move 1 mega'],
+  ['Dragon Dance vs Overheat','move 2','move 3 mega'],
+  ['Taunt vs Will-O-Wisp','move 3','move 4 mega'],
+  ['Drain Punch vs Will-O-Wisp','move 3','move 1 mega'],
+  ['Dragon Dance vs Will-O-Wisp','move 3','move 3 mega'],
+ ];
+ for(const [caseName,ra,sa] of openings){
+  const B=battle(rot,scr,seed);
+  B.makeChoices(ra,sa);
+  const first={
+   rotHp:B.p1.pokemon[0].hp,
+   scraftyHp:B.p2.pokemon[0].hp,
+   scraftyMax:B.p2.pokemon[0].maxhp,
+   roSpa:B.p1.pokemon[0].boosts.spa,
+   scAtk:B.p2.pokemon[0].boosts.atk,
+   scStatus:B.p2.pokemon[0].status,
+   taunted:!!B.p1.pokemon[0].volatiles.taunt
+  };
+  // Preserve each opener state and compare both players' tactical
+  // continuations rather than evaluating first-turn chip alone.
+  const checkpoint=JSON.stringify(B.toJSON());
+  const successors=[];
+  for(const secondSc of ['move 1','move 3']){
+   for(const secondRo of ['move 2','move 4']){
+    const C=Sim.Battle.fromJSON(checkpoint);
+    C.makeChoices(secondRo,secondSc);
+    const sh=C.p2.pokemon[0],rh=C.p1.pokemon[0];
+    successors.push({rotom:secondRo,scrafty:secondSc,
+     roHp:rh.hp,scHp:sh.hp,roSpa:rh.boosts.spa,scAtk:sh.boosts.atk,
+     scStatus:sh.status,taunted:!!rh.volatiles.taunt,
+     drainHeal:C.log.filter(v=>v.startsWith('|-heal|')&&v.includes('곤율거니')).slice(-1)});
+   }
+  }
+  console.log('[SCRAFTY-TAUNT-RECOVERY-NUMERIC]',JSON.stringify({caseName,first,successors}));
+ }
+});
