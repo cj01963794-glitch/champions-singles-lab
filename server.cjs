@@ -1310,6 +1310,16 @@ function simulation(a,b,depth=120,rngSeed){
     }
    }
   }
+  // Run this compact mechanical guard even when Monte Carlo has exhausted
+  // its deadline, to avoid choosing setup from untested HP-only heuristics.
+  const fastRaceGuard=[];
+  if(t<5)for(const [side,field] of [['p1','left'],['p2','right']]){
+   const check=immediatePhysicalRaceGuard(B,side,choice[field],t);
+   if(check){
+    if(check.applied)choice[field]=check.to;
+    fastRaceGuard.push({side,...check});
+   }
+  }
   // Certified/sampled planners may still return tied all-loss actions.
   // Never execute a known type-immune attack when a real hit is possible.
   const oldLeft=choice.left,oldRight=choice.right;
@@ -1323,6 +1333,7 @@ function simulation(a,b,depth=120,rngSeed){
   choices.push([choice.left,choice.right]);
   if(t<6)decisionDetails.push({turn:t+1,depth:depthUsed,left:choice.left,right:choice.right,
    ...(sustainedSides.size?{sustainRoute:[...sustainedSides]}:{}),megaTimingConsidered:megaPending,
+   ...(fastRaceGuard.length?{fastRaceGuard}:{}),
    ...(exposedSetupAudit?{exposedSetupAudit}:{}),
    ...(immunityCorrection.length?{immunityCorrection}:{}),...(exactSearch?{exactSearch}:{}),...(tacticalProbability?{tacticalProbability}:{}),...(megaTimingAudit?{megaTimingAudit}:{}),...(counterfactual?{counterfactual}:{}),...(verification?{verification}:{}),...(longPlan?{longPlan}:{}),...(attackAudit?{attackAudit}:{})});
  }
