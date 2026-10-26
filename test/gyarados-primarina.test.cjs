@@ -67,3 +67,32 @@ test('both slot orientations avoid an inferior opening Sparkling Aria',()=>{
   else process.env.MEGA_TIMING_MAX_SAMPLES=saved;
  }
 });
+
+test('diagnostic: compare immediate and delayed Mega versus repeated Moonblast',()=>{
+ // Paired deterministic seeds. This is a policy-vs-policy reference, NOT
+ // a certified optimal response to every possible Primarina opening.
+ const out={immediate:{win:0,loss:0,draw:0,unresolved:0,firstMiss:0},
+  delayed:{win:0,loss:0,draw:0,unresolved:0,firstMiss:0}};
+ const N=384;
+ for(let k=0;k<N;k++){
+  const seed=[101+139*k,319+251*k,503+173*k,907+107*k]
+   .map(v=>v%65536).join(',');
+  for(const mode of ['immediate','delayed']){
+   const B=battle(gyarados,primarina,seed);
+   B.makeChoices(mode==='immediate'?'move 1 mega':'move 1','move 2');
+   const g=B.p1.pokemon[0],p=B.p2.pokemon[0];
+   if(p.hp===p.maxhp)out[mode].firstMiss++;
+   for(let turn=1;turn<5&&!B.ended;turn++){
+    const target=B.p2.pokemon[0];
+    const shouldFinish=target.hp/target.maxhp<=0.43;
+    const gMove=mode==='delayed'&&!g.species.isMega?
+     (shouldFinish?'move 2 mega':'move 1') :
+     (shouldFinish?'move 2':'move 1');
+    B.makeChoices(gMove,'move 2');
+   }
+   const key=B.ended?(B.winner==='Left'?'win':B.winner==='Right'?'loss':'draw'):'unresolved';
+   out[mode][key]++;
+  }
+ }
+ console.log('[GYARADOS-MEGA-TIMING-DIAGNOSTIC]',JSON.stringify({N,out}));
+});
