@@ -19,6 +19,19 @@ test('Moonblast strictly outclasses Sparkling Aria against both Gyarados forms a
  for(const [a,b,side] of [[gyarados,primarina,'p2'],[primarina,gyarados,'p1']]){
   const B=battle(a,b,'1579,3137,6027,8191');
   const raw=legal(B,side),usable=strategicLegal(B,side);
+  const p=B.getSide(side).pokemon[0],other=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+  console.log('[GYARA-DIAG]',JSON.stringify({side,raw,usable,
+   ownAbility:p.ability,foeAbility:other.ability,
+   weather:B.field.weather,terrain:B.field.terrain,ownStatus:p.status,foeStatus:other.status,
+   canMegaOpponent:B.actions.canMegaEvo(other),
+   moves:p.moveSlots.map(s=>{
+    const m=B.dex.moves.get(s.id);
+    return {id:m.id,type:m.type,basePower:m.basePower,accuracy:m.accuracy,
+     category:m.category,priority:m.priority,secondary:m.secondary,
+     secondaries:m.secondaries,recoil:m.recoil,drain:m.drain,self:m.self,
+     onBasePower:!!m.onBasePower,onModifyMove:!!m.onModifyMove,
+     onEffectiveness:!!m.onEffectiveness,onTryHit:!!m.onTryHit,flags:m.flags};
+   })}));
   assert.ok(raw.includes('move 1')&&raw.includes('move 2'));
   assert.ok(usable.includes('move 2'),'Moonblast must remain a candidate');
   assert.ok(!usable.includes('move 1'),'inferior Sparkling Aria must not win an all-loss tie');
