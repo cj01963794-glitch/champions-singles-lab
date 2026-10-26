@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T11:58:19.625Z",
-  "count": 23,
+  "generatedAt": "2026-10-26T12:00:22.381Z",
+  "count": 24,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -539,6 +539,30 @@
         "spa": 32,
         "spd": 0,
         "spe": 32
+      }
+    },
+    {
+      "id": "d4339c4d-8a13-4820-8dc1-09f0d1816017",
+      "updatedAt": "2026-10-26T12:00:18.674Z",
+      "name": "HA메갑주",
+      "species": "Golisopod-Mega",
+      "nature": "Adamant",
+      "item": "Golisopite",
+      "ability": "Tough Claws",
+      "preMegaAbility": "Emergency Exit",
+      "moves": [
+        "Leech Life",
+        "Sucker Punch",
+        "Drill Run",
+        "Swords Dance"
+      ],
+      "evs": {
+        "hp": 32,
+        "atk": 32,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 2
       }
     }
   ]
