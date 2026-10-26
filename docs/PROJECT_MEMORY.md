@@ -1,0 +1,24 @@
+# Project recovery entry point
+
+Established: **2026-10-27 (Asia/Seoul)**  
+Repository: `cj01963794-glitch/champions-singles-lab` (public)  
+Initial source-code checkpoint observed: `82f97bc033394421679f9d2ff7b9bf98dfac2907` (last checked during documentation setup).
+
+## When a conversation becomes too long or a new chat starts
+1. Read this entry point and the four companion files under `docs/`.
+2. Read `docs/TRANSCRIPTS/` for any preserved **verbatim** text. Not every historical ChatGPT message can be automatically retrieved.
+3. Verify the repository state with `README.md`, actual source/test files, and Git history.
+4. Continue development from actual code, not the assistant's recollection.
+5. Make a new explicit backup commit of development documentation and any available transcript after substantive sessions.
+
+## Long-term purpose
+Create a Pokémon Champions single-battle 1v1 matchup engine that tests plausible moves and multi-turn policies with correct mechanics; discovers win plans without hardcoded matchup scripts; considers the opponent's optimal or strategically rational counterplay; exposes probabilities, limitations, conditions, and reproducible sequences.
+
+## Previously raised trouble spots
+Dragonite choosing Flamethrower instead of Draco Meteor into Focus Sash Garchomp; optional Mega evolution ignored or mistimed; Indeedee using Encore before Mimikyu has acted; Floette missing long Calm Mind + Synthesis against Charizard; Mega Sceptile opting into changed typing and wrong move against Primarina; Salamence/Primarina Giga Impact lottery comparison; short-sighted boosts, moves and probabilistic planning.
+
+## Provenance warning
+A prior chat contained a numbered section titled **"5. 이걸 실제 코드로 만들 계획"**, but the full original wording was *not available to this session*. Do not reconstruct it as a verbatim quote. Preserve it if the original is provided later.
+
+## Storage expectation
+GitHub commits persist development documents and exact conversation excerpts copied there. **Not automatic live sync** and not a guaranteed full ChatGPT history export. User explicitly chose to store development-related conversation originals in this public repository, acknowledging visibility.
