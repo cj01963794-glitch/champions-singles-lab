@@ -5,6 +5,8 @@ RUN git init && git remote add origin https://github.com/smogon/pokemon-showdown
 WORKDIR /app
 COPY . .
 ENV SHOWDOWN_PACKAGE_PATH=/opt/pokemon-showdown
+# Stop deployment if the saved Gyarados/Primarina opener regresses.
+RUN node --test test/gyarados-primarina.test.cjs
 ENV PORT=10000
 EXPOSE 10000
 CMD ["node","server.cjs"]
