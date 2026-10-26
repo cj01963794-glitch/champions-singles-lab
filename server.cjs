@@ -912,7 +912,13 @@ function estimatedDirectDamage(B,side,action){
  const defense=approximateCombatStat(defender,move.category==='Physical'?'def':'spd');
  const level=attacker.level||50;
  const base=Math.floor(Math.floor((Math.floor(2*level/5+2)*move.basePower*attack/Math.max(1,defense))/50)+2);
- return Math.max(0,Math.floor(base*stab*effectiveness*0.925));
+ // Type/ability checks above are only the beginning: burn halves ordinary
+ // physical attacks at every boost stage. Without that modifier, the
+ // continuation policy fires too early and cannot compare Dragon Dance's
+ // actual value after Will-O-Wisp lands.
+ const burnPenalty=attacker.status==='brn'&&move.category==='Physical'&&
+  !['guts'].includes(id(attacker.ability))&&move.id!=='facade'?0.5:1;
+ return Math.max(0,Math.floor(base*stab*effectiveness*0.925*burnPenalty));
 }
 function continuationMove(B,side){
  const actions=legal(B,side);
@@ -1202,13 +1208,22 @@ function simulation(a,b,depth=120,rngSeed){
   // whose full sampled battle won. The opposing side still gets a fresh
   // independent one-turn best response on every subsequent turn.
   if(t>0 && sustainedSides.size){
-   const shallow=evalOneTurn(B,t,1,globalDeadline-850);
-   if(shallow){
-    choice={left:shallow.left,right:shallow.right};depthUsed=15;
-    for(const side of sustainedSides){
-     const next=continuationMove(B,side);
-     if(next)choice[side==='p1'?'left':'right']=next;
-    }
+   // Re-plan BOTH players' turns with the same long-horizon policy that
+   // evaluated the opening. Previously the defender used its long-horizon
+   // continuation while the opponent reverted to a 1-ply HP/boost score:
+   // full-HP Roost spam looked good, but never led to a winning attack.
+   // All legal followups remain adaptive to remaining PP, status and HP.
+   const longReplies=sampledRace(B,null,t,
+    Math.min(Date.now()+1600,globalDeadline-950),{
+    Sim,legal:strategicLegal,seed:verificationSeed,resolveMatrix,
+    followup:continuationMove,maxSamples:12,minSamples:4,followupTurns:12
+   });
+   if(longReplies?.left&&longReplies?.right){
+    choice={left:longReplies.left,right:longReplies.right};
+    depthUsed=12;
+   }else{
+    const l=continuationMove(B,'p1'),r=continuationMove(B,'p2');
+    if(l&&r){choice={left:l,right:r};depthUsed=12}
    }
   }
   // A certified opening uses all outcome probabilities, not sampled seeds.
