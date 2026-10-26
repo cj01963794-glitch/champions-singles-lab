@@ -9,13 +9,13 @@ function sample(name){const x=sets.get(name);assert.ok(x,name+' missing');return
 const engineDeps={battle:deps.battle,legal:deps.legal,strategicLegal:deps.strategicLegal,
  avoidImmuneChoice:deps.avoidImmuneChoice,estimatedDirectDamage:deps.estimatedDirectDamage,Sim:deps.Sim};
 const rng='1579,3137,6027,8191';
-test('14 historical matchups are archived with battle-valid saved samples',()=>{
+test('historical matchups are archived with battle-valid saved samples',()=>{
  let valid=0;
  for(const c of manifest.cases.filter(c=>c.available)){
   assert.doesNotThrow(()=>deps.battle(sample(c.a),sample(c.b),rng),c.id);
   valid++;
  }
- assert.ok(valid>=14);
+ assert.ok(valid>=15);
  console.log('[EXPERIMENTAL-CASE-MANIFEST]',JSON.stringify({valid,missing:manifest.cases.filter(c=>!c.available).map(x=>x.id)}));
 });
 test('simultaneous strategy solver mixes in a nontrivial zero-sum game',()=>{
