@@ -488,6 +488,13 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
  }).sort((a,b)=>estimatedDirectDamage(B,enemySide,b)-
   estimatedDirectDamage(B,enemySide,a)).slice(0,2);
  if(!threats.length)return null;
+ // A special boost can only repay its lost attack on a later turn.
+ // In a physical 2HKO race, the opponent can end the battle before that
+ // investment pays off; compare the attacking line even at full HP.
+ const shortPhysicalRace=
+  B.dex.moves.get(actionInfo(B,side,attack).id).category==='Special' &&
+  estimatedDirectDamage(B,side,attack)*1.85>=enemy.hp &&
+  threats.some(a=>estimatedDirectDamage(B,enemySide,a)*2.3>=self.hp);
  const saved=JSON.stringify(B.toJSON());
  const counts={setup:[],attack:[]};
  const N=48;
@@ -522,7 +529,7 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
   // Do not use current HP percentage as a proxy for future KO danger.
   // A high-HP target can still be 2HKO'd, or lose a critical-hit race.
   // Keep a low-risk threat only when attacking wins clearly more often.
-  if(koOnHit<tested*0.12 && attackWins-setupWins<4)continue;
+  if(!shortPhysicalRace && koOnHit<tested*0.12 && attackWins-setupWins<4)continue;
   counts.setup.push(setupWins/N);
   counts.attack.push(attackWins/N);
  }
@@ -530,7 +537,9 @@ function exposedPhysicalSetupAudit(B,side,selected,turn,deadline){
  const worstSetup=Math.min(...counts.setup),worstAttack=Math.min(...counts.attack);
  return {side,from:selected,to:attack,physicalThreats:threats,
   pairedSamples:N,setupWinEstimates:counts.setup,attackWinEstimates:counts.attack,
-  applied:worstAttack>=worstSetup+1/N-1e-10};
+  shortPhysicalRace,
+  applied:worstAttack>=worstSetup+1/N-1e-10 ||
+   (shortPhysicalRace && worstAttack>=worstSetup-1/N-1e-10)};
 }
 function hasTacticalMove(B){
  const tactical=new Set(['swordsdance','dragondance','nastyplot','calmmind','bulkup','irondefense','agility','shellsmash',
