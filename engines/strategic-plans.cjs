@@ -141,7 +141,7 @@ function buildPlans(B,deps,side){
  const forced=plans.filter(p=>p.kind==='forced-opening'&&!covered.has(
   actionForPlan(B,deps,side,p,0)));
  const considered=[...forced,...substantive];
- const maxPlans=20;
+ const maxPlans=12;
  if(considered.length>maxPlans){
   const categories=new Map();
   for(const p of substantive){
