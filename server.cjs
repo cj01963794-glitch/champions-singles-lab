@@ -1749,7 +1749,13 @@ const server=http.createServer(async(req,res)=>{
    }
   }
   if(pathname==='/api/catalog'&&req.method==='GET')return respond(res,catalog);
-  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);const result=simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed);
+  if(pathname==='/api/duel'&&req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>100000)throw Error('Request too large')};const x=JSON.parse(s);const model=x.model||'legacy';
+if(!['legacy','experimental'].includes(model))throw Error('Unknown calculation model');
+const result=model==='experimental'?
+ require('./engines/experimental.cjs').simulateExperimental(x.a,x.b,
+  Number(x.maxTurns)||120,x.rngSeed,
+  {battle,legal,strategicLegal,avoidImmuneChoice,estimatedDirectDamage,Sim}):
+ {...simulation(x.a,x.b,Number(x.maxTurns)||120,x.rngSeed),model:'legacy'};
 if([x.a?.species,x.b?.species].map(id).includes('floettemega')&&
  [x.a?.species,x.b?.species].map(id).includes('mimikyu'))
  console.log('[LIVE_DUEL_TRACE]',JSON.stringify({build:process.env.RENDER_GIT_COMMIT,
