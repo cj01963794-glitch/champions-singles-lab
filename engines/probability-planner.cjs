@@ -28,7 +28,9 @@ function pick(items,p,random){
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function sampleBernoulliWithImportance(p,random,minimum=0.25){
  if(!(p>0&&p<1))return {yes:p>=1,ratio:1,biased:false};
- const q=clamp(p,minimum,1-minimum);
+ // Oversample genuinely rare hit/miss/crit branches while leaving ordinary
+ // Bernoulli events unmodified. Likelihood weights preserve original odds.
+ const q=(p<0.20||p>0.80)?0.5:p;
  if(Math.abs(q-p)<1e-12)return {yes:random()<p,ratio:1,biased:false};
  const yes=random()<q;
  return {yes,ratio:yes?p/q:(1-p)/(1-q),biased:true};
@@ -69,6 +71,39 @@ function banditChoice(node,random,reverse){
  const m=Math.max(...scores),ties=scores.map((v,i)=>v>=m-1e-12?i:-1).filter(i=>i>=0);
  return ties[Math.floor(random()*ties.length)];
 }
+
+// A rollout-only, generic one-turn finishing prior. It does not contribute
+// a single point to the reward: actual victory remains the ONLY objective.
+// It prevents the simulated opponent from routinely foregoing an obvious
+// fast finishing blow while the self-play policy is still inexperienced.
+function immediateFinisher(B,deps,side,actions){
+ if(typeof deps.estimatedDirectDamage!=='function')return -1;
+ const own=B.getSide(side).pokemon[0],enemy=B.getSide(side==='p1'?'p2':'p1').pokemon[0];
+ if(!enemy?.hp||enemy.volatiles?.substitute||enemy.volatiles?.disguise)return -1;
+ if(enemy.item==='focussash'&&enemy.hp===enemy.maxhp||
+    enemy.ability==='sturdy'&&enemy.hp===enemy.maxhp)return -1;
+ const foeSide=side==='p1'?'p2':'p1';
+ const foes=deps.legal(B,foeSide);
+ const maximumEnemyPriority=Math.max(0,...foes.map(a=>{
+  const m=B.dex.moves.get(enemy.moveSlots[tokenIndex(a)]?.id);
+  return m.priority||0;
+ }));
+ let best=-1,bestValue=-Infinity;
+ for(let i=0;i<actions.length;i++){
+  const action=actions[i],m=B.dex.moves.get(own.moveSlots[tokenIndex(action)]?.id);
+  if(!m.exists||m.category==='Status'||m.basePower<=0)continue;
+  const damage=deps.estimatedDirectDamage(B,side,action);
+  // Strictly conservative direct-damage threshold, not a universal
+  // "attack is always better than setup" tactical rule.
+  if(damage<1.18*enemy.hp)continue;
+  const accuracy=m.accuracy===true?1:typeof m.accuracy==='number'?m.accuracy/100:1;
+  const first=(m.priority||0)>maximumEnemyPriority ||
+   (m.priority||0)===maximumEnemyPriority&&own.getStat('spe')>=enemy.getStat('spe');
+  const score=accuracy+(first?0.8:0)+(m.priority||0)*0.01;
+  if(score>bestValue){bestValue=score;best=i}
+ }
+ return best;
+}
 function evaluateRollout(B,deps,rootLeft,rootRight,random,biasRng,tree,turnCap,deadline){
  let weight=1,altered=0,trajectory=[],moves=0;
  // Importance sample low-probability *mechanics*, not named species or moves.
@@ -101,7 +136,11 @@ function evaluateRollout(B,deps,rootLeft,rootRight,random,biasRng,tree,turnCap,d
    node={l:makeBandit(L),r:makeBandit(R)};
    if(tree.size<900)tree.set(key,node);
   }
-  const i=banditChoice(node.l,random,false),j=banditChoice(node.r,random,true);
+  let i=banditChoice(node.l,random,false),j=banditChoice(node.r,random,true);
+  const finishL=immediateFinisher(B,deps,'p1',L);
+  const finishR=immediateFinisher(B,deps,'p2',R);
+  if(finishL>=0&&random()<0.90)i=finishL;
+  if(finishR>=0&&random()<0.90)j=finishR;
   trajectory.push([node,i,j]);
   B.makeChoices(L[i],R[j]);
   moves++;
@@ -249,5 +288,5 @@ function analyze(B,deps,{budgetMs=1800,seed='test',turnCap=120}={}){
   method:exact.method,winBounds:exact.valueBounds,horizon:exact.horizon}:null};
  return exact||generic;
 }
-module.exports={seedFrom,rng,pick,reward,rootActions,mixedPolicy,sampleBernoulliWithImportance,asGame,exactSupported,
+module.exports={seedFrom,rng,pick,reward,rootActions,mixedPolicy,sampleBernoulliWithImportance,immediateFinisher,asGame,exactSupported,
  genericTerminalSearch,analyze};
