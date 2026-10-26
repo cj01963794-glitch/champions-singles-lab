@@ -1939,6 +1939,19 @@ if(process.env.MATCHUP_DIAGNOSTIC==='1'){
       item:'Leftovers',ability:'Levitate',
       moves:['Volt Switch','Overheat','Will-O-Wisp','Pain Split'],
       evs:{hp:32,atk:0,def:32,spa:0,spd:2,spe:0}};
+     const scrafty={name:'용춤 메가곤율거니',species:'Scrafty-Mega',nature:'Adamant',
+      item:'Scraftinite',ability:'Intimidate',preMegaAbility:'Intimidate',
+      moves:['Drain Punch','Knock Off','Dragon Dance','Taunt'],
+      evs:{hp:19,atk:21,def:0,spa:0,spd:0,spe:26}};
+     return ['live-rotom-vs-megascrafty-'+index,'/api/duel','POST',{
+      a:index===0?rotom:scrafty,b:index===0?scrafty:rotom,
+      maxTurns:7,rngSeed:'1579,3137,6027,8191'}];
+    }),
+    ...[0,1].map(index=>{
+     const rotom={name:'HB불로톰',species:'Rotom-Heat',nature:'Bold',
+      item:'Leftovers',ability:'Levitate',
+      moves:['Volt Switch','Overheat','Will-O-Wisp','Pain Split'],
+      evs:{hp:32,atk:0,def:32,spa:0,spd:2,spe:0}};
      const sal={name:'고집AS메만다',species:'Salamence-Mega',nature:'Adamant',
       item:'Salamencite',ability:'Aerilate',preMegaAbility:'Intimidate',
       moves:['Double-Edge','Earthquake','Dragon Dance','Roost'],
