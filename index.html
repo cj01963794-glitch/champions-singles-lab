@@ -623,7 +623,7 @@ function renderResult(raw,a,b){
   policy.style.display='block';
   const detail=first?.experimental;
   const probabilities=(sample,actions,weights)=>(actions||[]).map((a,i)=>{
-   const ix=Number(String(a).match(/move (\\d+)/)?.[1]||0)-1;
+   const ix=Number(String(a).match(/move (\d+)/)?.[1]||0)-1;
    const name=sample.moves[ix]||a;
    return (korean('moves',name)||name)+(String(a).endsWith(' mega')?' (메가)':'')+
     ' '+Math.round((weights?.[i]||0)*100)+'%';
