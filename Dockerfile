@@ -6,6 +6,7 @@ WORKDIR /app
 COPY . .
 ENV SHOWDOWN_PACKAGE_PATH=/opt/pokemon-showdown
 # Stop deployment if the saved Gyarados/Primarina opener regresses.
+RUN node --test test/metagross-scrafty-immunity.test.cjs
 RUN node --test test/gyarados-primarina.test.cjs
 RUN node --test test/floette-mimikyu.test.cjs
 RUN node --test test/floette-mimikyu-plan.test.cjs
