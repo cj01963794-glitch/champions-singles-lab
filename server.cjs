@@ -317,6 +317,44 @@ function followChoiceBeam(B,side,actions,limit=2){
  return keep.slice(0,limit).map(x=>x.action);
 }
 
+// A full 8x8, 15-turn game tree does not fit a small Render instance.
+// At full HP, opening healing is wasted. Evaluate the useful attack and
+// setup branches with both base/Mega timing options, while keeping all
+// second-turn choices available to the adaptive battle continuation.
+function focusedSustainOpening(B,side){
+ const all=strategicLegal(B,side);
+ const p=B.getSide(side).pokemon[0];
+ const moves=new Map();
+ for(const action of all){
+  const key=actionInfo(B,side,action).id;
+  if(!moves.has(key))moves.set(key,[]);
+  moves.get(key).push(action);
+ }
+ const variants=key=>moves.get(key)||[];
+ const entries=[...moves.keys()].map(key=>({
+  key,category:B.dex.moves.get(key).category,
+  boost:isRecoverySetup(B,side,variants(key)[0]),
+  heal:HEALING_MOVES.has(key),
+  damage:Math.max(...variants(key).map(x=>estimatedDirectDamage(B,side,x)))
+ }));
+ let selected=[];
+ const boosting=entries.some(x=>x.boost);
+ if(boosting){
+  const setup=entries.find(x=>x.boost);
+  if(setup)selected.push(setup.key);
+ }
+ const attacks=entries.filter(x=>x.category!=='Status')
+  .sort((a,b)=>b.damage-a.damage);
+ selected.push(...attacks.slice(0,boosting?1:2).map(x=>x.key));
+ // Once injured, recovering may be competitive even as an opening option.
+ if(p.hp/p.maxhp<0.88){
+  const recovery=entries.find(x=>x.heal);
+  if(recovery)selected.push(recovery.key);
+ }
+ if(!selected.length)return all;
+ const chosen=selected.flatMap(key=>variants(key));
+ return chosen.length?chosen:all;
+}
 function evalOneTurn(position,turn,samples=2,deadline=Infinity,beamLimit=0){
  if(position.ended)return {value:score(position)};
  const L0=strategicLegal(position,'p1'),R0=strategicLegal(position,'p2');
@@ -906,13 +944,14 @@ function simulation(a,b,depth=120,rngSeed){
    const sustain=needsSustainHorizon(B);
    megaTimingAudit=sampledRace(B,null,t,
     Math.min(Date.now()+10000,globalDeadline-9000),
-    {Sim,legal:strategicLegal,seed:verificationSeed,
-     maxSamples:sustain?Math.min(18,maxMegaSamples):maxMegaSamples,
-     minSamples:sustain?3:4,followupTurns:sustain?15:5,resolveMatrix,
+    {Sim,legal:sustain?focusedSustainOpening:strategicLegal,seed:verificationSeed,
+     maxSamples:sustain?Math.min(24,maxMegaSamples):maxMegaSamples,
+     minSamples:4,followupTurns:sustain?15:5,resolveMatrix,
      attackDamageTieBreak:true,preferMegaTie:dominatesBaseOnMega,
      preferSustainTie:isRecoverySetup,
      followup:(branch,side)=>continuationMove(branch,side)});
-   if(megaTimingAudit)megaTimingAudit.sustainHorizon=sustain?15:5;
+   if(megaTimingAudit){megaTimingAudit.sustainHorizon=sustain?15:5;
+    megaTimingAudit.openingCandidateMethod=sustain?'focused-recovery-setup-vs-attack':'complete';}
    if(megaTimingAudit)megaTimingAudit.lowSampleWarning=megaTimingAudit.samples<24;
    const decisive=megaTimingAudit?.payoff?.some(row=>row.some(cell=>cell.winPct+cell.lossPct>0));
    if(megaTimingAudit?.chosen && decisive){
