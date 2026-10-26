@@ -52,7 +52,7 @@ function tauntValue(B,own,foe){
  }).length;
  return Math.min(68,important*26);
 }
-function evaluation(B){
+function evaluation(B,deps){
  if(B.ended)return B.winner==='Left'?3000:B.winner==='Right'?-3000:0;
  const a=B.getSide('p1').pokemon[0],b=B.getSide('p2').pokemon[0];
  function advantage(p,q,side){
@@ -65,17 +65,12 @@ function evaluation(B){
   // The reported values are only continuation heuristics; all actual
   // damage, drain healing and recoil are resolved in Battle.makeChoices.
   const attacks=p.moveSlots.map((s,i)=>({m:B.dex.moves.get(s.id),i}))
-    .filter(x=>x.m.category!=='Status'&&x.m.basePower>0&&saneMove(B,side,'move '+(x.i+1)));
+    .filter(x=>x.m.category!=='Status'&&x.m.basePower>0);
   let damage=0;
   for(const x of attacks){
-   const foe=q,physical=x.m.category==='Physical';
-   const stat=p.getStat?.(physical?'atk':'spa')||p.storedStats[physical?'atk':'spa']||1;
-   const defense=foe.getStat?.(physical?'def':'spd')||foe.storedStats[physical?'def':'spd']||1;
-   const eff=B.dex.getEffectiveness(x.m,foe);
-   const typemult=eff===-Infinity?0:Math.pow(2,eff);
-   const stab=p.getTypes().includes(x.m.type)?1.5:1;
-   const burn=p.status==='brn'&&physical&&p.ability!=='guts'?0.5:1;
-   const approx=Math.max(0,((22*x.m.basePower*stat/Math.max(1,defense)/50)+2)*stab*typemult*burn);
+   // Reuse the legacy-mechanics damage approximation only as a shared
+   // mechanical primitive (status, boosts, Levitate, Mega); policy is new.
+   const approx=deps.estimatedDirectDamage(B,side,'move '+(x.i+1));
    damage=Math.max(damage,Math.min(120,approx/Math.max(1,q.hp)*95));
   }
   return hp+stats+status+taunt+damage;
@@ -128,7 +123,7 @@ function simpleMatrix(B,deps,deadline){
   if(Date.now()>deadline)return null;
   const child=deps.Sim.Battle.fromJSON(saved);
   child.makeChoices(L[i],R[j]);
-  out[i][j]=evaluation(child);
+  out[i][j]=evaluation(child,deps);
  }
  return {L,R,values:out};
 }
@@ -181,7 +176,7 @@ function planning(B,deps,deadline,seed,turn){
    const child=deps.Sim.Battle.fromJSON(initial);
    child.resetRNG(seedList[z]);
    child.makeChoices(L[i],R[j]);
-   if(child.ended){round[i][j]=evaluation(child);continue}
+   if(child.ended){round[i][j]=evaluation(child,deps);continue}
    // A second simultaneous choice is assessed with a fresh zero-sum
    // response matrix, avoiding a fixed greedy opponent.
    const second=simpleMatrix(child,deps,deadline);
