@@ -123,3 +123,31 @@ test('diagnostic: varied full-budget seeds reveal why second-turn choices diverg
   }
  }finally{if(prev===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;else process.env.MEGA_TIMING_MAX_SAMPLES=prev}
 });
+
+test('randomized production openings reject unsafe second-turn special setup',()=>{
+ const original=process.env.MEGA_TIMING_MAX_SAMPLES;
+ delete process.env.MEGA_TIMING_MAX_SAMPLES;
+ let playRough=0,calm=0,disagreements=[];
+ try{
+  for(let k=0;k<20;k++){
+   const seed=[307+k*1249,2399+k*377,1987+k*709,531+k*1973]
+    .map(n=>n%65536).join(',');
+   const r=simulation(F,M,3,seed);
+   const first=r.choices[0],second=r.choices[1];
+   if(first?.[0]?.startsWith('move 1')&&first[1]==='move 2'&&second){
+    playRough++;
+    if(second[0]==='move 4'){
+     calm++;
+     disagreements.push({seed,first,second,
+      audit:r.decisionDetails[1]?.exposedSetupAudit,
+      depth:r.decisionDetails[1]?.depth});
+    }
+   }
+  }
+  console.log('[FLOETTE-20-PRODUCTION-SEEDS]',JSON.stringify({playRough,calm,disagreements}));
+  assert.equal(calm,0,'attacking a physical 2HKO threat must not regress to Calm Mind');
+ }finally{
+  if(original===undefined)delete process.env.MEGA_TIMING_MAX_SAMPLES;
+  else process.env.MEGA_TIMING_MAX_SAMPLES=original;
+ }
+});
