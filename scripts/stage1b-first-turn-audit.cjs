@@ -19,6 +19,17 @@ const results=[];
 for(const [a,b] of matchups)for(const [left,right] of [[a,b],[b,a]]){
   const B=core.battle(sets.get(left),sets.get(right),baseSeed);
   const old=JSON.stringify(B.toJSON());
+  // Paired same-budget controls distinguish structural reuse from extra compute.
+  const control=runDuct(B,deps,{
+    seed:'first-turn-strength-audit:'+left+':'+right,
+    budgetMs:450,treeDepth:10,maxRolloutTurns:24,
+    maxIterations:10000,exploration:1.35,treeMode:'exact'
+  });
+  const candidate=runDuct(B,deps,{
+    seed:'first-turn-strength-audit:'+left+':'+right,
+    budgetMs:450,treeDepth:10,maxRolloutTurns:24,
+    maxIterations:10000,exploration:1.35,treeMode:'open-loop'
+  });
   const r=runDuct(B,deps,{
     seed:'first-turn-strength-audit:'+left+':'+right,
     budgetMs:1800,treeDepth:10,maxRolloutTurns:24,
@@ -32,6 +43,9 @@ for(const [a,b] of matchups)for(const [left,right] of [[a,b],[b,a]]){
     resolved:r.completed,unresolved:r.unresolved,
     unresolvedFraction:Number((r.unresolved/r.iterations).toFixed(3)),
     maxReachedDepth:r.maxReachedDepth,nodes:r.nodes,
+    control450:{trials:control.iterations,depth:control.maxReachedDepth,nodes:control.nodes},
+    openLoop450:{trials:candidate.iterations,depth:candidate.maxReachedDepth,nodes:candidate.nodes},
+    legalDivergences:r.legalDivergences,
     topLeft:top(r.leftActions,r.policyLeft),topRight:top(r.rightActions,r.policyRight)};
   results.push(row);console.log('[STAGE1B-PRODUCTION-BUDGET-AUDIT]',JSON.stringify(row));
 }
@@ -39,5 +53,7 @@ const summary={matchups:results.length,budgetMsPerRoot:1800,
   medianTrials:[...results.map(x=>x.trials)].sort((a,b)=>a-b)[4],
   totalUnresolved:results.reduce((a,b)=>a+b.unresolved,0),
   totalTrials:results.reduce((a,b)=>a+b.trials,0),
+  improvedDepthAt450:results.filter(x=>x.openLoop450.depth>x.control450.depth).length,
+  regressedDepthAt450:results.filter(x=>x.openLoop450.depth<x.control450.depth).length,
   note:'First-turn 1.8-second GitHub-runner trial counts, not win-rate accuracy or real Render host performance.'};
 console.log('[STAGE1B-PRODUCTION-BUDGET-SUMMARY]',JSON.stringify(summary));

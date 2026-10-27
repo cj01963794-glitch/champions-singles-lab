@@ -39,6 +39,7 @@ test('real Champions search is read-only, legal, two-sided, and reports unresolv
       for(const a of r.rightActions)assert.ok(core.legal(B,'p2').includes(a),'illegal right '+a);
       approxOne(r.policyLeft);approxOne(r.policyRight);
       assert.equal(r.certified,false);
+      assert.equal(r.treeMode,'open-loop');
       assert.equal(r.estimatedGameValuePct,null);
       console.log('[STAGE1B-CASE]',JSON.stringify({left,right,iterations:r.iterations,
         resolved:r.completed,unresolved:r.unresolved,nodes:r.nodes,depth:r.maxReachedDepth,

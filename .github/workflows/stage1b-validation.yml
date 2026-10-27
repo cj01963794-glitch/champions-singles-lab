@@ -37,6 +37,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/stage1b-first-turn-audit.cjs
+      - name: Exercise all archived reproducible matchup fixtures with DUCT
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/stage1b-coverage-audit.cjs
       - name: Confirm no Legacy or shared runtime changes from original baseline
         run: |
           git fetch origin main --depth=1

@@ -11,6 +11,25 @@ function createNode(B,deps) {
     pairs:new Map()
   };
 }
+// Open-loop search deliberately shares a *decision history* across chance
+// realizations. Its node is only a statistical aggregate; every traversal
+// must intersect cached candidates with actions legal in the actual state.
+// The exact-state tree remains as a benchmark/control mode.
+function availableAtNode(node, B, deps) {
+  const actions=[];
+  for (const [side,key] of [['p1','left'],['p2','right']]) {
+    const legal=A.legal(B,side,deps);
+    const known=new Map(node[key].map(a=>[a.action,a]));
+    for(const action of legal) {
+      if(!known.has(action)) {
+        const fresh={action,visits:0,value:0};
+        node[key].push(fresh);known.set(action,fresh);
+      }
+    }
+    actions.push(legal.map(a=>known.get(a)));
+  }
+  return actions;
+}
 function chooseUcb(actions, parentVisits, rng, exploration) {
   if (!actions.length) return null;
   let best=-Infinity, selected=null, ties=0;
@@ -63,12 +82,14 @@ function defaultRollout(B,deps,rng,remaining,deadline) {
 function runDuct(B,deps,config={}) {
   const {
     budgetMs=1400, maxIterations=5000, treeDepth=10, maxRolloutTurns=24,
-    exploration=1.35, seed='stage1b'
+    exploration=1.35, seed='stage1b', treeMode='open-loop'
   }=config;
+  if(treeMode!=='open-loop'&&treeMode!=='exact')
+    throw Error('Unknown Stage 1B tree mode: '+treeMode);
   const start=Date.now(),deadline=start+Math.max(20,budgetMs);
   const saved=A.snapshot(B), rng=A.makeRandom(String(seed)+':UCT');
   const root=createNode(B,deps);
-  let completed=0, unresolved=0, nodes=1, maxReachedDepth=0, totalRolloutTurns=0;
+  let completed=0, unresolved=0, nodes=1, maxReachedDepth=0, totalRolloutTurns=0, legalDivergences=0;
   if (!root.left.length||!root.right.length)
     return {...rootPolicies(root),iterations:0,completed:0,unresolved:0,nodes,elapsedMs:0,maxReachedDepth:0};
   let iterations=0;
@@ -79,9 +100,16 @@ function runDuct(B,deps,config={}) {
     const path=[];
     let node=root,depth=0,selectedLeaf=false;
     while(!test.ended && depth<treeDepth && Date.now()<deadline) {
-      if(!node.left.length||!node.right.length)break;
-      const l=chooseUcb(node.left,node.visits,rng,exploration);
-      const r=chooseUcb(node.right,node.visits,rng,exploration);
+      // Never play a cached action that has become illegal through Encore,
+      // Mega evolution, disable, PP depletion, or any other Showdown state.
+      const [left,right]=treeMode==='open-loop'
+        ? availableAtNode(node,test,deps)
+        : [node.left,node.right];
+      if(!left.length||!right.length)break;
+      if(left.length!==node.left.length||right.length!==node.right.length)
+        legalDivergences++;
+      const l=chooseUcb(left,node.visits,rng,exploration);
+      const r=chooseUcb(right,node.visits,rng,exploration);
       if(!l||!r)break;
       path.push({node,l,r});
       test.makeChoices(l.action,r.action);
@@ -90,7 +118,10 @@ function runDuct(B,deps,config={}) {
       const pairKey=l.action+'|'+r.action;
       let outcomes=node.pairs.get(pairKey);
       if(!outcomes){outcomes=new Map();node.pairs.set(pairKey,outcomes)}
-      const key=A.signature(test);
+      // In open-loop mode, distinct hit/miss/damage rolls visit the same
+      // action-history node. Exact mode preserves state-by-state splitting
+      // for controlled comparison and counterexamples.
+      const key=treeMode==='open-loop'?'action-history':A.signature(test);
       let next=outcomes.get(key);
       if(!next) {
         next=createNode(test,deps);
@@ -116,10 +147,10 @@ function runDuct(B,deps,config={}) {
     if(selectedLeaf && nodes>maxIterations*treeDepth)break;
   }
   return {...rootPolicies(root),iterations,completed,unresolved,nodes,
-    elapsedMs:Date.now()-start,maxReachedDepth,totalRolloutTurns,
+    elapsedMs:Date.now()-start,maxReachedDepth,totalRolloutTurns,treeMode,legalDivergences,
     // A rollout heuristic score is not a calibrated win probability.
     estimatedGameValuePct:null,certified:false,
-    estimateType:'duct-sampled-partial-rollouts',
-    warning:'UCT 방문 비율은 승률이 아님. 종료되지 않은 전투는 낮은 가중치의 휴리스틱으로 평가했으며 최적 행동을 보장하지 않음.'};
+    estimateType:'duct-'+treeMode+'-sampled-partial-rollouts',
+    warning:'UCT 방문 비율은 승률이 아님. 오픈루프 탐색은 다른 난수 결과의 전략 가치를 혼합할 수 있음. 무작위 후속 수순 및 미종료 휴리스틱은 최적 전략을 보장하지 않음.'};
 }
 module.exports={runDuct,chooseUcb,rootPolicies,sample,createNode};
