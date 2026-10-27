@@ -41,6 +41,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/stage1b-coverage-audit.cjs
+      - name: Diagnostic head-to-head of search policies (not strength certification)
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/stage1b-policy-match.cjs
       - name: Confirm no Legacy or shared runtime changes from original baseline
         run: |
           git fetch origin main --depth=1
