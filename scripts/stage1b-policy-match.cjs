@@ -11,7 +11,7 @@ const sets=new Map(fixture.sets.map(s=>[s.name,s]));
 const deps={Sim:core.Sim,legal:core.legal};
 const matchups=[['HS명상메플라','HB와자몽'],['초점HA따라큐','울멧HB아머까오'],
   ['조심CS메망나','기띠고집한카']];
-const pairings=[['widen','open'],['open','widen'],['widen','exact'],['exact','widen']];
+const pairings=[['widen','open'],['open','widen'],['widen','exact'],['exact','widen'],['open','exact'],['exact','open']];
 const seeds=['1579,3137,6027,8191','9050,5038,6950,14342'];
 const all=[];
 function select(B,side,mode,id,turn){
@@ -47,13 +47,14 @@ for(const [first,second] of matchups)
  }
 const groups={};
 for(const x of all){
- const competitor=x.agents.find(a=>a!=='widen');
- const group=(groups[competitor]??={widenWins:0,opponentWins:0,draws:0,unresolved:0,n:0});
- group.n++;
- if(x.winner==='widen')group.widenWins++;
- else if(x.winner===competitor)group.opponentWins++;
- else if(x.winner==='draw')group.draws++;
- else group.unresolved++;
+  const agents=[...x.agents].sort();
+  const name=agents.join(' vs ');
+  const group=(groups[name]??={n:0,wins:{[agents[0]]:0,[agents[1]]:0},draws:0,unresolved:0});
+  group.n++;
+  if(x.winner==='draw')group.draws++;
+  else if(x.winner==='unresolved')group.unresolved++;
+  else if(x.winner in group.wins)group.wins[x.winner]++;
+  else throw Error('Unknown winner: '+x.winner);
 }
 console.log('[STAGE1B-POLICY-DUEL-SUMMARY]',JSON.stringify({matches:all.length,groups,
  note:'Exploratory 120ms/side/turn paired games; not 1.8s performance, proof of correctness or Nash optimality.'}));
