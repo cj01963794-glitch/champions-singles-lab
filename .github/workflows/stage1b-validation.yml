@@ -45,6 +45,12 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: node scripts/stage1b-policy-match.cjs
+      - name: Battle-engine methodology isolated Stage 2 tests and policy benchmark
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: |
+          node --test test/stage2-battle-engine-methods.test.cjs
+          node scripts/stage2-benchmark.cjs
       - name: Confirm no Legacy or shared runtime changes from original baseline
         run: |
           git fetch origin main --depth=1
