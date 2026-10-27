@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-26T13:06:27.546Z",
-  "count": 30,
+  "generatedAt": "2026-10-27T14:51:07.417Z",
+  "count": 31,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -702,6 +702,29 @@
         "spa": 0,
         "spd": 2,
         "spe": 0
+      }
+    },
+    {
+      "id": "e56cd2db-5975-42a9-924e-39ded986b71f",
+      "updatedAt": "2026-10-27T14:51:04.517Z",
+      "name": "풍누",
+      "species": "Primarina",
+      "nature": "Modest",
+      "item": "Air Balloon",
+      "ability": "Liquid Voice",
+      "moves": [
+        "Uproar",
+        "Sparkling Aria",
+        "Moonblast",
+        "Aqua Jet"
+      ],
+      "evs": {
+        "hp": 2,
+        "atk": 0,
+        "def": 0,
+        "spa": 32,
+        "spd": 0,
+        "spe": 32
       }
     }
   ]
