@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-27T15:14:37.920Z",
-  "count": 31,
+  "generatedAt": "2026-10-27T16:27:19.017Z",
+  "count": 32,
   "samples": [
     {
       "id": "100c48a7-d6e6-4e86-b01c-e0767afca16a",
@@ -725,6 +725,29 @@
         "spa": 32,
         "spd": 0,
         "spe": 32
+      }
+    },
+    {
+      "id": "ee93b813-3a58-456e-bd01-9f847f05b1d9",
+      "updatedAt": "2026-10-27T16:27:15.916Z",
+      "name": "스코빌런",
+      "species": "Scovillain",
+      "nature": "Timid",
+      "item": "Leftovers",
+      "ability": "Moody",
+      "moves": [
+        "Substitute",
+        "Flamethrower",
+        "Leech Seed",
+        "Protect"
+      ],
+      "evs": {
+        "hp": 5,
+        "atk": 0,
+        "def": 32,
+        "spa": 0,
+        "spd": 18,
+        "spe": 11
       }
     }
   ]
