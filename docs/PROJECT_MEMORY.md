@@ -52,3 +52,9 @@ At each stage: read actual source/license/dependencies; formulate specific trans
 Long-term objective = strong actual-battle AI. Currently strictly open-sheet 1v1; larger singles teams, switching and user-curated hidden-set mixtures are later phases. The entire 8-project sequence may surface learning methods that are impractical to adopt in the present stage; study/record them rather than prematurely deploy.
 
 Research notes: docs/RESEARCH_POKEMON_BATTLE_AI_BENCHMARKS_2026-10-27.md.
+
+
+## User clarification: replace Experimental from scratch, never touch Legacy (2026-10-27)
+**Important superseding decision**: Previous notes that referred to enhancing existing Stage 1B/Experimental or using it as the benchmark baseline are **obsolete**. The user explicitly rejects the present `model:'experimental'` implementation and wants its strategy/search code **discarded and fully replaced** by a newly developed model in the **same** Stage 1B (`model:'experimental'`) site slot. Begin from the Foul Play algorithmic method only when further implementation instructions are issued; do not inherit legacy Experimental heuristics, plan generators, or special-case patches. Git history preserves the removed implementation if recovery becomes necessary.
+
+`model:'legacy'` must **never be modified without the user's own distinct explicit approval**. The selected-by-default Legacy source, semantics and responses are immutable; shared components must not be changed if there is any risk to Legacy, without permission. For comparisons, Legacy is read-only control. Keep original Showdown Champions mod/Dex, existing validation and the site's translation/catalog; borrow no external move/base-stat/ability/item/translation database. This directive is stronger than earlier 'if unavoidable, modify shared helpers with tests' language: do not make unapproved changes affecting Legacy. The user has not yet instructed starting Stage 1 implementation or deployment.
