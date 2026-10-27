@@ -47,3 +47,10 @@
 - 72 live-policy duels at 120ms per side per turn: exact beat open-loop 14–7 (3 unresolved), exact beat widened 14–8 (2 unresolved), widened beat open-loop 12–10 (2 unresolved). Limited seeds, three matchups, low computation. **No proven strength gain.** Retain `exact` as safe runtime default, leave both additions optional research alternatives.
 - Broadened diagnostics to all 17/21 archived reproducible matchup conditions and both orientations; 4 historical sets are missing. Selected regressions 121 pass, 0 fail, 1 TODO, with documented old exclusions.
 - Full rationale and CI links: `docs/STAGE1B_SEARCH_BENCHMARK_2026-10-28.md`. Do not describe this as a deployable high-performance model or as reaching optimal deep battle plans.
+
+## 2026-10-28 KST — Second priority battle-engine method experiment
+- Read actual MIT battle-engine source. Skipped obsolete 2-ply incomplete transition and external poke-engine, hidden-opponent sampling, PPO learning; only copied concepts: independently seeded search visit aggregation and Wilson benchmark gate.
+- Implemented `engines/stage1b/root-ensemble.cjs`, `engines/stage1b/benchmark-metrics.cjs`, corresponding 2 tests, and 64-game two-sided held-out benchmark with fixed 120ms/agent/turn limit. Source `main`, Legacy and current Stage1B production default remain unmodified.
+- CI 40536717094 SUCCESS: selected 123 pass, 0 fail, 1 TODO; 2 Stage2 isolation tests pass; 34 historical orientations replay; Legacy/shared diff guard successful.
+- 64 head-to-head games: 28 ensemble wins / 34 retained exact-DUCT wins / 2 unresolved. Held-out 5-matchup cohort: 19–21. Resolved win share ensemble 28/62=45.2%, descriptive Wilson 95% interval [33.4%,57.5%]. No evidence of improvement; no deployment or default promotion. Preserve optional comparison candidate.
+- See `docs/STAGE2_BATTLE_ENGINE_BENCHMARK_2026-10-28.md` for full caveats, methodology and links.
