@@ -16,3 +16,6 @@ Append date, proposer, accepted/rejected/experimental status, exact issue, alter
 
 
 | 2026-10-27 | External AI algorithms only; Stage 1B isolated, Legacy and current Champions data authoritative | User explicitly directs that Foul Play/Metamon/etc. are optional methodology references, not Pokémon/move/translation databases, and that deployment keeps original Legacy untouched and default while new work lands only in Stage 1B. Verified server and UI model separation; shared functions remain a regression hazard. | Binding architecture requirement; no source modifications in this turn |
+
+
+| 2026-10-27 | Superseding decision: discard existing Experimental and replace Stage 1B from scratch; never modify Legacy without separate explicit approval. | User corrected preceding assumption: existing Experimental is rejected outright, not a starting point for incremental enhancement. Preserve the existing `experimental` API/UI slot, canonical Champions battle/translation data, and Legacy as unaltered default; historical old Experimental recoverable through Git. | Binding; replaces earlier 'improve existing Stage 1B' implication; no runtime code change requested yet |
