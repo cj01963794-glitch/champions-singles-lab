@@ -13,3 +13,6 @@
 
 ## Recording future decisions
 Append date, proposer, accepted/rejected/experimental status, exact issue, alternatives, justification, affected files, supporting test evidence, relevant transcript path and commit SHA. Preserve reversals rather than deleting the original decision.
+
+
+| 2026-10-27 | External AI algorithms only; Stage 1B isolated, Legacy and current Champions data authoritative | User explicitly directs that Foul Play/Metamon/etc. are optional methodology references, not Pokémon/move/translation databases, and that deployment keeps original Legacy untouched and default while new work lands only in Stage 1B. Verified server and UI model separation; shared functions remain a regression hazard. | Binding architecture requirement; no source modifications in this turn |
