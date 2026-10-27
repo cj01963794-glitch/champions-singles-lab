@@ -23,3 +23,34 @@
 - Assistant explicitly withdrew recommendation to implement the proposed analyzer; no source files were changed and no tests were run.
 - Archived current new-chat user's exact messages and assistant verbatim excerpts (not a complete UI transcript) in existing `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`, commit `2cbc8ecc545b11764d28e53693685ce095c7e973`.
 - Backup is **manual per actual commit, never automatic per message**. Do not imply continuous unattended recording.
+
+## 2026-10-27 KST — interrupted Stage 1B DUCT implementation recovered and tested
+- User requested prior dialogue/GitHub recovery and robust checkpoints. Found unfinished Foul Play candidate at `stage1b-foulplay-duct-20261027` (`445ce0d`), created branch `stage1b-recovery-20261027` to preserve it; main untouched.
+- Recovered source, docs and available transcript; non-archived prior chat messages **could not be recovered as full verbatim text**, no fabricated quotations.
+- Replaced rejected Experimental only, kept `model:'legacy'` and shared rules/route/UI/data unchanged. Introduced new candidate CI, real two-sided mechanics smoke tests, test-only time budgets, Stage 1B Docker build gate and recovery briefing.
+- Found DUCT `Infinite loop`: pinned Showdown `State.serializeBattle` and `deserializeBattle` alias live `battle.log` arrays; repeated search simulations appended to source log until simulator's >1000-line guard fired. Fixed via log copies within Stage 1B adapter; verified source battle mutation checks, seeded restored mechanics, matrix DUCT tests and state clone profiling.
+- First passing run `40523704908`, commit `e4a9955`: 118 pass, 0 fail, 1 TODO within filtered tests. Exactly three existing shared/Legacy failures were excluded by subtest name, and four old rejected Experimental policy contract files archived; do not report unfiltered green. Earlier after-log-fix unfiltered run `40523311832` showed 118 passes, three unrelated failures, one TODO.
+- All actual GitHub modifications performed on recovery branch, not deployed. Remaining: latest commit CI; meaningful equal-compute battle-strength/long-horizon benchmarks; UI copy accuracy; no neural memory/learned model yet. Details and URLs: `docs/STAGE1B_RECOVERY_2026-10-27.md`.
+
+
+## 2026-10-27 KST — measured first-turn 1.8s Stage 1B candidate search
+- Added `scripts/stage1b-first-turn-audit.cjs` and diagnostic CI step in commit `e5a6ca9a9dce609164379070bb4702d1fe339be2`.
+- Action [40526359384](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40526359384) PASS: 119 selected tests passed, 0 failures, 1 TODO; pinned mod and Legacy shared-file unchanged gate passed (same three old named and four old files exclusions).
+- Five stored pairs x reversed sides at a realistic 1800ms root budget on GitHub runner: 10 roots, 5204 total visits, 222–907 each, seven unresolved random rollouts; tree max reached depth 2–4, so the rest of outcomes rely heavily on random continuations.
+- Floette/Charizard at 1.8s: first-side Calm Mind `move 4 mega` only 18.5% of root share (`move 4` 16.2%), reversed Floette `move 4 mega` 20.4%; no guarantee of the long heal/setup plan. Mimikyu/Corviknight Swords Dance `move 3` got 77.4% and 76.1% visit share in both orientations.
+- Low practical tree depth and nearly one new node per search trial in several cases indicate weak chance-outcome sharing. Next generic research target: outcome abstraction / stochastic grouping and improved long-term rollout valuation, benchmarked without name-specific patches. No measured actual policy-versus-policy win percentages, no site deployment.
+
+
+## 2026-10-28 KST — Foul Play DUCT search improvements, negative strength findings
+- Added exact-state vs action-history open-loop tree choice, plus optional deep joint-pair progressive widening. Both explicitly check actual live Showdown legal options and leave Legacy, main and shared site files untouched.
+- 450ms first-turn ablation: plain open-loop depth improved in 4/10 positions over exact and regressed in none; widening improved depth in 10/10 positions versus open-loop, no depth regression. At 1.8s widened reached 5–7 tree turns, including 6 for Floette/Charizard.
+- 72 live-policy duels at 120ms per side per turn: exact beat open-loop 14–7 (3 unresolved), exact beat widened 14–8 (2 unresolved), widened beat open-loop 12–10 (2 unresolved). Limited seeds, three matchups, low computation. **No proven strength gain.** Retain `exact` as safe runtime default, leave both additions optional research alternatives.
+- Broadened diagnostics to all 17/21 archived reproducible matchup conditions and both orientations; 4 historical sets are missing. Selected regressions 121 pass, 0 fail, 1 TODO, with documented old exclusions.
+- Full rationale and CI links: `docs/STAGE1B_SEARCH_BENCHMARK_2026-10-28.md`. Do not describe this as a deployable high-performance model or as reaching optimal deep battle plans.
+
+## 2026-10-28 KST — Second priority battle-engine method experiment
+- Read actual MIT battle-engine source. Skipped obsolete 2-ply incomplete transition and external poke-engine, hidden-opponent sampling, PPO learning; only copied concepts: independently seeded search visit aggregation and Wilson benchmark gate.
+- Implemented `engines/stage1b/root-ensemble.cjs`, `engines/stage1b/benchmark-metrics.cjs`, corresponding 2 tests, and 64-game two-sided held-out benchmark with fixed 120ms/agent/turn limit. Source `main`, Legacy and current Stage1B production default remain unmodified.
+- CI 40536717094 SUCCESS: selected 123 pass, 0 fail, 1 TODO; 2 Stage2 isolation tests pass; 34 historical orientations replay; Legacy/shared diff guard successful.
+- 64 head-to-head games: 28 ensemble wins / 34 retained exact-DUCT wins / 2 unresolved. Held-out 5-matchup cohort: 19–21. Resolved win share ensemble 28/62=45.2%, descriptive Wilson 95% interval [33.4%,57.5%]. No evidence of improvement; no deployment or default promotion. Preserve optional comparison candidate.
+- See `docs/STAGE2_BATTLE_ENGINE_BENCHMARK_2026-10-28.md` for full caveats, methodology and links.

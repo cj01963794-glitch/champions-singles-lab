@@ -1,5 +1,28 @@
 # Project recovery entry point
 
+## 2026-10-28 — 2순위 battle-engine 검토 및 적용 실험 결과
+- Latest report: `docs/STAGE2_BATTLE_ENGINE_BENCHMARK_2026-10-28.md`.
+- Inspected eykzhang/battle-engine real README/source/license (MIT). Implemented optional three independently seeded SAME-open-sheet-state exact DUCT root ensemble, **serial not parallel**, plus Wilson CI and explicit unresolved-game accounting. No imported game data/forward model, no trained ML, no hidden-set sampling.
+- Tested 64 same-wall-budget head-to-head Showdown games: ensemble 28 wins, control 34 wins, 2 unresolved; held-out 5-pair slice ensemble 19 vs 21; no demonstrated improvement. 95% descriptive Wilson interval for ensemble's resolved-only win rate 45.2% = ~[33.4%, 57.5%]. Selected 123 regressions passed, 0 failed, 1 TODO; separate Stage2 tests 2 passed in [Actions 40536717094](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40536717094).
+- **Decision: do not promote ensemble to default.** Retain it as experimental benchmark alternative, retain verified benchmark metrics. Original `exact` DUCT default, Legacy, main, site rules/translation and deployment unchanged. Completion means method was inspected/trialed and recorded honestly, NOT that strong play was proven.
+
+
+## 2026-10-28 KST update — first-priority DUCT ablation
+- **Start at `docs/STAGE1B_SEARCH_BENCHMARK_2026-10-28.md` for latest findings.** Tested action-history open-loop and opt-in joint progressive widening: 10/10 historical roots had deeper tree search with widening at 450ms, BUT 72-game low-budget head-to-head did not demonstrate playing-strength improvement (exact vs open **14–7**, 3 unresolved; exact vs widen **14–8**, 2 unresolved; widen vs open **12–10**, 2 unresolved).
+- **Conservative Stage 1B runtime default remains `treeMode:'exact'`, `jointWidening:false`; exploratory methods preserved for benchmarking only.** Do not promote search depth to evidence of winning strength. Legacy/main unchanged, no site deployment. Latest code run before default-restoration is [40533377668](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40533377668); check CI for the final restoration commit.
+- Historical archive has 21 entries, 17 replayable, 4 lacking stored original sets; new coverage audit checks the 17 in both orientations. CI selected tests excluded known prior Legacy/mock red cases and obsolete Experimental tests; unfiltered suite not certified green.
+
+
+## RECOVERY CHECKPOINT — 2026-10-27 KST (read this first)
+- **Candidate:** `stage1b-recovery-20261027` (from paused `stage1b-foulplay-duct-20261027`, head `445ce0d`). Original branch + `main` preserved; GitHub branch HEAD must be refreshed before next write.
+- **Working test evidence:** [Actions 40523704908](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40523704908), 118 pass, 0 fail, 1 TODO among *selected* tests; 3 pre-existing Legacy/mock failures excluded by exact name and 4 obsolete old Experimental test files archived. This is not unfiltered green.
+- **Fixed crash:** pinned Showdown snapshot and restore share `battle.log` array with live fight; DUCT simulations pushed it past 1,000-line guard, yielding “Infinite loop”. Stage 1B adapter now makes separate log copies; regression confirms no alias.
+- **Legacy strictly immutable.** `server.cjs`, `index.html`, catalogs and shared game rules unchanged; Docker build tests may change but not Legacy runtime.
+- **Do NOT call initial DUCT prototype strongly validated**. Production-sized 1.8s GitHub-runner audit [40526359384](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40526359384) ran 10 roots, 222–907 trials/root and 2–4 reached tree turns, with near-one-new-node-per-trial in some cases. Long setup/heal and rare counterplay unproven; visit share is NOT win probability. No site deployment.
+- **Primary recovery briefing:** `docs/STAGE1B_RECOVERY_2026-10-27.md`. Run `npm test` with pinned `SHOWDOWN_PACKAGE_PATH`, see CI for exact source SHA.
+- **Single transcript:** `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`. Only manually committed text is recoverable, not previous conversation in full; no background per-message sync.
+
+
 Established: **2026-10-27 (Asia/Seoul)**  
 Repository: `cj01963794-glitch/champions-singles-lab` (public)  
 Initial source-code checkpoint observed: `82f97bc033394421679f9d2ff7b9bf98dfac2907` (last checked during documentation setup).
