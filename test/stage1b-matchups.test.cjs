@@ -97,3 +97,18 @@ test('snapshot and restoration throughput is visibly reported without an invente
   }));
   assert.ok(Number.isFinite(elapsedMs)&&elapsedMs>=0);
 });
+
+test('Showdown restored trials do not share battle-log arrays',()=>{
+  const B=core.battle(get('초점HA따라큐'),get('울멧HB아머까오'),seed);
+  const initial=B.log.slice(),snapshot=A.snapshot(B);
+  assert.notStrictEqual(B.log,snapshot.log);
+  const X=A.restore(snapshot,core.Sim,'isolation-A');
+  const Y=A.restore(snapshot,core.Sim,'isolation-B');
+  assert.notStrictEqual(X.log,Y.log);
+  assert.notStrictEqual(X.log,B.log);
+  assert.notStrictEqual(X.log,snapshot.log);
+  X.makeChoices(core.legal(X,'p1')[0],core.legal(X,'p2')[0]);
+  assert.deepEqual(B.log,initial);
+  assert.deepEqual(Y.log,initial);
+  assert.deepEqual(snapshot.log,initial);
+});

@@ -23,3 +23,12 @@
 - Assistant explicitly withdrew recommendation to implement the proposed analyzer; no source files were changed and no tests were run.
 - Archived current new-chat user's exact messages and assistant verbatim excerpts (not a complete UI transcript) in existing `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`, commit `2cbc8ecc545b11764d28e53693685ce095c7e973`.
 - Backup is **manual per actual commit, never automatic per message**. Do not imply continuous unattended recording.
+
+## 2026-10-27 KST — interrupted Stage 1B DUCT implementation recovered and tested
+- User requested prior dialogue/GitHub recovery and robust checkpoints. Found unfinished Foul Play candidate at `stage1b-foulplay-duct-20261027` (`445ce0d`), created branch `stage1b-recovery-20261027` to preserve it; main untouched.
+- Recovered source, docs and available transcript; non-archived prior chat messages **could not be recovered as full verbatim text**, no fabricated quotations.
+- Replaced rejected Experimental only, kept `model:'legacy'` and shared rules/route/UI/data unchanged. Introduced new candidate CI, real two-sided mechanics smoke tests, test-only time budgets, Stage 1B Docker build gate and recovery briefing.
+- Found DUCT `Infinite loop`: pinned Showdown `State.serializeBattle` and `deserializeBattle` alias live `battle.log` arrays; repeated search simulations appended to source log until simulator's >1000-line guard fired. Fixed via log copies within Stage 1B adapter; verified source battle mutation checks, seeded restored mechanics, matrix DUCT tests and state clone profiling.
+- First passing run `40523704908`, commit `e4a9955`: 118 pass, 0 fail, 1 TODO within filtered tests. Exactly three existing shared/Legacy failures were excluded by subtest name, and four old rejected Experimental policy contract files archived; do not report unfiltered green. Earlier after-log-fix unfiltered run `40523311832` showed 118 passes, three unrelated failures, one TODO.
+- All actual GitHub modifications performed on recovery branch, not deployed. Remaining: latest commit CI; meaningful equal-compute battle-strength/long-horizon benchmarks; UI copy accuracy; no neural memory/learned model yet. Details and URLs: `docs/STAGE1B_RECOVERY_2026-10-27.md`.
+

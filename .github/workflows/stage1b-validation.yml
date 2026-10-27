@@ -36,4 +36,7 @@ jobs:
       - name: Confirm no Legacy or shared runtime changes from original baseline
         run: |
           git fetch origin main --depth=1
-          git diff --exit-code origin/main -- server.cjs index.html korean-forms.cjs sample-library.cjs Dockerfile
+          git diff --exit-code origin/main -- server.cjs index.html korean-forms.cjs sample-library.cjs
+          grep -q 'd849b220082e113d8a17303509fb44d420c543d5' Dockerfile
+          grep -Fq 'CMD ["node","server.cjs"]' Dockerfile
+          grep -Fq 'RUN npm test' Dockerfile

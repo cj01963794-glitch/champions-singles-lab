@@ -19,3 +19,8 @@ Append date, proposer, accepted/rejected/experimental status, exact issue, alter
 
 
 | 2026-10-27 | Superseding decision: discard existing Experimental and replace Stage 1B from scratch; never modify Legacy without separate explicit approval. | User corrected preceding assumption: existing Experimental is rejected outright, not a starting point for incremental enhancement. Preserve the existing `experimental` API/UI slot, canonical Champions battle/translation data, and Legacy as unaltered default; historical old Experimental recoverable through Git. | Binding; replaces earlier 'improve existing Stage 1B' implication; no runtime code change requested yet |
+
+| 2026-10-27 | Keep interrupted DUCT branch intact, work on a separate recovery branch and checkpoint actual commits. | UI interruptions should not destroy work; preserve main/Legacy control. | Implemented, not deployed |
+| 2026-10-27 | Copy pinned Showdown battle log arrays per snapshot/restore trial. | Pinned serializer aliases logs, causing DUCT search to trip 1000-line guard and report “Infinite loop”. | Stage 1B adapter only; tested |
+| 2026-10-27 | Candidate-only CI/Docker test gates replace obsolete Experimental assertions; retain mechanics tests and name all 3 unrelated red Legacy/mock subtests, 4 archived obsolete Experimental test files. | An old interface cannot validate new algorithm. Do not conceal exclusions or weaken Legacy behavior. | Implemented with documented limits |
+| 2026-10-27 | DUCT candidate is not yet strong/optimal just because mechanics tests pass. | Random truncated rollouts can miss long setup/counterplays; root policy visits are not win rates. | Performance acceptance pending |

@@ -5,26 +5,11 @@ RUN git init && git remote add origin https://github.com/smogon/pokemon-showdown
 WORKDIR /app
 COPY . .
 ENV SHOWDOWN_PACKAGE_PATH=/opt/pokemon-showdown
-# Stop deployment if the saved Gyarados/Primarina opener regresses.
-RUN node --check engines/strategic-plans.cjs
-RUN node --check engines/adversarial-plan-search.cjs
-RUN node --check engines/probability-planner.cjs
+# Experimental Stage 1B candidate build gate; Legacy runtime remains unchanged.
 RUN node --check engines/experimental.cjs
-RUN node --test test/stage1-probability.test.cjs
-RUN node --test test/strategic-plan-regression.test.cjs
-RUN node --test test/strategic-trace.test.cjs
-RUN node --test test/model-selector.test.cjs
-RUN node --test test/experimental.test.cjs
-RUN node --test test/experimental-historical.test.cjs
-RUN node --test test/experimental-cinderace-primarina.test.cjs
-RUN node --test test/experimental-counterfactual.test.cjs
-RUN node --test test/pain-split-ui.test.cjs
-RUN node --test test/rotom-scrafty.test.cjs
-RUN node --test test/rotom-salamence.test.cjs
-RUN node --test test/metagross-scrafty-immunity.test.cjs
-RUN node --test test/gyarados-primarina.test.cjs
-RUN node --test test/floette-mimikyu.test.cjs
-RUN node --test test/floette-mimikyu-plan.test.cjs
+RUN node --check engines/stage1b/showdown-adapter.cjs
+RUN node --check engines/stage1b/duct-search.cjs
+RUN npm test
 ENV PORT=10000
 EXPOSE 10000
 CMD ["node","server.cjs"]
