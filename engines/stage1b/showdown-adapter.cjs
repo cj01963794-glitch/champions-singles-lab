@@ -16,7 +16,11 @@ function makeRandom(seed) {
 }
 function snapshot(B) {
   if (typeof B.toJSON !== 'function') throw Error('Pinned Showdown state serializer not available');
-  return B.toJSON();
+  // Pinned Showdown's serializeBattle() deliberately returns battle.log BY
+  // REFERENCE. Never let a saved search state share the live battle's log.
+  const saved=B.toJSON();
+  saved.log=Array.isArray(saved.log)?saved.log.slice():saved.log;
+  return saved;
 }
 function restore(saved, Sim, randomSeed) {
   if (!Sim?.Battle || typeof Sim.Battle.fromJSON !== 'function')
@@ -24,7 +28,14 @@ function restore(saved, Sim, randomSeed) {
   // The state is the same; only future chance events change between trials.
   // Branching from identical saved RNG without reseeding samples one chance
   // outcome indefinitely, producing a false-looking probability estimate.
-  const state = randomSeed == null ? saved : {...saved, prng: hashSeed(randomSeed)};
+  // Pinned State.deserializeBattle() assigns battle.log = state.log (not a
+  // clone). Without isolating it, every trial appends to the SAME log,
+  // corrupts the live fight and eventually trips Showdown's 1000-line guard
+  // (misleadingly reported as "Infinite loop").
+  const state = {...saved,
+    log: Array.isArray(saved.log)?saved.log.slice():saved.log,
+    ...(randomSeed == null?{}:{prng: hashSeed(randomSeed)})
+  };
   return Sim.Battle.fromJSON(state);
 }
 function legal(B, side, deps) {
