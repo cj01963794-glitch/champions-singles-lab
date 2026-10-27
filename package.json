@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "node server.cjs",
-    "test": "node --test test/*.test.cjs"
+    "test": "node scripts/run-stage1b-tests.cjs"
   },
   "engines": {
     "node": ">=22.18.0"
