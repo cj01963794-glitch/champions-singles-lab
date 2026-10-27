@@ -658,3 +658,22 @@ Showdown은 리프블레이드의 피해와 칼춤 후 랭크, 메가진화 후 
 - 참고: https://pmariglia.github.io/posts/foul-play/ ; https://proceedings.mlr.press/v267/karten25a.html ; https://jaxcalibur.github.io/ ; https://github.com/eykzhang/battle-engine .
 
 **기록 범위:** 사용자 발언은 확인된 원문 그대로 보존. 어시스턴트의 긴 조사 답변은 요약이며 완전한 전사는 아님. GitHub로 자동 동기화되지 않음.
+
+
+---
+
+## 2026-10-27 — 8개 포켓몬 AI GitHub 저장소 직접 코드 검토
+
+**사용자 원문**
+
+> 일단 Metamon 오픈소스 github부터 시작해서 너가 방금 쭉 조사해온 프로젝트들 중 github 링크가 있는 애들, 걔네들 github를 전부 열어보고 내용과 코드를 확인해서 나한테 좀더 구체적으로 알려줄 수 있겠어?
+
+**수행된 작업과 답변 내용 (기록 요약, 원문 아님)**
+
+GitHub 연결로 8개 저장소 UT-Austin-RPL/metamon, pmariglia/foul-play, sethkarten/pokechamp, BhaveshThapar/RotomAI, Blueshadow0107/showdown-brain, cameronangliss/vgc-bench, eykzhang/battle-engine, hsahovic/poke-env의 루트 구조, README, 관련 소스 파일을 직접 조회함. Foul Play의 실제 탐색 엔진인 pmariglia/poke-engine의 Rust MCTS/UCT 코드도 열람. 세부 함수, 파일 경로, 라이선스, 결과의 한계와 실험 우선순위를 `docs/RESEARCH_POKEMON_BATTLE_AI_BENCHMARKS_2026-10-27.md` 하단 **direct code inspection notes (second pass)**에 추가함.
+
+핵심 확인: Metamon은 사전학습 모델과 데이터셋을 통한 가중치 미세조정; Foul Play는 Rust DUCT로 동시 행동과 확률 결과를 탐색하고 현재 저장소에는 일부 'gen9champions' 관련 테스트가 있음(완전 포챔스 일치 증거 아님); PokéChamp는 LLM 후보 생성과 불완전 휴리스틱/LLM leaf 평가; RotomAI는 정책·가치 모델과 제한된 expectimax, 공개 래더 평가에서는 약함; showdown-brain은 1-ply LightGBM과 직접 추가 휴리스틱; VGC-Bench는 PPO population training과 홀드아웃 평가; battle-engine은 불완전 시뮬레이터 위 심층 탐색/ML의 실패 및 최종 Rust MCTS+상대 세트 예측; poke-env는 실행/평가 인프라. 현재 사용자 1v1 완전지정 샘플에는 상대의 숨겨진 팀을 샘플링하는 기능이 우선순위가 낮음.
+
+이 단계는 저장소 코드 **정적 확인**이며 실제 설치·테스트 실행·전투 시뮬레이션·AI 소스 수정은 하지 않았음.
+
+**보존 범위:** 사용자 메시지는 원문. 조사 결과는 요약 및 링크로 보존, 전체 어시스턴트 응답의 완전한 전사가 아님. 개별 커밋 실행 후에만 백업됨.
