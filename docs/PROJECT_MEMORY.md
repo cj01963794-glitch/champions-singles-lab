@@ -29,3 +29,16 @@ GitHub commits persist development documents and exact conversation excerpts cop
 
 ## Latest design status after new-chat discussion (2026-10-27)
 The previously proposed small **strategy analyzer** (state-change analysis → important issue discovery → strategy generation → counterplay) was **explicitly withdrawn** after the user challenged its implementability. Only the state-difference calculations were judged straightforward; there is no substantiated general algorithm for selecting strategically important differences without falling back on costly search or hand-built heuristics. **Do not present the strategy-analyzer experiment as an agreed next implementation step.** The user strongly rejects speculative architectures and repeated case-by-case patches. Before recommending coding, provide an executable, falsifiable core algorithm and clear reasons to believe it addresses the circularity. No implementation was made. Transcript recovery: `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`.
+
+
+## Clarified ultimate goal and staged scope (2026-10-27)
+
+The user corrected the perceived end-goal: this is **not only a matchup calculator**. The eventual target is a **strong actual-battle decision-making AI**, progressively developed and validated.
+
+**Current stage / hard priority:** First make a reliable, strategically strong **fully open-sheet 1-v-1 single Pokémon matchup** engine. Both movesets/items/stats are currently known, so no need to spend current development budget sampling unknown opponent sets. No claim of solved optimality until proven.
+
+**Later, explicitly deferred:** (1) singles battles with a roster of 2 vs 2 and eventually 3 vs 3, including switching, sacrifice, predictive moves and opponent counterplay; (2) opponent build uncertainty, with a user-curated library of multiple common sets per species and weighted evaluation across those sets; (3) full actual-battle AI. Do not confuse "2 vs 2 team sizes with switches" with doubles active-battler rules absent explicit clarification.
+
+Benchmarking priority for this **current-stage-first, long-term-strong-AI** strategy: 1 Foul Play/poke-engine; 2 battle-engine; 3 Metamon; 4 RotomAI; 5 VGC-Bench; 6 PokéChamp; 7 showdown-brain; 8 poke-env. This is a *review/test priority*, not guaranteed overall quality ranking or approval to copy code.
+
+No shift to later-stage switching, set distribution, or large-scale self-play until open-sheet 1v1 engine has been shown reliable.
