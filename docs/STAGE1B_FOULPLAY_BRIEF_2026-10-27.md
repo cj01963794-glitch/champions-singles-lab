@@ -40,3 +40,18 @@ E. Evaluate old/hard cases as **held-out regressions**, incl. Mega Sceptile/Prim
 F. Deployment only if Stage 1B tests and Legacy unchanged-result tests pass, model output/UI remains compatible, and site load budget acceptable. Keep Legacy selected by default. If experimental results too poor, report blockers, don't misrepresent implementation as successful.
 
 This is a briefing, **not a validated algorithm or deployment commitment**. A future user request will authorize implementation.
+
+
+## Feasibility reassessment: the three technical risks
+
+In response to user concern (2026-10-27): These are **not automatically solved by adopting DUCT**.
+
+| Risk | Mitigation / future options | Non-negotiable honesty |
+| --- | --- | --- |
+| Slow state clone/turn evaluation | Profile pinned Showdown `toJSON()/fromJSON()` and mechanics parity; use valid transposition/memoization, shared immutable parsing, time budgets and profiling; optimize verified bottlenecks; consider incremental reversible transitions or optimized native implementation **only after full Champions parity tests**. | No throughput or deploy viability claim without measurement. |
+| Long-range setup/heal/Encore strategies missed | Wider exploration; separate root-action coverage; targeted continuation probes, reversible search/loop recognition; later learned policy/value priors based on training/self-play (Metamon/RotomAI approaches) if costs justify. Benchmark Floette vs Charizard, Sceptile vs Primarina, Mimikyu vs Corviknight on held-out cases. | DUCT's leaf evaluation can itself bias against delayed rewards. Increasing search alone doesn't prove coverage. Foul Play source describes static hand-crafted leaf evaluation, not necessarily pure terminal rollouts. |
+| Probability and decision miscalibration | For restricted tactical cases use exact Showdown chance branches as reference; otherwise independent seeds, confidence ranges with correctly defined opponent policies and repeated tournaments; fixed budget and held-out opponents; show missing/unresolved branches. | MCTS visit share != chance of winning. Increasing samples may reduce sampling variance but cannot correct missing strategy, weak opponent or inaccurate continuation model. Distinguish exact probabilities, sampled policy-vs-policy win rate, strategic heuristic and unresolved outcomes. |
+
+**Before implementing full DUCT:** first prove (a) clone/replay results preserve exact mechanics/PRNG and (b) reasonable state throughput in deploy budget. If either fails, stop and revise feasibility instead of adding matchup-specific hacks. After implementation, report both wins **and** failures. Later external projects can replace evaluation or search if benchmarks demand, but cannot make first-stage shortcomings disappear by assumption.
+
+No model code changed by this record.
