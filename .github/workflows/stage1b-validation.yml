@@ -1,0 +1,39 @@
+name: Stage 1B DUCT Candidate Validation
+on:
+  push:
+    branches:
+      - stage1b-recovery-20261027
+  workflow_dispatch:
+jobs:
+  stage1b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build pinned Pokémon Showdown Champions simulator
+        run: |
+          mkdir -p /tmp/showdown
+          cd /tmp/showdown
+          git init
+          git remote add origin https://github.com/smogon/pokemon-showdown.git
+          git fetch --depth 1 origin d849b220082e113d8a17303509fb44d420c543d5
+          git checkout --detach FETCH_HEAD
+          npm install --omit=optional --no-audit --no-fund
+          npm run build
+      - name: Check candidate-only syntax and preserved legacy selector
+        run: |
+          node --check engines/experimental.cjs
+          node --check engines/stage1b/showdown-adapter.cjs
+          node --check engines/stage1b/duct-search.cjs
+          node --test test/model-selector.test.cjs
+      - name: Run new Stage 1B and retained mechanics regressions
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: npm test
+      - name: Confirm no Legacy or shared runtime changes from original baseline
+        run: |
+          git fetch origin main --depth=1
+          git diff --exit-code origin/main -- server.cjs index.html korean-forms.cjs sample-library.cjs Dockerfile
