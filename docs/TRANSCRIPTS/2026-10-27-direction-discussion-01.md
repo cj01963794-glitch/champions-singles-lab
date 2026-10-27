@@ -638,3 +638,23 @@ Showdown은 리프블레이드의 피해와 칼춤 후 랭크, 메가진화 후 
 - 기술 검토와 기사 이해에 관한 대화이며 사용자 개발 방향 승인, 코드 변경, 시뮬레이션 실행은 없음.
 
 **보존 범위:** 사용자 메시지는 원문. 응답은 핵심 설명 요약으로 보관; 답변 전체의 완전한 전사가 아님. 백업은 실제 커밋 기준이며 자동 저장 아님.
+
+
+---
+
+## 2026-10-27 — 기존 포켓몬 배틀 AI 벤치마킹 사례 조사
+
+**사용자 원문**
+
+> Ai를 통해 포켓몬배틀을 최적화하려고 시도한 다른 사례들이 더 있는지 찾아봐줘. 벤치마킹할수 있다면 해보게
+
+**조사 결과와 설명 요지 (요약, 원문 아님)**
+
+- 출처 직접 확인: Foul Play(DUCT 동시행동 MCTS, 확률 분기 압축), PokéChamp(LLM 행동 제안/상대 모델/가치 평가 + minimax), MIT Jett Wang(PPO + MCTS), RotomAI(BC→offline RL→PPO 및 신뢰구간 있는 비교), showdown-brain(LightGBM V(s)와 정책 priors), VGC-Bench(PSRO 다중정책 평가), Jaxcalibur(8.5M transformer, 약 1억 자가대국/H100 1주, 개발자 공개 설명), eykzhang/battle-engine(RL과 심층탐색을 실험 후 폐기한 반례).
+- 기존 GitHub 코드를 변경하지 않고, 조사 요약과 권고되는 검증 프로토콜을 독립 문서 `docs/RESEARCH_POKEMON_BATTLE_AI_BENCHMARKS_2026-10-27.md`에 저장했다.
+- 연구 핵심: **Foul Play의 동시행동 게임 탐색**과 **battle-engine의 실패 사례 및 검증 절차**부터 벤치마킹할 가치가 높다. 모든 경우/긴 전략 최적 보장이나 무땜질 만능 해결을 주장하지 않는다.
+- 사용자 프로젝트는 Champions mod 기반 특정 1대1 대면의 조건부 승리플랜 분석이므로 6대6 OU/랜덤배틀 래더 성적을 그대로 대입하면 안 된다. 기존 엔진 교체도 고려하지 않음.
+- 연구 및 방법 비교만 수행했으며, 포켓몬 시뮬레이션·벤치마크 실측·소스 AI 수정은 실행하지 않음.
+- 참고: https://pmariglia.github.io/posts/foul-play/ ; https://proceedings.mlr.press/v267/karten25a.html ; https://jaxcalibur.github.io/ ; https://github.com/eykzhang/battle-engine .
+
+**기록 범위:** 사용자 발언은 확인된 원문 그대로 보존. 어시스턴트의 긴 조사 답변은 요약이며 완전한 전사는 아님. GitHub로 자동 동기화되지 않음.
