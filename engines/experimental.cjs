@@ -14,20 +14,27 @@ function readySeed(seed){
     throw Error('Invalid RNG seed');
   return seed;
 }
-function simulateExperimental(a,b,depth=120,rngSeed,deps){
+// Optional sixth parameter is a test-only, dependency-injected budget override.
+// Production HTTP routing continues to call the original five-argument API.
+function simulateExperimental(a,b,depth=120,rngSeed,deps,opts={}){
   depth=Number.isInteger(depth)?Math.min(250,Math.max(1,depth)):120;
   if(!deps?.battle||!deps?.legal||!deps?.Sim)throw Error('Stage 1B requires pinned Showdown dependencies');
   const seed=readySeed(rngSeed),B=deps.battle(a,b,seed);
   const choices=[],details=[];
-  const deadline=Date.now()+55000;
+  const bounded=(value,fallback,lo,hi)=>Number.isFinite(value)?Math.max(lo,Math.min(hi,value)):fallback;
+  const totalBudgetMs=bounded(opts.totalBudgetMs,55000,100,55000);
+  const firstTurnBudgetMs=bounded(opts.firstTurnBudgetMs,1800,20,1800);
+  const laterTurnBudgetMs=bounded(opts.laterTurnBudgetMs,550,20,550);
+  const maxIterations=bounded(opts.maxIterations,10000,1,10000);
+  const deadline=Date.now()+totalBudgetMs;
   let stopReason='',unresolvedSearches=0;
   for(let turn=0;turn<depth&&!B.ended;turn++){
     const remaining=deadline-Date.now();
     if(remaining<80){stopReason='compute_timeout';break}
-    const budget=Math.max(20,Math.min(turn===0?1800:550,remaining-50));
+    const budget=Math.max(20,Math.min(turn===0?firstTurnBudgetMs:laterTurnBudgetMs,remaining-50));
     const result=S.runDuct(B,deps,{
       budgetMs:budget,seed:seed+':turn:'+turn,treeDepth:10,maxRolloutTurns:24,
-      maxIterations:10000,exploration:1.35
+      maxIterations,exploration:1.35
     });
     if(!result.leftActions.length||!result.rightActions.length){
       stopReason='no_available_actions';break
