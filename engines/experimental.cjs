@@ -34,7 +34,9 @@ function simulateExperimental(a,b,depth=120,rngSeed,deps,opts={}){
     const budget=Math.max(20,Math.min(turn===0?firstTurnBudgetMs:laterTurnBudgetMs,remaining-50));
     const result=S.runDuct(B,deps,{
       budgetMs:budget,seed:seed+':turn:'+turn,treeDepth:10,maxRolloutTurns:24,
-      maxIterations,exploration:1.35
+      // Conservative validated default: structural open-loop/widening trials
+      // reached deeper but lost 120ms adversarial head-to-head checks.
+      maxIterations,exploration:1.35,treeMode:'exact',jointWidening:false
     });
     if(!result.leftActions.length||!result.rightActions.length){
       stopReason='no_available_actions';break

@@ -39,3 +39,11 @@
 - Five stored pairs x reversed sides at a realistic 1800ms root budget on GitHub runner: 10 roots, 5204 total visits, 222–907 each, seven unresolved random rollouts; tree max reached depth 2–4, so the rest of outcomes rely heavily on random continuations.
 - Floette/Charizard at 1.8s: first-side Calm Mind `move 4 mega` only 18.5% of root share (`move 4` 16.2%), reversed Floette `move 4 mega` 20.4%; no guarantee of the long heal/setup plan. Mimikyu/Corviknight Swords Dance `move 3` got 77.4% and 76.1% visit share in both orientations.
 - Low practical tree depth and nearly one new node per search trial in several cases indicate weak chance-outcome sharing. Next generic research target: outcome abstraction / stochastic grouping and improved long-term rollout valuation, benchmarked without name-specific patches. No measured actual policy-versus-policy win percentages, no site deployment.
+
+
+## 2026-10-28 KST — Foul Play DUCT search improvements, negative strength findings
+- Added exact-state vs action-history open-loop tree choice, plus optional deep joint-pair progressive widening. Both explicitly check actual live Showdown legal options and leave Legacy, main and shared site files untouched.
+- 450ms first-turn ablation: plain open-loop depth improved in 4/10 positions over exact and regressed in none; widening improved depth in 10/10 positions versus open-loop, no depth regression. At 1.8s widened reached 5–7 tree turns, including 6 for Floette/Charizard.
+- 72 live-policy duels at 120ms per side per turn: exact beat open-loop 14–7 (3 unresolved), exact beat widened 14–8 (2 unresolved), widened beat open-loop 12–10 (2 unresolved). Limited seeds, three matchups, low computation. **No proven strength gain.** Retain `exact` as safe runtime default, leave both additions optional research alternatives.
+- Broadened diagnostics to all 17/21 archived reproducible matchup conditions and both orientations; 4 historical sets are missing. Selected regressions 121 pass, 0 fail, 1 TODO, with documented old exclusions.
+- Full rationale and CI links: `docs/STAGE1B_SEARCH_BENCHMARK_2026-10-28.md`. Do not describe this as a deployable high-performance model or as reaching optimal deep battle plans.

@@ -42,3 +42,7 @@ Read `docs/PROJECT_MEMORY.md`, this checkpoint, `docs/DEVELOPMENT_LOG.md`, and `
 - Mimikyu vs Corviknight: `move 3` (Swords Dance) root share 77.4% when Mimikyu is left; 76.1% when on right. This is promising smoke evidence, not a calibrated win chance.
 - Critically: **search nodes often nearly equal trials** (Floette 223 nodes for 222 trials, Corviknight/Mimikyu 395 nodes for 394), showing shallow outcome reuse under stochastic branches. Limited deep tree reuse and random leaf policy are concrete candidates for future general improvements; never repair with matchup-specific move patches.
 - Next acceptance work: quantitatively measure convergence/coverage under increased budgets; improve stochastic chance state grouping/rollout evaluation generally, then compare actual outcome win rates against adaptive adversaries and read-only Legacy. A neural policy/value model may later retain learned generalizable knowledge, but no learning system has been implemented.
+
+
+## 2026-10-28 follow-up (supersedes old to-do diagnosis)
+See `docs/STAGE1B_SEARCH_BENCHMARK_2026-10-28.md`. We implemented and evaluated open-loop chance sharing and optional deep progressive widening. They increased tree search depth but **did not beat conservative exact-state DUCT** in limited 120ms head-to-head tests. Current Stage1B default is restored to exact-state; Legacy, main and deployment remain untouched. Additional source fixtures and policy match scripts were added. Prior 2–4 turn root depth figures describe the original baseline, not widened diagnostics.

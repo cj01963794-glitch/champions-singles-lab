@@ -1,5 +1,11 @@
 # Project recovery entry point
 
+## 2026-10-28 KST update — first-priority DUCT ablation
+- **Start at `docs/STAGE1B_SEARCH_BENCHMARK_2026-10-28.md` for latest findings.** Tested action-history open-loop and opt-in joint progressive widening: 10/10 historical roots had deeper tree search with widening at 450ms, BUT 72-game low-budget head-to-head did not demonstrate playing-strength improvement (exact vs open **14–7**, 3 unresolved; exact vs widen **14–8**, 2 unresolved; widen vs open **12–10**, 2 unresolved).
+- **Conservative Stage 1B runtime default remains `treeMode:'exact'`, `jointWidening:false`; exploratory methods preserved for benchmarking only.** Do not promote search depth to evidence of winning strength. Legacy/main unchanged, no site deployment. Latest code run before default-restoration is [40533377668](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40533377668); check CI for the final restoration commit.
+- Historical archive has 21 entries, 17 replayable, 4 lacking stored original sets; new coverage audit checks the 17 in both orientations. CI selected tests excluded known prior Legacy/mock red cases and obsolete Experimental tests; unfiltered suite not certified green.
+
+
 ## RECOVERY CHECKPOINT — 2026-10-27 KST (read this first)
 - **Candidate:** `stage1b-recovery-20261027` (from paused `stage1b-foulplay-duct-20261027`, head `445ce0d`). Original branch + `main` preserved; GitHub branch HEAD must be refreshed before next write.
 - **Working test evidence:** [Actions 40523704908](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40523704908), 118 pass, 0 fail, 1 TODO among *selected* tests; 3 pre-existing Legacy/mock failures excluded by exact name and 4 obsolete old Experimental test files archived. This is not unfiltered green.

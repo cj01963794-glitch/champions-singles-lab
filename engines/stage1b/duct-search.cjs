@@ -82,7 +82,7 @@ function defaultRollout(B,deps,rng,remaining,deadline) {
 function runDuct(B,deps,config={}) {
   const {
     budgetMs=1400, maxIterations=5000, treeDepth=10, maxRolloutTurns=24,
-    exploration=1.35, seed='stage1b', treeMode='open-loop', jointWidening=false
+    exploration=1.35, seed='stage1b', treeMode='exact', jointWidening=false
   }=config;
   if(treeMode!=='open-loop'&&treeMode!=='exact')
     throw Error('Unknown Stage 1B tree mode: '+treeMode);
@@ -172,6 +172,6 @@ function runDuct(B,deps,config={}) {
     // A rollout heuristic score is not a calibrated win probability.
     estimatedGameValuePct:null,certified:false,
     estimateType:'duct-'+treeMode+'-sampled-partial-rollouts',
-    warning:'UCT 방문 비율은 승률이 아님. 선택적 행동쌍 확장은 상대 반격을 누락할 수 있음. 오픈루프 탐색은 다른 난수 결과의 전략 가치를 혼합할 수 있음. 무작위 후속 수순 및 미종료 휴리스틱은 최적 전략을 보장하지 않음.'};
+    warning:treeMode==='exact' ? 'UCT 방문 비율은 승률이 아님. 무작위 후속 수순 및 미종료 휴리스틱은 최적 전략을 보장하지 않음.' : 'UCT 방문 비율은 승률이 아님. 선택적 행동쌍 확장은 상대 반격을 누락할 수 있음. 오픈루프는 다른 난수 결과의 전략 가치를 혼합할 수 있음. 최적 전략 보장 없음.'};
 }
 module.exports={runDuct,chooseUcb,rootPolicies,sample,createNode};
