@@ -90,3 +90,18 @@ test('open-loop shares stochastic history, reaches farther and never selects ill
   assert.ok(open.legalDivergences>0,'The test must actually exercise state-specific legality');
   assert.equal(JSON.stringify(B.toJSON()),original,'Neither mode may mutate original battle');
 });
+
+test('optional deep-node widening deepens stochastic trees without modifying root candidate coverage',()=>{
+  const B=new StochasticLongBattle({turn:0,noise:0,score:0,lock:false,prng:[1,2,3,4]});
+  const original=JSON.stringify(B.toJSON());
+  const common={budgetMs:5000,maxIterations:400,treeDepth:6,maxRolloutTurns:6,seed:'widening'};
+  const baseline=runDuct(B,longDeps,{...common,treeMode:'open-loop',jointWidening:false});
+  const widened=runDuct(B,longDeps,{...common,treeMode:'open-loop',jointWidening:true});
+  assert.equal(baseline.iterations,400);
+  assert.equal(widened.iterations,400);
+  assert.ok(widened.deferredPairExpansions>0);
+  assert.ok(widened.maxReachedDepth>=baseline.maxReachedDepth,JSON.stringify({baseline,widened}));
+  assert.deepEqual(widened.leftActions,baseline.leftActions);
+  assert.deepEqual(widened.rightActions,baseline.rightActions);
+  assert.equal(JSON.stringify(B.toJSON()),original);
+});

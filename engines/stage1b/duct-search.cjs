@@ -82,14 +82,14 @@ function defaultRollout(B,deps,rng,remaining,deadline) {
 function runDuct(B,deps,config={}) {
   const {
     budgetMs=1400, maxIterations=5000, treeDepth=10, maxRolloutTurns=24,
-    exploration=1.35, seed='stage1b', treeMode='open-loop'
+    exploration=1.35, seed='stage1b', treeMode='open-loop', jointWidening=false
   }=config;
   if(treeMode!=='open-loop'&&treeMode!=='exact')
     throw Error('Unknown Stage 1B tree mode: '+treeMode);
   const start=Date.now(),deadline=start+Math.max(20,budgetMs);
   const saved=A.snapshot(B), rng=A.makeRandom(String(seed)+':UCT');
   const root=createNode(B,deps);
-  let completed=0, unresolved=0, nodes=1, maxReachedDepth=0, totalRolloutTurns=0, legalDivergences=0;
+  let completed=0, unresolved=0, nodes=1, maxReachedDepth=0, totalRolloutTurns=0, legalDivergences=0, deferredPairExpansions=0;
   if (!root.left.length||!root.right.length)
     return {...rootPolicies(root),iterations:0,completed:0,unresolved:0,nodes,elapsedMs:0,maxReachedDepth:0};
   let iterations=0;
@@ -108,9 +108,30 @@ function runDuct(B,deps,config={}) {
       if(!left.length||!right.length)break;
       if(left.length!==node.left.length||right.length!==node.right.length)
         legalDivergences++;
-      const l=chooseUcb(left,node.visits,rng,exploration);
-      const r=chooseUcb(right,node.visits,rng,exploration);
+      let l=chooseUcb(left,node.visits,rng,exploration);
+      let r=chooseUcb(right,node.visits,rng,exploration);
       if(!l||!r)break;
+      // Optional benchmark hypothesis: at non-root nodes, cap newly opened
+      // joint-action edges before continuing down already sampled edges.
+      // No candidate is made permanently illegal; the cap grows with visits.
+      // Unlike root policies, deep response combinations are sampled lazily.
+      if(jointWidening&&treeMode==='open-loop'&&depth>0) {
+        const requested=l.action+'|'+r.action;
+        const capacity=Math.max(1,Math.floor(Math.pow(node.visits+1,0.60)));
+        if(!node.pairs.has(requested)&&node.pairs.size>=capacity) {
+          const candidates=[];
+          for(const prior of node.pairs.keys()) {
+            const split=prior.split('|'), leftStat=left.find(x=>x.action===split[0]);
+            const rightStat=right.find(x=>x.action===split[1]);
+            if(leftStat&&rightStat)candidates.push({leftStat,rightStat});
+          }
+          if(candidates.length) {
+            const previously=candidates[Math.floor(rng()*candidates.length)];
+            l=previously.leftStat;r=previously.rightStat;
+            deferredPairExpansions++;
+          }
+        }
+      }
       path.push({node,l,r});
       test.makeChoices(l.action,r.action);
       depth++;
@@ -147,10 +168,10 @@ function runDuct(B,deps,config={}) {
     if(selectedLeaf && nodes>maxIterations*treeDepth)break;
   }
   return {...rootPolicies(root),iterations,completed,unresolved,nodes,
-    elapsedMs:Date.now()-start,maxReachedDepth,totalRolloutTurns,treeMode,legalDivergences,
+    elapsedMs:Date.now()-start,maxReachedDepth,totalRolloutTurns,treeMode,legalDivergences,jointWidening,deferredPairExpansions,
     // A rollout heuristic score is not a calibrated win probability.
     estimatedGameValuePct:null,certified:false,
     estimateType:'duct-'+treeMode+'-sampled-partial-rollouts',
-    warning:'UCT 방문 비율은 승률이 아님. 오픈루프 탐색은 다른 난수 결과의 전략 가치를 혼합할 수 있음. 무작위 후속 수순 및 미종료 휴리스틱은 최적 전략을 보장하지 않음.'};
+    warning:'UCT 방문 비율은 승률이 아님. 선택적 행동쌍 확장은 상대 반격을 누락할 수 있음. 오픈루프 탐색은 다른 난수 결과의 전략 가치를 혼합할 수 있음. 무작위 후속 수순 및 미종료 휴리스틱은 최적 전략을 보장하지 않음.'};
 }
 module.exports={runDuct,chooseUcb,rootPolicies,sample,createNode};

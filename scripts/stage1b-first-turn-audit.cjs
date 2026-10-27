@@ -30,10 +30,15 @@ for(const [a,b] of matchups)for(const [left,right] of [[a,b],[b,a]]){
     budgetMs:450,treeDepth:10,maxRolloutTurns:24,
     maxIterations:10000,exploration:1.35,treeMode:'open-loop'
   });
+  const widened450=runDuct(B,deps,{
+    seed:'first-turn-strength-audit:'+left+':'+right,
+    budgetMs:450,treeDepth:10,maxRolloutTurns:24,
+    maxIterations:10000,exploration:1.35,treeMode:'open-loop',jointWidening:true
+  });
   const r=runDuct(B,deps,{
     seed:'first-turn-strength-audit:'+left+':'+right,
     budgetMs:1800,treeDepth:10,maxRolloutTurns:24,
-    maxIterations:10000,exploration:1.35
+    maxIterations:10000,exploration:1.35,treeMode:'open-loop',jointWidening:true
   });
   assert.equal(JSON.stringify(B.toJSON()),old,'search must never mutate original');
   assert.ok(r.iterations>=1);
@@ -45,6 +50,9 @@ for(const [a,b] of matchups)for(const [left,right] of [[a,b],[b,a]]){
     maxReachedDepth:r.maxReachedDepth,nodes:r.nodes,
     control450:{trials:control.iterations,depth:control.maxReachedDepth,nodes:control.nodes},
     openLoop450:{trials:candidate.iterations,depth:candidate.maxReachedDepth,nodes:candidate.nodes},
+    widened450:{trials:widened450.iterations,depth:widened450.maxReachedDepth,nodes:widened450.nodes,
+      deferred:widened450.deferredPairExpansions},
+    wideningDeferrals:r.deferredPairExpansions,
     legalDivergences:r.legalDivergences,
     topLeft:top(r.leftActions,r.policyLeft),topRight:top(r.rightActions,r.policyRight)};
   results.push(row);console.log('[STAGE1B-PRODUCTION-BUDGET-AUDIT]',JSON.stringify(row));
@@ -55,5 +63,7 @@ const summary={matchups:results.length,budgetMsPerRoot:1800,
   totalTrials:results.reduce((a,b)=>a+b.trials,0),
   improvedDepthAt450:results.filter(x=>x.openLoop450.depth>x.control450.depth).length,
   regressedDepthAt450:results.filter(x=>x.openLoop450.depth<x.control450.depth).length,
+  widenedVsOpenImprovedAt450:results.filter(x=>x.widened450.depth>x.openLoop450.depth).length,
+  widenedVsOpenRegressedAt450:results.filter(x=>x.widened450.depth<x.openLoop450.depth).length,
   note:'First-turn 1.8-second GitHub-runner trial counts, not win-rate accuracy or real Render host performance.'};
 console.log('[STAGE1B-PRODUCTION-BUDGET-SUMMARY]',JSON.stringify(summary));
