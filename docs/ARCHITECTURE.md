@@ -27,3 +27,15 @@ Branching factor, long horizons, unknown tails, truncated rollout bias, imperfec
 
 ## Validation discipline
 Regression scenarios should assert both legal behavior and meaningful strategic outcomes. Do not hardcode expected moves directly into the policy logic to pass tests.
+
+
+## Updated long-term product objective (2026-10-27)
+
+- **Ultimate objective**: a strong **in-battle Pokémon decision-making AI**, not merely an offline fixed-matchup win-percentage calculator.
+- **Phase A, current**: rigorous open-sheet 1v1, with both fully specified Pokémon sets; identify sensible multi-turn conditional strategies, opponent reactions, and probability limits under the pinned Champions simulator. Build evaluation harness with held-out matchups and latency measures before claiming improved decisions.
+- **Phase B, defer**: team-size 2v2 and 3v3 **singles** with switching/prediction, bench HP preservation, trading and conditioned counterplay.
+- **Phase C, defer**: user-entered library of multiple frequently used opponent samples and uncertainty-weighted search across candidate sets.
+- **Phase D, defer until justified**: scalable self-play learning / more general battle policies. Not a current implementation decision.
+- Revisit research priorities: Foul Play, battle-engine, Metamon, RotomAI, VGC-Bench, PokéChamp, showdown-brain, poke-env. Rank denotes relevance to staged goals; later milestones may change ordering.
+
+**Do not implement future mechanics now** at the expense of establishing Phase A performance.
