@@ -5,7 +5,7 @@
 - **Working test evidence:** [Actions 40523704908](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40523704908), 118 pass, 0 fail, 1 TODO among *selected* tests; 3 pre-existing Legacy/mock failures excluded by exact name and 4 obsolete old Experimental test files archived. This is not unfiltered green.
 - **Fixed crash:** pinned Showdown snapshot and restore share `battle.log` array with live fight; DUCT simulations pushed it past 1,000-line guard, yielding “Infinite loop”. Stage 1B adapter now makes separate log copies; regression confirms no alias.
 - **Legacy strictly immutable.** `server.cjs`, `index.html`, catalogs and shared game rules unchanged; Docker build tests may change but not Legacy runtime.
-- **Do NOT call initial DUCT prototype strongly validated**; 130ms smoke tests produce only 8–38 search trials; setup/heal and rare counterplay unproven, win percentages not certified. No site deployment.
+- **Do NOT call initial DUCT prototype strongly validated**. Production-sized 1.8s GitHub-runner audit [40526359384](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40526359384) ran 10 roots, 222–907 trials/root and 2–4 reached tree turns, with near-one-new-node-per-trial in some cases. Long setup/heal and rare counterplay unproven; visit share is NOT win probability. No site deployment.
 - **Primary recovery briefing:** `docs/STAGE1B_RECOVERY_2026-10-27.md`. Run `npm test` with pinned `SHOWDOWN_PACKAGE_PATH`, see CI for exact source SHA.
 - **Single transcript:** `docs/TRANSCRIPTS/2026-10-27-direction-discussion-01.md`. Only manually committed text is recoverable, not previous conversation in full; no background per-message sync.
 

@@ -32,3 +32,10 @@
 - First passing run `40523704908`, commit `e4a9955`: 118 pass, 0 fail, 1 TODO within filtered tests. Exactly three existing shared/Legacy failures were excluded by subtest name, and four old rejected Experimental policy contract files archived; do not report unfiltered green. Earlier after-log-fix unfiltered run `40523311832` showed 118 passes, three unrelated failures, one TODO.
 - All actual GitHub modifications performed on recovery branch, not deployed. Remaining: latest commit CI; meaningful equal-compute battle-strength/long-horizon benchmarks; UI copy accuracy; no neural memory/learned model yet. Details and URLs: `docs/STAGE1B_RECOVERY_2026-10-27.md`.
 
+
+## 2026-10-27 KST — measured first-turn 1.8s Stage 1B candidate search
+- Added `scripts/stage1b-first-turn-audit.cjs` and diagnostic CI step in commit `e5a6ca9a9dce609164379070bb4702d1fe339be2`.
+- Action [40526359384](https://github.com/cj01963794-glitch/champions-singles-lab/actions/runs/40526359384) PASS: 119 selected tests passed, 0 failures, 1 TODO; pinned mod and Legacy shared-file unchanged gate passed (same three old named and four old files exclusions).
+- Five stored pairs x reversed sides at a realistic 1800ms root budget on GitHub runner: 10 roots, 5204 total visits, 222–907 each, seven unresolved random rollouts; tree max reached depth 2–4, so the rest of outcomes rely heavily on random continuations.
+- Floette/Charizard at 1.8s: first-side Calm Mind `move 4 mega` only 18.5% of root share (`move 4` 16.2%), reversed Floette `move 4 mega` 20.4%; no guarantee of the long heal/setup plan. Mimikyu/Corviknight Swords Dance `move 3` got 77.4% and 76.1% visit share in both orientations.
+- Low practical tree depth and nearly one new node per search trial in several cases indicate weak chance-outcome sharing. Next generic research target: outcome abstraction / stochastic grouping and improved long-term rollout valuation, benchmarked without name-specific patches. No measured actual policy-versus-policy win percentages, no site deployment.
