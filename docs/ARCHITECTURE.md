@@ -39,3 +39,11 @@ Regression scenarios should assert both legal behavior and meaningful strategic 
 - Revisit research priorities: Foul Play, battle-engine, Metamon, RotomAI, VGC-Bench, PokéChamp, showdown-brain, poke-env. Rank denotes relevance to staged goals; later milestones may change ordering.
 
 **Do not implement future mechanics now** at the expense of establishing Phase A performance.
+
+## Data authority and dual-model deployment invariant (2026-10-27)
+
+**Data authority**: the existing website's pinned Pokémon Showdown `gen9championscustomgame` mod/dex + existing Korean localization and input validation; never fork foreign move powers, data tables, translated names, rules, or new independent simulation truth from other AI repositories. Map external AI method inputs/outputs to canonical internal Pokémon/move IDs. Retain current SP points/maximum, form/Mega and move availability semantics.
+
+**Model separation**: HTTP `POST /api/duel` currently dispatches `model:'legacy'` to original `simulation`; `model:'experimental'` to `engines/experimental.cjs` (Stage 1B) with `battle/validate/legal` dependencies and pinned game data. The HTML model selector defaults to Legacy. Develop the benchmarked AI only as Stage 1B/experimental modules; keep the Legacy simulation behavior and default selection unchanged on deployment. Source-code separation alone does not ensure parity if modifying `server.cjs` shared helpers / common dependencies; explicitly regression-test shared changes before acceptance and preferably avoid them. Do not change format mechanics because another project uses its own simulator. Only borrow algorithm structures, and comply with relevant licenses.
+
+**Current scope**: fully open-sheet 1v1. Later expanding to 2v2/3v3 singles (switching/prediction), then representative unknown opponent sets is deferred. All changes must be measured against holdout states, both-side counterplay, error bars/compute budget, Legacy parity.
