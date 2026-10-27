@@ -33,6 +33,10 @@ jobs:
         env:
           SHOWDOWN_PACKAGE_PATH: /tmp/showdown
         run: npm test
+      - name: Audit first-turn production-sized DUCT budgets (diagnostic only)
+        env:
+          SHOWDOWN_PACKAGE_PATH: /tmp/showdown
+        run: node scripts/stage1b-first-turn-audit.cjs
       - name: Confirm no Legacy or shared runtime changes from original baseline
         run: |
           git fetch origin main --depth=1
